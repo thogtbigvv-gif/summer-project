@@ -854,7 +854,7 @@ body::before {
             <div class="section-title" style="margin: 0;">
                 <h2 style="margin:0;">SKILL METRICS & PROGRESSION</h2>
             </div>
-            <select id="analytics-sort" style="background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; outline:none;" onchange="AnalyticsEngine.renderSkillTable(AnalyticsEngine.aggregatePeriod(AnalyticsEngine.getPastDays(7)))">
+            <select id="analytics-sort" style="background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; outline:none;">
                 <option value="level">Highest Level</option>
                 <option value="xp">Highest XP</option>
                 <option value="growth">Fastest Growing</option>
@@ -963,7 +963,11 @@ const STORAGE_KEY = "summerProjectWebData_v4";
 let webData = null;
 
 function cloneDefault() { return JSON.parse(JSON.stringify(defaultWebData)); }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() { 
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+}
 
 // ===================== 2. RANK HELPERS =====================
 function getMilitaryRank(level) {
@@ -1068,7 +1072,7 @@ function escapeHTML(str) {
     if (str == null) return "";
     const d = document.createElement("div");
     d.textContent = str;
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function showToast(message, variant, color) {
@@ -1109,16 +1113,18 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 function addGlobalXp(amount) {
     const p = webData.player;
     p.currentXp += amount;
-    // Allow going backwards if undoing
-    if (p.currentXp < 0) {
+    
+    while (p.currentXp < 0) {
         if (p.level > 1) {
             p.level -= 1;
             p.xpToNextLevel = Math.ceil(p.xpToNextLevel / 1.3);
             p.currentXp += p.xpToNextLevel;
         } else {
             p.currentXp = 0;
+            break;
         }
     }
+    
     while (p.currentXp >= p.xpToNextLevel) {
         p.currentXp -= p.xpToNextLevel;
         p.level += 1;
@@ -1134,7 +1140,7 @@ function advanceCategoryTier(cat) {
         cat.currentXp -= cat.xpToNextTier;
         const nextTierIdx = TIERS.indexOf(cat.currentTier) + 1;
         cat.currentTier = TIERS[nextTierIdx];
-        cat.xpToNextTier = TIER_XP[cat.currentTier] || 9999;
+        cat.xpToNextTier = TIER_XP[cat.currentTier] || Infinity;
         showToast(`카테고리 티어 UP! → ${cat.currentTier}-Tier 🏆`, "info", TIER_HEX[cat.currentTier]);
     }
 }
@@ -1372,8 +1378,10 @@ function openSkillModal(skillId) {
     icon.style.borderColor = cat.hex;
     icon.style.color       = cat.hex;
 
-    document.getElementById("modal-skill-progress-text").textContent = `${skill.currentXp} / ${skill.xpToNextLevel} XP`;
-    const pct = skill.xpToNextLevel > 0 ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100) : 0;
+    const progressText = skill.level >= 100 || skill.xpToNextLevel === Infinity ? "MAX LEVEL" : `${skill.currentXp} / ${skill.xpToNextLevel} XP`;
+    document.getElementById("modal-skill-progress-text").textContent = progressText;
+    
+    const pct = skill.xpToNextLevel === Infinity || skill.level >= 100 ? 100 : (skill.xpToNextLevel > 0 ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100) : 0);
     const bar = document.getElementById("modal-skill-progress-bar");
     bar.style.width      = `${pct}%`;
     bar.style.background = cat.hex;
@@ -1471,9 +1479,9 @@ function renderWebUI() {
             const cat       = webData.categories[key];
             const tierColor = TIER_COLORS[cat.currentTier] || "var(--tier-e)";
             const tierHex   = TIER_HEX[cat.currentTier]   || "#6b7280";
-            const progressPct = cat.xpToNextTier > 0
+            const progressPct = cat.currentTier === "S" ? 100 : (cat.xpToNextTier > 0
                 ? Math.min((cat.currentXp / cat.xpToNextTier) * 100, 100)
-                : 100;
+                : 100);
 
             const card = document.createElement("div");
             card.className = "category-card";
@@ -1486,7 +1494,7 @@ function renderWebUI() {
                 </div>
                 <div class="xp-row">
                     <span>TIER XP</span>
-                    <span>${cat.currentXp} / ${cat.xpToNextTier}</span>
+                    <span>${cat.currentTier === "S" ? "MAX" : `${cat.currentXp} / ${cat.xpToNextTier}`}</span>
                 </div>
                 <div class="progress-bg">
                     <div class="progress-bar" style="width:${progressPct}%;background:${tierHex};box-shadow:0 0 8px ${tierHex};"></div>
@@ -1540,7 +1548,7 @@ function renderWebUI() {
                 sSelect.appendChild(opt);
 
                 const cat      = SKILL_CAT[s.category] || { color: "var(--accent)", hex: "#10b981", label: s.category };
-                const progress = s.xpToNextLevel > 0 ? Math.min((s.currentXp / s.xpToNextLevel) * 100, 100) : 0;
+                const progress = s.xpToNextLevel === Infinity || s.level >= 100 ? 100 : (s.xpToNextLevel > 0 ? Math.min((s.currentXp / s.xpToNextLevel) * 100, 100) : 0);
 
                 const div = document.createElement("div");
                 div.className = "skill-card";
@@ -1557,7 +1565,7 @@ function renderWebUI() {
                     </div>
                     <div class="xp-row">
                         <span>EXPERIENCE</span>
-                        <span>${s.currentXp} / ${s.xpToNextLevel}</span>
+                        <span>${s.level >= 100 || s.xpToNextLevel === Infinity ? "MAX" : `${s.currentXp} / ${s.xpToNextLevel}`}</span>
                     </div>
                     <div class="progress-bg">
                         <div class="progress-bar" style="width:${progress}%;background:${cat.hex};box-shadow:0 0 8px ${cat.hex};"></div>
@@ -1615,11 +1623,12 @@ function renderMissionTasks() {
 const AnalyticsEngine = {
     getPastDays(numDays) {
         const dates = [];
-        const today = new Date();
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         for (let i = numDays - 1; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            dates.push(d.toISOString().slice(0, 10));
+            const dateObj = new Date(d);
+            dateObj.setDate(dateObj.getDate() - i);
+            dates.push(dateObj.toISOString().slice(0, 10));
         }
         return dates;
     },
@@ -1666,7 +1675,7 @@ const AnalyticsEngine = {
     renderHeatmap(last30) {
         const container = document.getElementById('activity-heatmap');
         if (!container) return;
-        container.innerHTML = '';
+        let html = '';
         last30.forEach(date => {
             const log = webData.history[date];
             const xp = log ? (log.totalXp || 0) : 0;
@@ -1677,16 +1686,14 @@ const AnalyticsEngine = {
             else if (xp >= 150 && xp < 300) heatClass = 'heat-lvl-3';
             else if (xp >= 300) heatClass = 'heat-lvl-4';
 
-            const box = document.createElement('div');
-            box.className = `heat-box ${heatClass}`;
-            box.title = `${date}: ${xp} XP`;
-            container.appendChild(box);
+            html += `<div class="heat-box ${heatClass}" title="${date}: ${xp} XP"></div>`;
         });
+        container.innerHTML = html;
     },
     renderCategoryGrowth(curr, prev) {
         const container = document.getElementById('category-growth-container');
         if (!container) return;
-        container.innerHTML = '';
+        let html = '';
         for (const catKey in webData.categories) {
             const catName = webData.categories[catKey].name;
             const cXp = curr.catXp[catKey] || 0;
@@ -1697,7 +1704,7 @@ const AnalyticsEngine = {
             if (delta > 0) { tClass = 'trend-up'; tIcon = '↑'; }
             if (delta < 0) { tClass = 'trend-down'; tIcon = '↓'; }
 
-            container.innerHTML += `
+            html += `
                 <div class="mission-task" style="cursor: default;">
                     <div class="task-name">${escapeHTML(catName)}</div>
                     <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-right:12px;">Cur: ${cXp} | Prv: ${pXp}</span>
@@ -1705,6 +1712,7 @@ const AnalyticsEngine = {
                 </div>
             `;
         }
+        container.innerHTML = html;
     },
     generateInsights(curr, prev, last7Days) {
         const insights = [];
@@ -1734,7 +1742,6 @@ const AnalyticsEngine = {
     renderSkillTable(curr) {
         const tbody = document.querySelector('#skill-analytics-table tbody');
         if (!tbody) return;
-        tbody.innerHTML = '';
         
         const select = document.getElementById("analytics-sort");
         const sortBy = select ? select.value : "level";
@@ -1745,10 +1752,11 @@ const AnalyticsEngine = {
         if (sortBy === "growth") sorted.sort((a,b) => (curr.skillXp[b.id]||0) - (curr.skillXp[a.id]||0));
         if (sortBy === "streak") sorted.sort((a,b) => (b.streak||0) - (a.streak||0));
 
+        let html = '';
         sorted.forEach(s => {
             const wGain = curr.skillXp[s.id] || 0;
             const catHex = SKILL_CAT[s.category] ? SKILL_CAT[s.category].hex : "#10b981";
-            tbody.innerHTML += `
+            html += `
                 <tr>
                     <td><span style="color:${catHex}; margin-right:8px;">■</span>${escapeHTML(s.name)}</td>
                     <td style="font-family: var(--font-display); color: var(--accent);">Lv. ${s.level}</td>
@@ -1758,8 +1766,17 @@ const AnalyticsEngine = {
                 </tr>
             `;
         });
+        tbody.innerHTML = html;
     }
 };
+
+// ===================== 16. EVENT BINDING =====================
+const sortSelect = document.getElementById("analytics-sort");
+if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+        AnalyticsEngine.renderSkillTable(AnalyticsEngine.aggregatePeriod(AnalyticsEngine.getPastDays(7)));
+    });
+}
 
 // ===================== INIT =====================
 async function init() {
