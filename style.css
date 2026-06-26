@@ -106,11 +106,21 @@ body::before {
     border-radius: 8px;
     transition: all 0.2s ease;
 }
-.tab-btn:hover { color: var(--text-main); }
+.tab-btn:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.05); }
 .tab-btn.active {
     color: #fff;
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
+    position: relative;
+}
+.tab-btn.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    box-shadow: 0 0 8px var(--accent);
 }
 
 /* ===================== LAYOUT ===================== */
@@ -250,16 +260,16 @@ body::before {
 
 .tier-pill {
     font-family: var(--font-display);
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 800;
-    color: var(--tier-color);
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    width: 34px; height: 34px;
+    width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     position: relative;
     z-index: 1;
+    letter-spacing: 1px;
 }
 
 .tier-pill::before {
@@ -273,7 +283,7 @@ body::before {
 .xp-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 8px; }
 
 .progress-bg {
-    background: rgba(0, 0, 0, 0.3); width: 100%; height: 6px; border-radius: 10px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.03);
+    background: rgba(0, 0, 0, 0.35); width: 100%; height: 8px; border-radius: 10px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .progress-bar {
@@ -310,10 +320,10 @@ body::before {
 
 .web-form select option { background: #1f2937; color: var(--text-main); }
 .web-form input:focus, .web-form select:focus {
-    border-color: rgba(255,255,255,0.2);
-    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(0, 0, 0, 0.35);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12), 0 0 15px rgba(16, 185, 129, 0.05);
 }
 
 .submit-btn {
@@ -487,17 +497,17 @@ body::before {
 .mission-task {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     background: rgba(0, 0, 0, 0.2);
-    padding: 14px 20px;
+    padding: 14px 18px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    transition: background 0.2s ease, border-color 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
     cursor: pointer;
     user-select: none;
 }
 
-.mission-task:hover { background: rgba(255, 255, 255, 0.03); border-color: rgba(16, 185, 129, 0.2); }
+.mission-task:hover { background: rgba(255, 255, 255, 0.03); border-color: rgba(16, 185, 129, 0.2); transform: translateX(2px); }
 
 .task-box {
     width: 18px; height: 18px;
@@ -559,11 +569,12 @@ body::before {
 .tactical-table th { background: rgba(0,0,0,0.4); padding: 16px; font-family: var(--font-mono); color: var(--text-muted); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border); text-transform: uppercase;}
 .tactical-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.02); color: var(--text-main); font-weight: 500; }
 .tactical-table tr:hover td { background: rgba(255,255,255,0.02); }
-.stat-card-pro { background: var(--glass-bg); border: 1px solid var(--glass-border); padding: 20px; border-radius: var(--radius); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
-.stat-card-pro span { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
-.stat-card-pro strong { font-family: var(--font-display); font-size: 24px; color: #fff; }
-.heatmap-container { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 16px; min-height: 20px; }
-.heat-box { width: 16px; height: 16px; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.02); transition: transform 0.2s; position: relative; }
+.stat-card-pro { background: var(--glass-bg); border: 1px solid var(--glass-border); border-top: 2px solid var(--accent); padding: 20px; border-radius: var(--radius); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); transition: transform 0.2s ease; }
+.stat-card-pro:hover { transform: translateY(-2px); }
+.stat-card-pro span { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-card-pro strong { font-family: var(--font-display); font-size: 26px; color: #fff; }
+.heatmap-container { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; min-height: 24px; }
+.heat-box { width: 20px; height: 20px; border-radius: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.03); transition: transform 0.2s; position: relative; cursor: default; }
 .heat-box:hover { transform: scale(1.2); z-index: 10; border-color: var(--accent); }
 .heat-box::after { content: attr(title); position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 4px 8px; font-size: 10px; font-family: var(--font-mono); border-radius: 4px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20; border: 1px solid var(--glass-border); }
 .heat-box:hover::after { opacity: 1; }
@@ -575,10 +586,25 @@ body::before {
 .trend-up { color: var(--accent); background: var(--accent-soft); }
 .trend-down { color: var(--danger); background: rgba(239,68,68,0.1); }
 .trend-flat { color: var(--text-muted); background: rgba(255,255,255,0.05); }
-.insight-item { padding: 12px 16px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--tier-d); border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 13px; }
+.insight-item { padding: 14px 18px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--tier-d); border-radius: 0 10px 10px 0; margin-bottom: 10px; font-size: 13px; line-height: 1.6; transition: border-left-color 0.2s; }
+.insight-item:hover { background: rgba(255,255,255,0.02); }
 .insight-item.warning { border-left-color: var(--danger); }
 
-/* ===================== QUEST CONTROLS BAR ===================== */
+.analytics-sort-select {
+    background: rgba(0,0,0,0.3);
+    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s, color 0.2s;
+}
+.analytics-sort-select:focus, .analytics-sort-select:hover { border-color: rgba(16,185,129,0.35); color: #fff; }
 .quest-controls {
     display: flex;
     justify-content: space-between;
@@ -647,7 +673,7 @@ body::before {
     transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
     cursor: pointer;
 }
-.quest-card:hover { border-color: rgba(255,255,255,0.13); background: var(--card-bg-hover); transform: translateX(3px); }
+.quest-card:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
 
 .quest-rank-badge {
     font-family: var(--font-display);
@@ -667,10 +693,10 @@ body::before {
 .quest-card-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 .complete-btn {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--glass-border);
-    color: var(--text-main);
-    padding: 8px 14px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: var(--accent);
+    padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 700;
@@ -678,8 +704,9 @@ body::before {
     transition: all 0.2s ease;
     white-space: nowrap;
     font-family: var(--font-mono);
+    letter-spacing: 0.5px;
 }
-.complete-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 14px rgba(16,185,129,0.4); }
+.complete-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 16px rgba(16,185,129,0.45); transform: scale(1.03); }
 
 .reset-quest-btn {
     background: rgba(255,255,255,0.04);
@@ -711,21 +738,21 @@ body::before {
 .quest-card.completed h4 { text-decoration: line-through; }
 
 .delete-btn {
-    width: 22px; height: 22px;
-    border-radius: 50%;
+    width: 26px; height: 26px;
+    border-radius: 8px;
     border: 1px solid var(--glass-border);
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.3);
     color: var(--text-muted);
     cursor: pointer;
     font-size: 13px;
     display: flex; align-items: center; justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s ease, background 0.2s ease;
+    opacity: 0.3;
+    transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
     flex-shrink: 0;
 }
 .quest-card:hover .delete-btn,
 .skill-card:hover .delete-btn { opacity: 1; }
-.delete-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+.delete-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); opacity: 1; }
 
 /* ===================== QUEST SIDEBAR STATS ===================== */
 .quest-sidebar-stats {
@@ -751,7 +778,7 @@ body::before {
 .form-row-2 label { display: block; margin: 16px 0 6px; color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .form-row-2 input,
 .form-row-2 select { width: 100%; padding: 12px 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 10px; font-family: var(--font-body); font-size: 13px; transition: border-color 0.2s, background 0.2s; appearance: none; -webkit-appearance: none; }
-.form-row-2 input:focus, .form-row-2 select:focus { border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); outline: none; box-shadow: 0 0 0 2px rgba(16,185,129,0.15); }
+.form-row-2 input:focus, .form-row-2 select:focus { border-color: rgba(16,185,129,0.5); background: rgba(0,0,0,0.35); outline: none; box-shadow: 0 0 0 3px rgba(16,185,129,0.12); }
 .form-row-2 select option { background: #1f2937; }
 
 .form-toggle-row { margin-top: 12px; }
@@ -800,14 +827,15 @@ body::before {
 
 /* ===================== EMPTY STATE ===================== */
 .empty-state {
-    border: 1px dashed var(--glass-border);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
     border-radius: var(--radius);
-    padding: 48px 40px;
+    padding: 56px 40px;
     text-align: center;
     color: var(--text-muted);
     font-size: 13px;
+    background: rgba(0, 0, 0, 0.1);
 }
-.empty-state strong { display: block; color: var(--text-main); font-size: 15px; margin-bottom: 4px; }
+.empty-state strong { display: block; color: var(--text-main); font-size: 15px; margin-bottom: 6px; font-family: var(--font-display); letter-spacing: 0.5px; }
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 950px) {
@@ -834,4 +862,45 @@ body::before {
     #toast-container { left: 12px; right: 12px; bottom: 12px; max-width: none; }
     .tab-navigation { width: 100%; justify-content: space-between; }
 }
+
+/* ===================== UX MICRO-POLISH ===================== */
+
+/* Smooth scroll для anchor navigation */
+html { scroll-behavior: smooth; }
+
+/* Гарын үйлдэл (interactive elements) — cursor pointer */
+.qfilter-btn, .tab-btn, .submit-btn, .toggle-link, .reset-link,
+.complete-btn, .delete-btn, .reset-quest-btn, .close-modal { cursor: pointer; }
+
+/* Skill card left bar opacity нэмэх */
+.skill-card:hover::before { opacity: 0.85; }
+
+/* Quest rank badge — гялалзуулах гэрэл нэмэх */
+.quest-rank-badge { transition: box-shadow 0.2s ease; }
+.quest-card:hover .quest-rank-badge { box-shadow: 0 0 14px currentColor; }
+
+/* Хуваалт дараа гарах animation-ийг удаашруулах */
+.tab-content.active { animation-duration: 0.3s; }
+
+/* Level badge гайхалтай байлгах */
+.level-row strong { letter-spacing: -1px; }
+
+/* Toast container - дээшлүүлэх */
+#toast-container { bottom: 32px; }
+
+/* Section title — accent underline */
+.section-title h2 {
+    display: inline-block;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(16, 185, 129, 0.3);
 }
+
+/* Attributes card h3 — тодруулах */
+.attributes-card h3 { border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 14px; }
+
+/* Mission panel quote текст */
+#mission-quote { font-style: italic; }
+
+/* Skill table — striped rows */
+.tactical-table tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+.tactical-table tbody tr { transition: background 0.15s; }
