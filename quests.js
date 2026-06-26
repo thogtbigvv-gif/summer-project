@@ -153,26 +153,26 @@ const DEFAULT_DAILY_POOL = [
 
 /**
  * Өдөр бүр шинэ даалгавар автоматаар үүсгэх эсэхийг шалгаж, удирдах үндсэн функц
+ * ЗАСВАР: localStorage-д хадгалах ключийг нэгдмэл болголоо (window.storage/localStorage аль ч байсан)
  */
 function checkAndGenerateDailyQuests() {
-    // Өнөөдрийн огноог авах (Формат: ГГГГ-СМ-ӨД)
-    const today = todayStr(); // todayStr() — timezone-д зөв тохируулагдсан огноо
+    const today = todayStr();
+    // Огноог ҮРГЭЛЖ localStorage-аас уншина — нэгдмэл байдлыг хангана
     const lastResetDate = localStorage.getItem('last_daily_quest_date');
-    
-    // Хэрэв өдөр солигдсон эсвэл анх удаа тоглож байвал шинэ даалгавар үүсгэнэ
+
     if (lastResetDate !== today) {
-        const newDailyQuests = generateRandomQuests(2); // Өдөрт 2 санамсаргүй даалгавар өгнө
-        
-        // Хөтчийн санах өйд хадгалах
+        const newDailyQuests = generateRandomQuests(2);
+
+        // Шинэ даалгавруудыг хадгалах
         try {
             if (window.storage && typeof window.storage.set === "function") {
                 window.storage.set('daily_quests_data', JSON.stringify({ date: today, quests: newDailyQuests }), false);
-            } else {
-                localStorage.setItem('current_daily_quests', JSON.stringify(newDailyQuests));
-                localStorage.setItem('last_daily_quest_date', today);
             }
+            // Огноог ҮРГЭЛЖ localStorage-д бичнэ — check логик зөв ажиллахын тулд
+            localStorage.setItem('current_daily_quests', JSON.stringify(newDailyQuests));
+            localStorage.setItem('last_daily_quest_date', today);
         } catch(_) {}
-        
+
         return newDailyQuests;
     } else {
         // Өнөөдөр аль хэдийн үүссэн даалгавар байгаа бол санах ойгоос уншина
@@ -185,16 +185,17 @@ function checkAndGenerateDailyQuests() {
 
 /**
  * Сангаас санамсаргүйгээр даалгавар сонгох туслах функц
+ * ЗАСВАР: gameData → webData болгон засав (gameData тодорхойлогдоогүй байсан)
  */
 function generateRandomQuests(count) {
-    // Хэрэв data.js-д gameData.dailyQuests гэж байвал түүнийг авна, байхгүй бол нөөц санг авна
-    const pool = (typeof gameData !== 'undefined' && gameData.dailyQuests) 
-        ? gameData.dailyQuests 
+    // ЗАСВАР: 'gameData' байхгүй — зөв нэр 'webData'. webData.dailyQuests байвал авна, байхгүй бол нөөц санг ашиглана
+    const pool = (typeof webData !== 'undefined' && webData.dailyQuests)
+        ? webData.dailyQuests
         : DEFAULT_DAILY_POOL;
-        
+
     // Даалгавруудыг санамсаргүйгээр холих (Shuffle)
     const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    
+
     // Шаардлагатай тооноор таслан авч, явцыг (progress) 0-ээр эхлүүлнэ
     return shuffled.slice(0, count).map(quest => ({
         ...quest,
@@ -203,4 +204,3 @@ function generateRandomQuests(count) {
         createdAt: new Date().getTime()
     }));
 }
-
