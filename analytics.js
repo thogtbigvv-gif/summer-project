@@ -60,12 +60,12 @@ function renderAttributesRadar() {
 const AnalyticsEngine = {
     getPastDays(numDays) {
         const dates = [];
-        const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         for (let i = numDays - 1; i >= 0; i--) {
-            const dateObj = new Date(d);
-            dateObj.setDate(dateObj.getDate() - i);
-            dates.push(dateObj.toISOString().slice(0, 10));
+            // todayStr()-тай ижил аргаар, өдрийн зөрүүг тооцон огноог үүсгэнэ
+            const d = new Date();
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            d.setDate(d.getDate() - i);
+            dates.push(d.toISOString().slice(0, 10));
         }
         return dates;
     },
