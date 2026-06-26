@@ -119,6 +119,10 @@ async function init() {
         console.error("init error:", err);
         webData = cloneDefault();
     }
+    // Өдөр бүрийн автомат даалгавруудыг шалгах
+    if (typeof checkAndGenerateDailyQuests === "function") {
+        checkAndGenerateDailyQuests();
+    }
     renderWebUI();
 }
 
