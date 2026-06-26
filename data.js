@@ -12,9 +12,9 @@ const defaultWebData = {
         { id: 2, title: "Фитнесст 5км гүйх", category: "fitness", rank: "D", xpReward: 40, metricReward: 5, completed: false }
     ],
     skills: [
-        { id: 101, name: "Japanese Language", category: "language",   level: 3, currentXp: 120, xpToNextLevel: 200, totalXp: 420,  streak: 2, lastTrainDate: null },
-        { id: 102, name: "Coding",            category: "technology", level: 5, currentXp: 340, xpToNextLevel: 500, totalXp: 1540, streak: 5, lastTrainDate: null },
-        { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 150, totalXp: 175,  streak: 0, lastTrainDate: null }
+        { id: 101, name: "Japanese Language", category: "language",   level: 3, currentXp: 120, xpToNextLevel: 144, totalXp: 420,  streak: 2, lastTrainDate: null },
+        { id: 102, name: "Coding",            category: "technology", level: 5, currentXp: 0,   xpToNextLevel: 207, totalXp: 1540, streak: 5, lastTrainDate: null },
+        { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 120, totalXp: 175,  streak: 0, lastTrainDate: null }
     ],
     missionTasks: [
         { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null },
@@ -108,6 +108,9 @@ async function loadWebData() {
 
         webData.skills.forEach(s => {
             if (s.lastTrainDate === undefined) s.lastTrainDate = null;
+            // Хуучин буруу xpToNextLevel-г формулаар засах
+            const expectedXp = Math.floor(100 * Math.pow(1.2, s.level - 1));
+            if (s.xpToNextLevel !== expectedXp) s.xpToNextLevel = expectedXp;
         });
 
         webData.missionTasks.forEach(t => {
@@ -195,6 +198,6 @@ function advanceCategoryTier(cat) {
         const nextTierIdx = TIERS.indexOf(cat.currentTier) + 1;
         cat.currentTier = TIERS[nextTierIdx];
         cat.xpToNextTier = TIER_XP[cat.currentTier] || Infinity;
-        showToast(`카테고리 тиер UP! → ${cat.currentTier}-Tier 🏆`, "info", TIER_HEX[cat.currentTier]);
+        showToast(`Ангилал тиер ахиллаа! → ${cat.currentTier}-Tier 🏆`, "info", TIER_HEX[cat.currentTier]);
     }
 }
