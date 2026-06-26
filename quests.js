@@ -96,7 +96,7 @@ function renderQuests() {
                 <div class="quest-rank-badge" style="color:${TIER_HEX[q.rank] || "#6b7280"}">${escapeHTML(q.rank)}</div>
                 <div class="quest-info">
                     <h4 title="${escapeHTML(q.title)}">${escapeHTML(q.title)}</h4>
-                    <small>+${q.xpReward} XP • ${escapeHTML(q.category)}</small>
+                    <small>+${q.xpReward} XP • ${escapeHTML(webData.categories[q.category] ? webData.categories[q.category].name : q.category)}</small>
                 </div>
                 ${q.completed
                     ? `<span class="done-badge">COMPLETED ✓</span>`
@@ -153,7 +153,7 @@ const DEFAULT_DAILY_POOL = [
  */
 function checkAndGenerateDailyQuests() {
     // Өнөөдрийн огноог авах (Формат: ГГГГ-СМ-ӨД)
-    const today = new Date().toISOString().split('T')[0]; 
+    const today = todayStr(); // todayStr() — timezone-д зөв тохируулагдсан огноо
     const lastResetDate = localStorage.getItem('last_daily_quest_date');
     
     // Хэрэв өдөр солигдсон эсвэл анх удаа тоглож байвал шинэ даалгавар үүсгэнэ
@@ -161,14 +161,22 @@ function checkAndGenerateDailyQuests() {
         const newDailyQuests = generateRandomQuests(2); // Өдөрт 2 санамсаргүй даалгавар өгнө
         
         // Хөтчийн санах өйд хадгалах
-        localStorage.setItem('current_daily_quests', JSON.stringify(newDailyQuests));
-        localStorage.setItem('last_daily_quest_date', today);
+        try {
+            if (window.storage && typeof window.storage.set === "function") {
+                window.storage.set('daily_quests_data', JSON.stringify({ date: today, quests: newDailyQuests }), false);
+            } else {
+                localStorage.setItem('current_daily_quests', JSON.stringify(newDailyQuests));
+                localStorage.setItem('last_daily_quest_date', today);
+            }
+        } catch(_) {}
         
         return newDailyQuests;
     } else {
         // Өнөөдөр аль хэдийн үүссэн даалгавар байгаа бол санах ойгоос уншина
-        const savedQuests = localStorage.getItem('current_daily_quests');
-        return savedQuests ? JSON.parse(savedQuests) : [];
+        try {
+            const savedQuests = localStorage.getItem('current_daily_quests');
+            return savedQuests ? JSON.parse(savedQuests) : [];
+        } catch(_) { return []; }
     }
 }
 
