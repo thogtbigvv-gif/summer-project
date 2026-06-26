@@ -925,14 +925,13 @@ html { scroll-behavior: smooth; }
     margin: 24px 0;
 }
 
-/* Quick XP preset buttons */
+/* Quick XP preset buttons (legacy — kept for any other usage) */
 .quick-xp-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     margin-top: 8px;
 }
-
 .quick-xp-preset {
     background: rgba(0,0,0,0.2);
     border: 1px solid var(--glass-border);
@@ -950,6 +949,284 @@ html { scroll-behavior: smooth; }
     background: var(--accent-soft);
     color: var(--accent);
     border-color: rgba(16,185,129,0.3);
+}
+
+/* ===== TRAINING SECTION REDESIGN ===== */
+
+.train-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+.train-section-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+.train-section-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    flex: 1;
+}
+.train-section-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 4px;
+    padding: 3px 7px;
+    letter-spacing: 1px;
+}
+
+/* Skill selector */
+.train-skill-selector { margin-bottom: 14px; }
+.train-skill-selector select {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    transition: border-color 0.2s, background 0.2s;
+    appearance: none;
+    cursor: pointer;
+}
+.train-skill-selector select:focus {
+    border-color: rgba(16,185,129,0.5);
+    background: rgba(0,0,0,0.35);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+}
+.train-skill-selector select option { background: #1f2937; }
+
+/* Live skill preview strip */
+.train-skill-preview {
+    margin-top: 8px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 10px 13px;
+    animation: fadeSlideIn 0.2s ease;
+}
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.tsp-left {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+.tsp-name {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tsp-level {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.tsp-xp-block { display: flex; align-items: center; gap: 8px; }
+.tsp-xp-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.tsp-xp-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 6px var(--accent);
+}
+.tsp-xp-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* EXP Preset group */
+.exp-preset-group { margin-bottom: 12px; }
+.exp-preset-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.exp-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+.exp-preset-btn {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    padding: 10px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+.exp-preset-btn:hover, .exp-preset-btn.active-preset {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(16,185,129,0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.15);
+}
+
+/* EXP input + submit row */
+.exp-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.exp-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.exp-input-prefix {
+    position: absolute;
+    left: 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    z-index: 1;
+}
+.exp-input-field {
+    width: 100%;
+    padding: 13px 12px 13px 42px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    transition: border-color 0.2s, background 0.2s;
+    appearance: none;
+    -moz-appearance: textfield;
+}
+.exp-input-field::-webkit-inner-spin-button,
+.exp-input-field::-webkit-outer-spin-button { -webkit-appearance: none; }
+.exp-input-field:focus {
+    border-color: rgba(16,185,129,0.5);
+    background: rgba(0,0,0,0.35);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+}
+.train-submit-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    min-width: 72px;
+}
+.train-submit-btn:hover {
+    background: #34d399;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(16,185,129,0.4);
+}
+.train-submit-btn:active { transform: translateY(0); }
+.train-btn-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* ===== ADD SKILL TOGGLE BUTTON ===== */
+.skill-sidebar-divider-toggle {
+    margin: 20px 0 0;
+}
+.add-skill-toggle-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    background: rgba(0,0,0,0.15);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+.add-skill-toggle-btn:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-main);
+    border-color: rgba(255,255,255,0.12);
+}
+.add-skill-toggle-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: rgba(16,185,129,0.3);
+    background: var(--accent-soft);
+}
+.asb-icon { font-size: 14px; }
+.asb-arrow {
+    margin-left: auto;
+    font-size: 9px;
+    transition: transform 0.2s ease;
+}
+.add-skill-toggle-btn[aria-expanded="true"] .asb-arrow {
+    transform: rotate(180deg);
+}
+.add-skill-collapsible {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--glass-border);
+    animation: fadeSlideIn 0.2s ease;
 }
 
 /* ===================== SKILL CARD (IMPROVED) ===================== */
