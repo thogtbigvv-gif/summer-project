@@ -2,10 +2,12 @@
 
 // Event Delegation (Нийтлэг товчнууд)
 document.addEventListener("click", async (e) => {
-    const completeBtn = e.target.closest(".complete-btn");
-    const deleteBtn   = e.target.closest(".delete-btn");
+    const completeBtn   = e.target.closest(".complete-btn");
+    const deleteBtn     = e.target.closest(".delete-btn");
+    const resetQuestBtn = e.target.closest(".reset-quest-btn");
 
-    if (completeBtn) await completeQuest(Number(completeBtn.dataset.id));
+    if (completeBtn)   await completeQuest(Number(completeBtn.dataset.id));
+    if (resetQuestBtn) await resetQuest(Number(resetQuestBtn.dataset.id));
     if (deleteBtn) {
         const id = Number(deleteBtn.dataset.id);
         if (deleteBtn.dataset.type === "skill") await deleteSkill(id);
