@@ -86,7 +86,7 @@ function renderQuests() {
     qContainer.innerHTML = "";
     const sorted = webData.quests.slice().reverse();
     if (sorted.length === 0) {
-        qContainer.innerHTML = `<div class="empty-state">Даалгавар алга.</div>`;
+        qContainer.innerHTML = `<div class="empty-state"><strong>Даалгавар алга</strong>Зүүн талд шинэ даалгавар нэмнэ үү.</div>`;
     } else {
         sorted.forEach(q => {
             const div = document.createElement("div");
@@ -117,12 +117,15 @@ function renderMissionTasks() {
     const earnedXp       = tasks.filter(t => t.completed).reduce((s, t) => s + t.xpReward, 0);
     const pct            = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-    document.getElementById("mission-progress-text").textContent =
-        `${completedCount} / ${tasks.length} COMPLETE (${pct}%)`;
-    document.getElementById("mission-reward-text").textContent =
-        `+${earnedXp} / ${totalXp} EXP`;
-    document.getElementById("mission-meta-status").textContent =
-        completedCount === tasks.length ? "OBJECTIVE: COMPLETE ✓" : "OBJECTIVE: ACTIVE";
+    const progEl = document.getElementById("mission-progress-text");
+    if (progEl) progEl.textContent = `${completedCount} / ${tasks.length} (${pct}%)`;
+    const rewEl = document.getElementById("mission-reward-text");
+    if (rewEl) rewEl.textContent = `+${earnedXp} / ${totalXp} EXP`;
+    const metaEl = document.getElementById("mission-meta-status");
+    if (metaEl) {
+        metaEl.textContent = completedCount === tasks.length ? "OBJECTIVE: COMPLETE ✓" : "OBJECTIVE: ACTIVE";
+        metaEl.className = "mission-meta" + (completedCount === tasks.length ? " complete" : "");
+    }
 
     list.innerHTML = "";
     tasks.forEach(t => {
@@ -132,7 +135,7 @@ function renderMissionTasks() {
         el.innerHTML = `
             <div class="task-box"></div>
             <div class="task-name">${escapeHTML(t.name)}</div>
-            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-left:auto;">+${t.xpReward}</span>`;
+            <span class="task-xp">+${t.xpReward} XP</span>`;
         list.appendChild(el);
     });
 }
