@@ -99,6 +99,20 @@ function renderWebUI() {
 
     // Бусад модулиудын render-үүдийг дуудах
     if(typeof renderMissionTasks === "function") renderMissionTasks();
+    // Motivational quote эргэлдүүлэх
+    const QUOTES = [
+        '"Keep moving forward. Consistency is the weapon."',
+        '"Every rep counts. Every day matters."',
+        '"Small progress is still progress."',
+        '"Discipline beats motivation every time."',
+        '"Your future self is watching."',
+        '"One quest at a time. One day at a time."'
+    ];
+    const quoteEl = document.getElementById("mission-quote");
+    if (quoteEl) {
+        const idx = Math.floor(new Date().getTime() / 86400000) % QUOTES.length;
+        quoteEl.textContent = QUOTES[idx];
+    }
     renderCategories();
     if(typeof renderQuests === "function") renderQuests();
     if(typeof renderSkills === "function") renderSkills();
@@ -125,6 +139,19 @@ async function init() {
     }
     renderWebUI();
 }
+
+// Keyboard Enter дэмжих — Quest form
+document.getElementById("quest-title")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("submit-quest-btn")?.click();
+});
+
+// Keyboard Enter дэмжих — Skill form
+document.getElementById("skill-name")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("submit-skill-btn")?.click();
+});
+document.getElementById("train-exp-amount")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("submit-skill-exp-btn")?.click();
+});
 
 // App-ийг асаах
 init();
