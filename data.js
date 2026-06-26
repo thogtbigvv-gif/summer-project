@@ -174,7 +174,8 @@ function addGlobalXp(amount) {
     while (p.currentXp < 0) {
         if (p.level > 1) {
             p.level -= 1;
-            p.xpToNextLevel = Math.ceil(p.xpToNextLevel / 1.3);
+            // Level-up томьёо: floor(xp * 1.3), тиймээс буцаахдаа floor(xp / 1.3) ашиглана
+            p.xpToNextLevel = Math.floor(p.xpToNextLevel / 1.3);
             p.currentXp += p.xpToNextLevel;
         } else {
             p.currentXp = 0;
