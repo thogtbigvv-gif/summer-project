@@ -326,39 +326,7 @@ body::before {
 .quest-main h3 { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .quest-list { display: flex; flex-direction: column; gap: 14px; }
 
-/* ===================== QUEST CARD ===================== */
-.quest-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
-    padding: 18px 24px;
-    border-radius: var(--radius);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    position: relative;
-    transition: border-color 0.2s ease, background 0.2s ease;
-}
-.quest-card:hover { border-color: rgba(255,255,255,0.15); background: var(--card-bg-hover); }
-
-.quest-rank-badge { font-family: var(--font-display); font-size: 16px; font-weight: 800; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
-.quest-info { min-width: 0; flex: 1; }
-.quest-info h4 { margin-bottom: 4px; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quest-info small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
-
-.complete-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-main); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
-.complete-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-
-.done-badge { color: var(--accent); font-weight: 700; font-size: 12px; background: var(--accent-soft); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); white-space: nowrap; flex-shrink: 0; font-family: var(--font-mono); }
-.quest-card.completed { opacity: 0.35; }
-.quest-card.completed h4 { text-decoration: line-through; }
-
-.delete-btn { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--glass-border); background: #111827; color: var(--text-muted); cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease, background 0.2s ease; z-index: 5; }
-.quest-card:hover .delete-btn, .skill-card:hover .delete-btn { opacity: 1; }
-.delete-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
-
-.empty-state { border: 1px dashed var(--glass-border); border-radius: var(--radius); padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
+/* (quest card styles moved to QUEST CONTROLS BAR section above) */
 .reset-row { margin-top: 40px; text-align: right; }
 .reset-link { background: none; border: none; color: rgba(239, 68, 68, 0.5); font-size: 11px; font-family: var(--font-mono); cursor: pointer; text-transform: uppercase; transition: color 0.2s ease; }
 .reset-link:hover { color: var(--danger); text-decoration: underline; }
@@ -610,6 +578,237 @@ body::before {
 .insight-item { padding: 12px 16px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--tier-d); border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 13px; }
 .insight-item.warning { border-left-color: var(--danger); }
 
+/* ===================== QUEST CONTROLS BAR ===================== */
+.quest-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.quest-filter-tabs {
+    display: flex;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.qfilter-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 7px 16px;
+    border-radius: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.qfilter-btn.active {
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 12px rgba(16,185,129,0.35);
+}
+.qfilter-btn:not(.active):hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+.quest-sort-select {
+    background: rgba(0,0,0,0.3);
+    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.quest-sort-select:focus { border-color: rgba(255,255,255,0.2); color: #fff; }
+
+/* ===================== QUEST CARD (IMPROVED) ===================== */
+.quest-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    cursor: pointer;
+}
+.quest-card:hover { border-color: rgba(255,255,255,0.13); background: var(--card-bg-hover); transform: translateX(3px); }
+
+.quest-rank-badge {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid;
+    flex-shrink: 0;
+}
+.quest-info { min-width: 0; flex: 1; }
+.quest-info h4 { margin-bottom: 4px; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quest-info small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+
+.quest-card-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.complete-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 11px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+}
+.complete-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 14px rgba(16,185,129,0.4); }
+
+.reset-quest-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.reset-quest-btn:hover { background: rgba(16,185,129,0.1); color: var(--accent); border-color: var(--accent); }
+
+.done-badge {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 11px;
+    background: var(--accent-soft);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(16,185,129,0.2);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+}
+
+.quest-card.completed { opacity: 0.4; }
+.quest-card.completed h4 { text-decoration: line-through; }
+
+.delete-btn {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.4);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    flex-shrink: 0;
+}
+.quest-card:hover .delete-btn,
+.skill-card:hover .delete-btn { opacity: 1; }
+.delete-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* ===================== QUEST SIDEBAR STATS ===================== */
+.quest-sidebar-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 14px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+}
+.qs-stat { flex: 1; text-align: center; }
+.qs-stat span { display: block; font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1; }
+.qs-stat small { display: block; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ===================== FORM IMPROVEMENTS ===================== */
+.form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 10px;
+    margin-top: 4px;
+}
+.form-row-2 label { display: block; margin: 16px 0 6px; color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-row-2 input,
+.form-row-2 select { width: 100%; padding: 12px 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 10px; font-family: var(--font-body); font-size: 13px; transition: border-color 0.2s, background 0.2s; appearance: none; -webkit-appearance: none; }
+.form-row-2 input:focus, .form-row-2 select:focus { border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); outline: none; box-shadow: 0 0 0 2px rgba(16,185,129,0.15); }
+.form-row-2 select option { background: #1f2937; }
+
+.form-toggle-row { margin-top: 12px; }
+.toggle-link {
+    background: none; border: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+}
+.toggle-link:hover { color: var(--accent); }
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    font-family: var(--font-body) !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    cursor: pointer;
+    margin-top: 8px !important;
+}
+.checkbox-label input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* ===================== QUEST DETAIL MODAL ===================== */
+.quest-modal-content { padding: 32px; }
+.quest-modal-rank {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 1;
+    border: 2px solid;
+    width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.3);
+}
+
+/* ===================== EMPTY STATE ===================== */
+.empty-state {
+    border: 1px dashed var(--glass-border);
+    border-radius: var(--radius);
+    padding: 48px 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+.empty-state strong { display: block; color: var(--text-main); font-size: 15px; margin-bottom: 4px; }
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 950px) {
     .web-header { padding: 14px 20px; flex-direction: column; gap: 14px; }
@@ -634,4 +833,5 @@ body::before {
     .modal-stats { grid-template-columns: 1fr; }
     #toast-container { left: 12px; right: 12px; bottom: 12px; max-width: none; }
     .tab-navigation { width: 100%; justify-content: space-between; }
+}
 }
