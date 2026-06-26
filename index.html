@@ -96,40 +96,86 @@
     <section id="quests-tab" class="tab-content" role="tabpanel">
         <div class="quest-layout">
             <aside class="quest-sidebar">
-                <h3>+ ШИНЭ ДААЛГАВАР НЭМЭХ</h3>
+                <h3>+ ШИНЭ ДААЛГАВАР</h3>
                 <div class="web-form">
-                    <label for="quest-title">Даалгаврын нэр:</label>
+                    <label for="quest-title">Нэр:</label>
                     <input type="text" id="quest-title" placeholder="Жнь: 30 минут код бичих" maxlength="100" autocomplete="off">
 
-                    <label for="quest-category">Үндсэн Ангилал:</label>
-                    <select id="quest-category">
-                        <option value="" disabled selected>Сонгоно уу...</option>
-                        <option value="fitness">Спорт & Фитнес</option>
-                        <option value="learning">Хөгжил & Сурлага</option>
-                        <option value="habits">Зуршил & Дадал</option>
-                    </select>
+                    <div class="form-row-2">
+                        <div>
+                            <label for="quest-category">Ангилал:</label>
+                            <select id="quest-category">
+                                <option value="" disabled selected>Сонгох...</option>
+                                <option value="fitness">💪 Фитнес</option>
+                                <option value="learning">📚 Сурлага</option>
+                                <option value="habits">🔁 Зуршил</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="quest-rank">Rank:</label>
+                            <select id="quest-rank">
+                                <option value="E">E</option>
+                                <option value="D">D</option>
+                                <option value="C">C</option>
+                                <option value="B">B</option>
+                                <option value="A">A</option>
+                                <option value="S">S</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label for="quest-rank">Даалгаврын зэрэглэл:</label>
-                    <select id="quest-rank">
-                        <option value="E">E-Rank (Хялбар)</option>
-                        <option value="D">D-Rank (Энгийн)</option>
-                        <option value="C">C-Rank (Дундаж)</option>
-                        <option value="B">B-Rank (Хүндэвтэр)</option>
-                        <option value="A">A-Rank (Хэцүү)</option>
-                        <option value="S">S-Rank (Домогт)</option>
-                    </select>
+                    <div class="form-toggle-row">
+                        <button type="button" class="toggle-link" id="toggle-advanced-quest">+ Нэмэлт тохиргоо</button>
+                    </div>
+                    <div id="advanced-quest-fields" style="display:none;">
+                        <label for="quest-metric">Бодит ахиц (сонголттой):</label>
+                        <input type="number" id="quest-metric" placeholder="Жнь: 5" min="0" step="any">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="quest-repeatable"> Давтагдах даалгавар
+                        </label>
+                    </div>
 
-                    <label for="quest-metric">Бодит ахиц (Сонголттой):</label>
-                    <input type="number" id="quest-metric" placeholder="Жнь: 5" min="0" step="any">
-
-                    <button type="button" class="submit-btn" id="submit-quest-btn">Даалгаврыг идэвхжүүлэх</button>
+                    <button type="button" class="submit-btn" id="submit-quest-btn">⚡ Идэвхжүүлэх</button>
                 </div>
+
+                <!-- Quick Stats -->
+                <div class="quest-sidebar-stats" id="quest-sidebar-stats"></div>
             </aside>
 
             <article class="quest-main">
-                <h3>Идэвхтэй даалгаврууд (Active Quests)</h3>
+                <!-- Filter + Sort bar -->
+                <div class="quest-controls">
+                    <div class="quest-filter-tabs">
+                        <button class="qfilter-btn active" data-filter="active">Идэвхтэй</button>
+                        <button class="qfilter-btn" data-filter="completed">Биелсэн</button>
+                        <button class="qfilter-btn" data-filter="all">Бүгд</button>
+                    </div>
+                    <select id="quest-sort" class="quest-sort-select">
+                        <option value="newest">Шинэ эхэнд</option>
+                        <option value="rank">Rank-аар</option>
+                        <option value="xp">XP-аар</option>
+                        <option value="category">Ангилалаар</option>
+                    </select>
+                </div>
+
                 <div id="quests-container" class="quest-list"></div>
             </article>
+        </div>
+
+        <!-- Quest Detail Modal -->
+        <div id="quest-detail-modal" class="modal-overlay" role="dialog" aria-modal="true">
+            <div class="modal-content quest-modal-content">
+                <button class="close-modal" id="close-quest-modal-btn" aria-label="Хаах">&times;</button>
+                <div class="quest-modal-rank" id="qm-rank"></div>
+                <h2 id="qm-title" style="font-family:var(--font-display);font-size:20px;margin:12px 0 4px;"></h2>
+                <p id="qm-meta" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-bottom:20px;"></p>
+                <div class="modal-stats" style="grid-template-columns:1fr 1fr 1fr;">
+                    <div class="stat-box"><label>RANK</label><span id="qm-rank-label"></span></div>
+                    <div class="stat-box"><label>XP REWARD</label><span id="qm-xp" style="color:var(--accent);"></span></div>
+                    <div class="stat-box"><label>АНГИЛАЛ</label><span id="qm-cat" style="font-size:14px;"></span></div>
+                </div>
+                <div id="qm-actions" style="display:flex;gap:12px;margin-top:20px;"></div>
+            </div>
         </div>
     </section>
 
