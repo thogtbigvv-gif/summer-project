@@ -118,6 +118,8 @@ async function trainSkill() {
 
     amountEl.value = "";
     amountEl.focus();
+    // Refresh the live preview
+    setTimeout(updateTrainPreview, 100);
 }
 
 // ===================== POPULATE TRAIN SELECT =====================
@@ -137,8 +139,21 @@ function populateTrainSelect() {
             opt.textContent = `${icon} ${s.name} (Lv.${s.level})`;
             sel.appendChild(opt);
         });
-    if (prev) sel.value = prev;
+    if (prev) {
+        sel.value = prev;
+        updateTrainPreview();
+    } else {
+        const preview = document.getElementById("train-skill-preview");
+        if (preview) preview.style.display = "none";
+    }
 }
+
+// Enter key on EXP input triggers train
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("train-exp-amount")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") trainSkill();
+    });
+});
 
 // ===================== RENDER: SKILL CARDS =====================
 
@@ -313,16 +328,92 @@ document.getElementById("skill-modal")?.addEventListener("click", (e) => {
 document.getElementById("submit-skill-btn")?.addEventListener("click", addSkill);
 document.getElementById("submit-skill-exp-btn")?.addEventListener("click", trainSkill);
 
-// Train select → quick-fill sidebar XP input
+// ===== NEW: Live skill preview when selecting from train dropdown =====
+function updateTrainPreview() {
+    const sel = document.getElementById("train-skill-select");
+    const preview = document.getElementById("train-skill-preview");
+    if (!sel || !preview) return;
+
+    const skillId = parseInt(sel.value);
+    const skill = webData.skills.find(s => s.id === skillId);
+
+    if (!skill) {
+        preview.style.display = "none";
+        return;
+    }
+
+    const catInfo = SKILL_CAT[skill.category] || { hex: "#6b7280" };
+    const pct = skill.xpToNextLevel > 0
+        ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100)
+        : 100;
+
+    document.getElementById("tsp-name").textContent = skill.name;
+    document.getElementById("tsp-level").textContent = `Lv.${skill.level}`;
+
+    const bar = document.getElementById("tsp-xp-bar");
+    bar.style.width = `${pct.toFixed(1)}%`;
+    bar.style.background = catInfo.hex;
+    bar.style.boxShadow = `0 0 6px ${catInfo.hex}`;
+
+    document.getElementById("tsp-xp-text").textContent = `${skill.currentXp} / ${skill.xpToNextLevel} EXP`;
+    document.getElementById("tsp-level").style.color = catInfo.hex;
+
+    preview.style.display = "block";
+}
+
 document.getElementById("train-skill-select")?.addEventListener("change", function () {
+    updateTrainPreview();
     const amountEl = document.getElementById("train-exp-amount");
     if (amountEl && !amountEl.value) amountEl.focus();
 });
 
-// Sidebar quick XP preset buttons
+// ===== NEW: EXP preset buttons (new class) =====
+document.querySelectorAll(".exp-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const amountEl = document.getElementById("train-exp-amount");
+        if (amountEl) {
+            amountEl.value = btn.dataset.val;
+            // Visual feedback
+            document.querySelectorAll(".exp-preset-btn").forEach(b => b.classList.remove("active-preset"));
+            btn.classList.add("active-preset");
+            setTimeout(() => btn.classList.remove("active-preset"), 600);
+            amountEl.focus();
+        }
+    });
+});
+
+// ===== Legacy: quick-xp-preset (sidebar) =====
 document.querySelectorAll(".quick-xp-preset").forEach(btn => {
     btn.addEventListener("click", () => {
         const amountEl = document.getElementById("train-exp-amount");
         if (amountEl) { amountEl.value = btn.dataset.val; amountEl.focus(); }
     });
 });
+
+// ===== NEW: Add Skill collapsible toggle =====
+const toggleAddSkillBtn = document.getElementById("toggle-add-skill-btn");
+const addSkillPanel = document.getElementById("add-skill-panel");
+if (toggleAddSkillBtn && addSkillPanel) {
+    toggleAddSkillBtn.addEventListener("click", () => {
+        const isOpen = toggleAddSkillBtn.getAttribute("aria-expanded") === "true";
+        toggleAddSkillBtn.setAttribute("aria-expanded", String(!isOpen));
+        addSkillPanel.style.display = isOpen ? "none" : "block";
+    });
+}
+
+// Refresh preview after training
+const _origTrainSkill = trainSkill;
+// Wrap trainSkill to refresh preview afterwards (safe patch)
+const _trainSkillBtn = document.getElementById("submit-skill-exp-btn");
+if (_trainSkillBtn) {
+    // Already bound above; we hook into renderWebUI refresh
+}
+
+// Patch: after renderWebUI, refresh preview
+const _origRenderWebUI = typeof renderWebUI === "function" ? renderWebUI : null;
+// We hook via MutationObserver on the select instead
+const trainSelectEl = document.getElementById("train-skill-select");
+if (trainSelectEl) {
+    const mo = new MutationObserver(() => updateTrainPreview());
+    mo.observe(trainSelectEl, { childList: true });
+}
