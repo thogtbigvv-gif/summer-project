@@ -182,45 +182,62 @@
     <section id="skills-tab" class="tab-content" role="tabpanel">
         <div class="quest-layout">
             <aside class="quest-sidebar">
-                <h3>+ ШИНЭ УР ЧАДВАР НЭМЭХ</h3>
-                <div class="web-form">
-                    <label for="skill-name">Ур чадварын нэр:</label>
-                    <input type="text" id="skill-name" placeholder="Жнь: Japanese, Coding" maxlength="60" autocomplete="off">
 
-                    <label for="skill-category">Ангилал:</label>
-                    <select id="skill-category">
-                        <option value="" disabled selected>Сонгоно уу...</option>
-                        <option value="language">Хэлний мэдлэг (Language)</option>
-                        <option value="physical">Бие бялдар (Physical)</option>
-                        <option value="mental">Оюуны чадвар (Mental)</option>
-                        <option value="technology">Технологи (Technology)</option>
-                    </select>
-
-                    <label for="skill-level">Эхлэх Түвшин:</label>
-                    <input type="number" id="skill-level" value="1" min="1" max="100">
-
-                    <button type="button" class="submit-btn secondary" id="submit-skill-btn">Ур чадвар үүсгэх</button>
-                </div>
-
-                <div class="quest-sidebar-divider">
-                    <h3>▲ ТРЕЙНИНГ (ADD EXP)</h3>
+                <!-- TRAINING SECTION (Эхлээд харуулах — хэрэглэгддэг зүйл) -->
+                <div class="skill-sidebar-section">
+                    <div class="skill-sidebar-label">⚡ ТРЕНИНГ</div>
                     <div class="web-form">
-                        <label for="train-skill-select">Хөгжүүлэх ур чадвар:</label>
+                        <label for="train-skill-select">Ур чадвар:</label>
                         <select id="train-skill-select">
-                            <option value="" disabled selected>Ур чадвар сонгох...</option>
+                            <option value="" disabled selected>Сонгох...</option>
                         </select>
 
-                        <label for="train-exp-amount">Олсон туршлага (EXP):</label>
-                        <input type="number" id="train-exp-amount" placeholder="Жнь: 20" min="1">
+                        <label for="train-exp-amount">Олсон EXP:</label>
+                        <input type="number" id="train-exp-amount" placeholder="Жнь: 20" min="1" max="9999">
 
-                        <button type="button" class="submit-btn" id="submit-skill-exp-btn">Туршлага нэмэх</button>
+                        <!-- Quick XP buttons -->
+                        <div class="quick-xp-row">
+                            <button type="button" class="quick-xp-preset" data-val="10">+10</button>
+                            <button type="button" class="quick-xp-preset" data-val="20">+20</button>
+                            <button type="button" class="quick-xp-preset" data-val="50">+50</button>
+                            <button type="button" class="quick-xp-preset" data-val="100">+100</button>
+                        </div>
+
+                        <button type="button" class="submit-btn" id="submit-skill-exp-btn">EXP нэмэх</button>
                     </div>
                 </div>
+
+                <!-- DIVIDER -->
+                <div class="skill-sidebar-divider"></div>
+
+                <!-- ADD NEW SKILL (Дор нь — ховор хэрэглэнэ) -->
+                <div class="skill-sidebar-section">
+                    <div class="skill-sidebar-label">＋ ШИНЭ УР ЧАДВАР</div>
+                    <div class="web-form">
+                        <label for="skill-name">Нэр:</label>
+                        <input type="text" id="skill-name" placeholder="Жнь: Japanese, Guitar..." maxlength="60" autocomplete="off">
+
+                        <label for="skill-category">Ангилал:</label>
+                        <select id="skill-category">
+                            <option value="" disabled selected>Сонгоно уу...</option>
+                            <option value="language">🌐 Хэлний мэдлэг</option>
+                            <option value="physical">⚡ Бие бялдар</option>
+                            <option value="mental">🧠 Оюуны чадвар</option>
+                            <option value="technology">💻 Технологи</option>
+                        </select>
+
+                        <label for="skill-level">Эхлэх Лэвэл:</label>
+                        <input type="number" id="skill-level" value="1" min="1" max="100">
+
+                        <button type="button" class="submit-btn secondary" id="submit-skill-btn">Үүсгэх</button>
+                    </div>
+                </div>
+
             </aside>
 
             <article class="quest-main">
                 <div class="section-title">
-                    <h2>Бодит Ур Чадварууд (Acquired Skills)</h2>
+                    <h2>Ур Чадварууд</h2>
                 </div>
                 <div id="skills-container" class="web-grid"></div>
             </article>
