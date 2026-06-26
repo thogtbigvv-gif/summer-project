@@ -158,7 +158,7 @@ function renderSkills() {
     sSelect.innerHTML = `<option value="" disabled selected>Ур чадвар сонгох...</option>`;
 
     if (webData.skills.length === 0) {
-        sContainer.innerHTML = `<div class="empty-state">Ур чадвар алга. Шинээр нэмнэ үү.</div>`;
+        sContainer.innerHTML = `<div class="empty-state"><strong>Ур чадвар алга</strong>Зүүн талд шинэ ур чадвар нэмж эхлүүлнэ үү.</div>`;
     } else {
         webData.skills.forEach(s => {
             const opt = document.createElement("option");
@@ -197,4 +197,4 @@ function renderSkills() {
             sContainer.appendChild(div);
         });
     }
-}
+}  
