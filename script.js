@@ -135,6 +135,12 @@ async function init() {
         console.error("init error:", err);
         webData = cloneDefault();
     }
+    // Bigu-гийн идэвхийн фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина)
+    if (typeof syncFromBigu === "function") {
+        const sync = await syncFromBigu();
+        // Шинэ session боловсруулагдсан бол л хадгална (syncedIds/mission төлөв алдагдахгүй)
+        if (sync && (sync.awarded > 0 || sync.sessions > 0)) await saveWebData();
+    }
     // Өдөр бүрийн автомат даалгавруудыг шалгах
     if (typeof checkAndGenerateDailyQuests === "function") {
         checkAndGenerateDailyQuests();

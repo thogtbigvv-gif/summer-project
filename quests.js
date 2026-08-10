@@ -371,19 +371,72 @@ function checkAndGenerateDailyQuests() {
 
     if (lastResetDate !== today) {
         const newDailyQuests = generateRandomQuests(2);
-        try {
-            if (window.storage && typeof window.storage.set === "function") {
-                window.storage.set('daily_quests_data', JSON.stringify({ date: today, quests: newDailyQuests }), false);
-            }
-            localStorage.setItem('current_daily_quests', JSON.stringify(newDailyQuests));
-            localStorage.setItem('last_daily_quest_date', today);
-        } catch(_) {}
+        // Bigu-д өнөөдөр давтах үг байвал эхэнд нь нэмнэ
+        const biguQuest = generateBiguDueQuest();
+        if (biguQuest) newDailyQuests.unshift(biguQuest);
+        saveDailyQuests(today, newDailyQuests);
         return newDailyQuests;
     } else {
+        let savedList = [];
         try {
             const savedQuests = localStorage.getItem('current_daily_quests');
-            return savedQuests ? JSON.parse(savedQuests) : [];
+            savedList = savedQuests ? JSON.parse(savedQuests) : [];
         } catch(_) { return []; }
+        if (!Array.isArray(savedList)) return [];
+
+        // Өдрийн даалгавар үүссэний ДАРАА Bigu фийд ирсэн бол (жнь: dashboard-г эрт нээсэн)
+        // тухайн өдөрт нь нэг удаа нөхөж нэмнэ. Байгаа бол хөндөхгүй — ахиц нь хадгалагдана.
+        if (!savedList.some(q => q && q.id === BIGU_DAILY_QUEST_ID)) {
+            const biguQuest = generateBiguDueQuest();
+            if (biguQuest) {
+                savedList.unshift(biguQuest);
+                saveDailyQuests(today, savedList);
+            }
+        }
+        return savedList;
+    }
+}
+
+function saveDailyQuests(date, quests) {
+    try {
+        if (window.storage && typeof window.storage.set === "function") {
+            window.storage.set('daily_quests_data', JSON.stringify({ date, quests }), false);
+        }
+        localStorage.setItem('current_daily_quests', JSON.stringify(quests));
+        localStorage.setItem('last_daily_quest_date', date);
+    } catch(_) {}
+}
+
+const BIGU_DAILY_QUEST_ID = "daily_bigu_review";
+
+// Bigu-гийн `due` тооноос өдрийн даалгавар үүсгэнэ. Фийд байхгүй/өөр өдрийнх бол null.
+// Бусад өдрийн даалгаврынхтай яг ижил хэлбэртэй тул биелүүлэх урсгалд онцгой тохиолдол шаардахгүй.
+function generateBiguDueQuest() {
+    try {
+        if (typeof readBiguFeed !== "function") return null;
+
+        const feed = readBiguFeed();
+        const due  = feed ? feed.due : null;
+        if (!due || due.date !== todayStr() || !(due.count > 0)) return null;
+
+        const count = Math.floor(due.count);
+        const rank  = count < 20 ? "E" : count < 50 ? "D" : "C";
+
+        return {
+            id:          BIGU_DAILY_QUEST_ID,
+            title:       `Япон хэл: ${count} үг давтах`,
+            description: `Bigu дээр өнөөдрийн ${count} үгээ давтаж дуусгах`,
+            category:    "learning",
+            rank,
+            target:      count,
+            reward:      { xp: RANK_XP_MAP[rank] || 20, gold: 20 },
+            progress:    0,
+            completed:   false,
+            createdAt:   new Date().getTime()
+        };
+    } catch (err) {
+        console.warn("generateBiguDueQuest error:", err);
+        return null;
     }
 }
 

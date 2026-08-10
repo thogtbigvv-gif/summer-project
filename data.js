@@ -21,7 +21,11 @@ const defaultWebData = {
         { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null },
         { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null }
     ],
-    history: {}
+    history: {},
+    integrations: {
+        // Bigu (тусдаа апп) -аас уншсан идэвхийн фийдийн синк төлөв. Зөвхөн унших холбоос.
+        bigu: { syncedIds: [], lastSyncedAt: null }
+    }
 };
 
 const TIERS     = ["E", "D", "C", "B", "A", "S"];
@@ -105,6 +109,12 @@ async function loadWebData() {
         if (!webData.categories)  webData.categories  = cloneDefault().categories;
         if (!webData.missionTasks) webData.missionTasks = cloneDefault().missionTasks;
         if (!webData.history)     webData.history     = {};
+        if (!webData.integrations) webData.integrations = cloneDefault().integrations;
+        if (!webData.integrations.bigu || typeof webData.integrations.bigu !== "object") {
+            webData.integrations.bigu = cloneDefault().integrations.bigu;
+        }
+        if (!Array.isArray(webData.integrations.bigu.syncedIds)) webData.integrations.bigu.syncedIds = [];
+        if (webData.integrations.bigu.lastSyncedAt === undefined) webData.integrations.bigu.lastSyncedAt = null;
 
         webData.skills.forEach(s => {
             if (s.lastTrainDate === undefined) s.lastTrainDate = null;

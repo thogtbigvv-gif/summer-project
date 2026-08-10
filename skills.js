@@ -60,19 +60,18 @@ async function deleteSkill(skillId) {
     closeSkillModal();
 }
 
-async function trainSkill() {
-    const selectEl = document.getElementById("train-skill-select");
-    const amountEl = document.getElementById("train-exp-amount");
-
-    const skillId = parseInt(selectEl?.value);
-    const amount  = parseInt(amountEl?.value);
-
-    if (!skillId)        { showToast("Ур чадвар сонгоно уу.", "error"); return; }
-    if (!amount || amount < 1) { showToast("XP хэмжээг оруулна уу.", "error"); amountEl?.focus(); return; }
-    if (amount > 9999)   { showToast("Хэт их XP (хамгийн ихдээ 9999).", "error"); return; }
-
+// Ур чадварт XP нэмэх цөм логик — trainSkill() болон Bigu синк хоёулаа үүнийг дуудна.
+// opts:
+//   silent     — toast харуулахгүй (олон session-ыг нэг дор синк хийхэд)
+//   categoryId — logDailyActivity-д бичих ангиллын түлхүүр (default: null)
+//   skipLog    — өдрийн лог бичихгүй (дуудагч тал өөрөө бичих бол)
+// Буцаах утга: { leveled, skill } эсвэл null (ур чадвар олдоогүй / буруу XP)
+function awardSkillXp(skillId, amount, opts = {}) {
     const skill = webData.skills.find(s => s.id === skillId);
-    if (!skill) return;
+    if (!skill) return null;
+
+    const xp = Math.floor(Number(amount));
+    if (!isFinite(xp) || xp < 1) return null;
 
     // Streak шалгах
     const today = todayStr();
@@ -91,9 +90,9 @@ async function trainSkill() {
     skill.lastTrainDate = today;
 
     // XP нэмэх + level-up
-    skill.currentXp += amount;
-    skill.totalXp   = (skill.totalXp || 0) + amount;
-    logDailyActivity(amount, false, skill.id, null);
+    skill.currentXp += xp;
+    skill.totalXp   = (skill.totalXp || 0) + xp;
+    if (!opts.skipLog) logDailyActivity(xp, false, skill.id, opts.categoryId || null);
 
     let leveled = false;
     while (skill.currentXp >= skill.xpToNextLevel) {
@@ -103,17 +102,39 @@ async function trainSkill() {
         leveled = true;
     }
 
-    const catInfo = SKILL_CAT[skill.category] || {};
+    if (!opts.silent) {
+        const catInfo = SKILL_CAT[skill.category] || {};
+        if (leveled) {
+            showToast(`${SKILL_ICONS[skill.category] || "★"} "${skill.name}" Level ${skill.level} боллоо! 🎉`, "info", catInfo.hex || "#fff");
+        } else {
+            showToast(`+${xp} EXP — "${skill.name}"`, "info", catInfo.hex);
+        }
+    }
+
+    return { leveled, skill };
+}
+
+async function trainSkill() {
+    const selectEl = document.getElementById("train-skill-select");
+    const amountEl = document.getElementById("train-exp-amount");
+
+    const skillId = parseInt(selectEl?.value);
+    const amount  = parseInt(amountEl?.value);
+
+    if (!skillId)        { showToast("Ур чадвар сонгоно уу.", "error"); return; }
+    if (!amount || amount < 1) { showToast("XP хэмжээг оруулна уу.", "error"); amountEl?.focus(); return; }
+    if (amount > 9999)   { showToast("Хэт их XP (хамгийн ихдээ 9999).", "error"); return; }
+
+    const result = awardSkillXp(skillId, amount);
+    if (!result) return;
+
     await saveWebData();
     renderWebUI();
 
-    if (leveled) {
-        showToast(`${SKILL_ICONS[skill.category] || "★"} "${skill.name}" Level ${skill.level} боллоо! 🎉`, "info", catInfo.hex || "#fff");
-        // Level-up animation
+    if (result.leveled) {
+        // Level-up animation (renderWebUI картуудыг дахин үүсгэсний дараа)
         const card = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
         if (card) { card.classList.add("level-up-anim"); setTimeout(() => card.classList.remove("level-up-anim"), 1000); }
-    } else {
-        showToast(`+${amount} EXP — "${skill.name}"`, "info", catInfo.hex);
     }
 
     amountEl.value = "";
