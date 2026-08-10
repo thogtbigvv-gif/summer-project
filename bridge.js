@@ -141,10 +141,14 @@ async function syncFromBigu() {
             result.sessions += 1;
         });
 
-        if (state.syncedIds.length > BIGU_SYNCED_ID_CAP) {
-            state.syncedIds = state.syncedIds.slice(-BIGU_SYNCED_ID_CAP);
+        // Зөвхөн шинэ session боловсруулсан үед л төлөвөө хөдөлгөнө — шинэ юм байхгүй
+        // үед syncFromBigu() ямар ч ул мөр үлдээхгүй (хадгалалт ч өдөөгдөхгүй).
+        if (result.sessions > 0) {
+            if (state.syncedIds.length > BIGU_SYNCED_ID_CAP) {
+                state.syncedIds = state.syncedIds.slice(-BIGU_SYNCED_ID_CAP);
+            }
+            state.lastSyncedAt = Date.now();
         }
-        state.lastSyncedAt = Date.now();
 
         // Өнөөдөр синк хийгдсэн session-ы нийт үгийн тоо (фийдээс тооцно —
         // өмнөх ачаалалт дээр синк хийгдсэн session-ууд ч мөн энд орно).
@@ -156,9 +160,11 @@ async function syncFromBigu() {
         if (todayItems >= BIGU_MISSION_ITEMS) {
             const task = webData.missionTasks?.find(t => t.id === BIGU_MISSION_TASK_ID);
             // Даалгаврын өөрийнх нь XP-г дахин олгохгүй — зөвхөн тэмдэглэнэ.
+            // autoCompleted → дараа нь тэмдэглэгээг нь авахад XP буцаахгүй (олгоогүй учраас).
             if (task && !task.completed) {
                 task.completed = true;
                 task.completedDate = today;
+                task.autoCompleted = true;
             }
         }
 

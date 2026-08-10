@@ -60,14 +60,20 @@ async function toggleMissionTask(taskId) {
     if (!task.completed) {
         task.completed = true;
         task.completedDate = todayStr();
+        task.autoCompleted = false;   // гараар биелүүлсэн — XP олгоно
         addGlobalXp(task.xpReward);
         logDailyActivity(task.xpReward, false, null, null);
         showToast(`"${task.name}" — амжилттай! +${task.xpReward} EXP ✓`, "info", "var(--accent)");
     } else {
+        // Автоматаар (Bigu синк) тэмдэглэгдсэн бол XP нь олгогдоогүй тул буцаахгүй.
+        const wasAuto = task.autoCompleted === true;
         task.completed = false;
         task.completedDate = null;
-        addGlobalXp(-task.xpReward);
-        logDailyActivity(-task.xpReward, false, null, null);
+        task.autoCompleted = false;
+        if (!wasAuto) {
+            addGlobalXp(-task.xpReward);
+            logDailyActivity(-task.xpReward, false, null, null);
+        }
     }
 
     await saveWebData();

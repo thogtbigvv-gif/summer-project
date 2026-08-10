@@ -17,9 +17,9 @@ const defaultWebData = {
         { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 120, totalXp: 175,  streak: 0, lastTrainDate: null }
     ],
     missionTasks: [
-        { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null },
-        { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null },
-        { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null }
+        { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null, autoCompleted: false },
+        { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null, autoCompleted: false },
+        { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null, autoCompleted: false }
     ],
     history: {},
     integrations: {
@@ -124,9 +124,12 @@ async function loadWebData() {
         });
 
         webData.missionTasks.forEach(t => {
+            // autoCompleted: Bigu синк тэмдэглэсэн, XP нь олгогдоогүй даалгавар
+            if (t.autoCompleted === undefined) t.autoCompleted = false;
             if (t.completedDate && t.completedDate !== todayStr()) {
                 t.completed = false;
                 t.completedDate = null;
+                t.autoCompleted = false;
             }
         });
 
