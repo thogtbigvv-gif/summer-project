@@ -380,6 +380,9 @@ function checkAndGenerateDailyQuests() {
         // Bigu-д өнөөдөр давтах үг байвал эхэнд нь нэмнэ
         const biguQuest = generateBiguDueQuest();
         if (biguQuest) newDailyQuests.unshift(biguQuest);
+        // Дасгалын аппад өнөөдөр хийх дасгал байвал эхэнд нь нэмнэ
+        const gymQuest = generateGymDailyQuest();
+        if (gymQuest) newDailyQuests.unshift(gymQuest);
         saveDailyQuests(today, newDailyQuests);
         return newDailyQuests;
     } else {
@@ -396,6 +399,15 @@ function checkAndGenerateDailyQuests() {
             const biguQuest = generateBiguDueQuest();
             if (biguQuest) {
                 savedList.unshift(biguQuest);
+                saveDailyQuests(today, savedList);
+            }
+        }
+
+        // Дасгалын фийд мөн адил өдрийн дундуур ирж болно — нэг удаа нөхөж нэмнэ.
+        if (!savedList.some(q => q && q.id === GYM_DAILY_QUEST_ID)) {
+            const gymQuest = generateGymDailyQuest();
+            if (gymQuest) {
+                savedList.unshift(gymQuest);
                 saveDailyQuests(today, savedList);
             }
         }
@@ -442,6 +454,43 @@ function generateBiguDueQuest() {
         };
     } catch (err) {
         console.warn("generateBiguDueQuest error:", err);
+        return null;
+    }
+}
+
+const GYM_DAILY_QUEST_ID = "daily_gym_workout";
+
+// Дасгалын аппын `today` хэсгээс өдрийн даалгавар үүсгэнэ. Фийд байхгүй / өөр өдрийнх /
+// амралтын өдөр бол null. Бусад өдрийн даалгаврынхтай яг ижил хэлбэртэй тул
+// биелүүлэх урсгалд онцгой тохиолдол шаардахгүй.
+function generateGymDailyQuest() {
+    try {
+        if (typeof readGymFeed !== "function") return null;
+
+        const feed  = readGymFeed();
+        const today = feed ? feed.today : null;
+        if (!today || today.date !== todayStr()) return null;
+        if (today.isRest || !(today.total > 0)) return null;
+
+        const total = Math.floor(today.total);
+        const rank  = total < 4 ? "E" : total < 6 ? "D" : "C";
+
+        return {
+            id:          GYM_DAILY_QUEST_ID,
+            title:       `Дасгал: ${total} хөдөлгөөн гүйцэтгэх`,
+            description: today.title
+                ? `Дасгалын аппад "${today.title}" өдрийн ${total} хөдөлгөөнийг дуусгах`
+                : `Дасгалын аппад өнөөдрийн ${total} хөдөлгөөнийг дуусгах`,
+            category:    "fitness",
+            rank,
+            target:      total,
+            reward:      { xp: RANK_XP_MAP[rank] || 20, gold: 20 },
+            progress:    today.done,
+            completed:   false,
+            createdAt:   new Date().getTime()
+        };
+    } catch (err) {
+        console.warn("generateGymDailyQuest error:", err);
         return null;
     }
 }

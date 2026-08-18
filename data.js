@@ -14,7 +14,8 @@ const defaultWebData = {
     skills: [
         { id: 101, name: "Japanese Language", category: "language",   level: 3, currentXp: 120, xpToNextLevel: 144, totalXp: 420,  streak: 2, lastTrainDate: null },
         { id: 102, name: "Coding",            category: "technology", level: 5, currentXp: 0,   xpToNextLevel: 207, totalXp: 1540, streak: 5, lastTrainDate: null },
-        { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 120, totalXp: 175,  streak: 0, lastTrainDate: null }
+        { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 120, totalXp: 175,  streak: 0, lastTrainDate: null },
+        { id: 104, name: "Gym Training",      category: "physical",   level: 1, currentXp: 0,   xpToNextLevel: 100, totalXp: 0,    streak: 0, lastTrainDate: null }
     ],
     missionTasks: [
         { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null, autoCompleted: false },
@@ -24,7 +25,10 @@ const defaultWebData = {
     history: {},
     integrations: {
         // Bigu (тусдаа апп) -аас уншсан идэвхийн фийдийн синк төлөв. Зөвхөн унших холбоос.
-        bigu: { syncedIds: [], lastSyncedAt: null }
+        bigu: { syncedIds: [], lastSyncedAt: null },
+        // Дасгалын апп (тусдаа апп) -аас уншсан өдрийн фийдийн синк төлөв. Зөвхөн унших холбоос.
+        // awardedByDate: { "YYYY-MM-DD": тухайн өдөрт ОЛГОСОН нийт XP }
+        gym: { awardedByDate: {}, lastSyncedAt: null }
     }
 };
 
@@ -40,6 +44,11 @@ const SKILL_CAT = {
     mental:     { color: "var(--skill-ment)", hex: "#8b5cf6", label: "Оюуны чадвар" },
     technology: { color: "var(--skill-tech)", hex: "#10b981", label: "Технологи"     }
 };
+
+// integrations.gym.awardedByDate-д хадгалах хамгийн сүүлийн огнооны тоо
+const GYM_AWARDED_DATE_CAP = 60;
+// Дасгалын гүүрийн ур чадварын default id (хуучин датад нөхөж нэмэхэд ашиглана)
+const GYM_SKILL_ID = 104;
 
 const STORAGE_KEY = "summerProjectWebData_v4";
 let webData = null;
@@ -115,6 +124,27 @@ async function loadWebData() {
         }
         if (!Array.isArray(webData.integrations.bigu.syncedIds)) webData.integrations.bigu.syncedIds = [];
         if (webData.integrations.bigu.lastSyncedAt === undefined) webData.integrations.bigu.lastSyncedAt = null;
+        if (!webData.integrations.gym || typeof webData.integrations.gym !== "object") {
+            webData.integrations.gym = cloneDefault().integrations.gym;
+        }
+        const gymAwarded = webData.integrations.gym.awardedByDate;
+        if (!gymAwarded || typeof gymAwarded !== "object" || Array.isArray(gymAwarded)) {
+            webData.integrations.gym.awardedByDate = {};
+        } else {
+            // Хамгийн сүүлийн GYM_AWARDED_DATE_CAP огноог л үлдээнэ — хуучныг нь устгана.
+            const dates = Object.keys(gymAwarded).sort();
+            if (dates.length > GYM_AWARDED_DATE_CAP) {
+                dates.slice(0, dates.length - GYM_AWARDED_DATE_CAP).forEach(d => { delete gymAwarded[d]; });
+            }
+        }
+        if (webData.integrations.gym.lastSyncedAt === undefined) webData.integrations.gym.lastSyncedAt = null;
+
+        // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.
+        // (Зөвхөн энэ нэгийг — бусад ур чадварыг хэрэглэгч устгасан бол дахин сэргээхгүй.)
+        if (!webData.skills.some(s => s && s.id === GYM_SKILL_ID)) {
+            const gymSkill = cloneDefault().skills.find(s => s.id === GYM_SKILL_ID);
+            if (gymSkill) webData.skills.push(gymSkill);
+        }
 
         webData.skills.forEach(s => {
             if (s.lastTrainDate === undefined) s.lastTrainDate = null;
