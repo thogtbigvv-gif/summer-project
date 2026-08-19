@@ -141,6 +141,12 @@ async function init() {
         // Шинэ session боловсруулагдсан бол л хадгална (syncedIds/mission төлөв алдагдахгүй)
         if (sync && (sync.awarded > 0 || sync.sessions > 0)) await saveWebData();
     }
+    // Дасгалын аппын өдрийн фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина)
+    if (typeof syncFromGym === "function") {
+        const g = await syncFromGym();
+        // Шинэ XP олгогдсон бол л хадгална (awardedByDate/mission төлөв алдагдахгүй)
+        if (g && (g.awarded > 0 || g.days > 0)) await saveWebData();
+    }
     // Өдөр бүрийн автомат даалгавруудыг шалгах
     if (typeof checkAndGenerateDailyQuests === "function") {
         checkAndGenerateDailyQuests();
