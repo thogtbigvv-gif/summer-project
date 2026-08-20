@@ -23,13 +23,11 @@ const defaultWebData = {
         { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null, autoCompleted: false }
     ],
     history: {},
-    integrations: {
-        // Bigu (тусдаа апп) -аас уншсан идэвхийн фийдийн синк төлөв. Зөвхөн унших холбоос.
-        bigu: { syncedIds: [], lastSyncedAt: null },
-        // Дасгалын апп (тусдаа апп) -аас уншсан өдрийн фийдийн синк төлөв. Зөвхөн унших холбоос.
-        // awardedByDate: { "YYYY-MM-DD": тухайн өдөрт ОЛГОСОН нийт XP }
-        gym: { awardedByDate: {}, lastSyncedAt: null }
-    }
+    // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
+    //   { status, updatedAt, syncedIds: [], log: [], lastSyncedAt }
+    // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
+    // тиймээс шинэ апп нэмэхэд энд юу ч нэмэх шаардлагагүй.
+    integrations: {}
 };
 
 const TIERS     = ["E", "D", "C", "B", "A", "S"];
@@ -45,8 +43,6 @@ const SKILL_CAT = {
     technology: { color: "var(--skill-tech)", hex: "#10b981", label: "Технологи"     }
 };
 
-// integrations.gym.awardedByDate-д хадгалах хамгийн сүүлийн огнооны тоо
-const GYM_AWARDED_DATE_CAP = 60;
 // Дасгалын гүүрийн ур чадварын default id (хуучин датад нөхөж нэмэхэд ашиглана)
 const GYM_SKILL_ID = 104;
 
@@ -118,26 +114,25 @@ async function loadWebData() {
         if (!webData.categories)  webData.categories  = cloneDefault().categories;
         if (!webData.missionTasks) webData.missionTasks = cloneDefault().missionTasks;
         if (!webData.history)     webData.history     = {};
-        if (!webData.integrations) webData.integrations = cloneDefault().integrations;
-        if (!webData.integrations.bigu || typeof webData.integrations.bigu !== "object") {
-            webData.integrations.bigu = cloneDefault().integrations.bigu;
+        // Холбогдсон аппуудын төлөвийг НЭГ ерөнхий хэлбэрт оруулна — апп тус бүрд
+        // тусдаа код бичихгүй. Хуучин хадгалсан датаас syncedIds нь хэвээр үлдэж,
+        // танигдахгүй талбарууд (ж: gym-ийн awardedByDate) хэвээрээ хоцорно —
+        // синк тэдгээрийг уншихаа больсон тул хор хөнөөлгүй.
+        if (!webData.integrations || typeof webData.integrations !== "object" || Array.isArray(webData.integrations)) {
+            webData.integrations = {};
         }
-        if (!Array.isArray(webData.integrations.bigu.syncedIds)) webData.integrations.bigu.syncedIds = [];
-        if (webData.integrations.bigu.lastSyncedAt === undefined) webData.integrations.bigu.lastSyncedAt = null;
-        if (!webData.integrations.gym || typeof webData.integrations.gym !== "object") {
-            webData.integrations.gym = cloneDefault().integrations.gym;
-        }
-        const gymAwarded = webData.integrations.gym.awardedByDate;
-        if (!gymAwarded || typeof gymAwarded !== "object" || Array.isArray(gymAwarded)) {
-            webData.integrations.gym.awardedByDate = {};
-        } else {
-            // Хамгийн сүүлийн GYM_AWARDED_DATE_CAP огноог л үлдээнэ — хуучныг нь устгана.
-            const dates = Object.keys(gymAwarded).sort();
-            if (dates.length > GYM_AWARDED_DATE_CAP) {
-                dates.slice(0, dates.length - GYM_AWARDED_DATE_CAP).forEach(d => { delete gymAwarded[d]; });
+        Object.keys(webData.integrations).forEach(app => {
+            const entry = webData.integrations[app];
+            if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+                webData.integrations[app] = { status: null, updatedAt: 0, syncedIds: [], log: [], lastSyncedAt: null };
+                return;
             }
-        }
-        if (webData.integrations.gym.lastSyncedAt === undefined) webData.integrations.gym.lastSyncedAt = null;
+            if (!Array.isArray(entry.syncedIds)) entry.syncedIds = [];
+            if (!Array.isArray(entry.log))       entry.log       = [];
+            if (entry.status === undefined)      entry.status    = null;
+            if (entry.updatedAt === undefined)   entry.updatedAt = 0;
+            if (entry.lastSyncedAt === undefined) entry.lastSyncedAt = null;
+        });
 
         // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.
         // (Зөвхөн энэ нэгийг — бусад ур чадварыг хэрэглэгч устгасан бол дахин сэргээхгүй.)
@@ -154,7 +149,7 @@ async function loadWebData() {
         });
 
         webData.missionTasks.forEach(t => {
-            // autoCompleted: Bigu синк тэмдэглэсэн, XP нь олгогдоогүй даалгавар
+            // autoCompleted: XP олгогдоогүй, автоматаар тэмдэглэгдсэн даалгавар
             if (t.autoCompleted === undefined) t.autoCompleted = false;
             if (t.completedDate && t.completedDate !== todayStr()) {
                 t.completed = false;

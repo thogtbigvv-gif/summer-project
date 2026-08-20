@@ -60,13 +60,17 @@ async function deleteSkill(skillId) {
     closeSkillModal();
 }
 
-// Ур чадварт XP нэмэх цөм логик — trainSkill() болон Bigu синк хоёулаа үүнийг дуудна.
-// opts:
-//   silent     — toast харуулахгүй (олон session-ыг нэг дор синк хийхэд)
+// Ур чадварт XP нэмэх цөм логик — trainSkill() болон гүүрийн синк хоёулаа үүнийг дуудна.
+// XP нэмэх, level ахиулах, хадгалах гурвыг л хийнэ; UI-гийн юу ч энд байхгүй
+// (toast нь meta.silent-ээр бүрэн унтардаг, render хийх нь дуудагч талын ажил).
+// meta:
+//   silent     — toast харуулахгүй (олон event-ийг нэг дор синк хийхэд)
 //   categoryId — logDailyActivity-д бичих ангиллын түлхүүр (default: null)
 //   skipLog    — өдрийн лог бичихгүй (дуудагч тал өөрөө бичих бол)
+//   defer      — хадгалалтыг алгасана. Гүүр олон event-ийг нэг дор боловсруулаад
+//                төгсгөлд нь ГАНЦ УДАА хадгалдаг тул үүнийг ашиглана.
 // Буцаах утга: { leveled, skill } эсвэл null (ур чадвар олдоогүй / буруу XP)
-function awardSkillXp(skillId, amount, opts = {}) {
+function awardSkillXp(skillId, amount, meta = {}) {
     const skill = webData.skills.find(s => s.id === skillId);
     if (!skill) return null;
 
@@ -92,7 +96,7 @@ function awardSkillXp(skillId, amount, opts = {}) {
     // XP нэмэх + level-up
     skill.currentXp += xp;
     skill.totalXp   = (skill.totalXp || 0) + xp;
-    if (!opts.skipLog) logDailyActivity(xp, false, skill.id, opts.categoryId || null);
+    if (!meta.skipLog) logDailyActivity(xp, false, skill.id, meta.categoryId || null);
 
     let leveled = false;
     while (skill.currentXp >= skill.xpToNextLevel) {
@@ -102,7 +106,11 @@ function awardSkillXp(skillId, amount, opts = {}) {
         leveled = true;
     }
 
-    if (!opts.silent) {
+    // Хадгалалт нь энэ функцийн үүрэг. saveWebData() өөрөө алдаагаа барьдаг тул
+    // (reject хийдэггүй) await хийлгүй дуудахад аюулгүй — дуудагч тал шууд render хийнэ.
+    if (!meta.defer) saveWebData();
+
+    if (!meta.silent) {
         const catInfo = SKILL_CAT[skill.category] || {};
         if (leveled) {
             showToast(`${SKILL_ICONS[skill.category] || "★"} "${skill.name}" Level ${skill.level} боллоо! 🎉`, "info", catInfo.hex || "#fff");
@@ -125,10 +133,10 @@ async function trainSkill() {
     if (!amount || amount < 1) { showToast("XP хэмжээг оруулна уу.", "error"); amountEl?.focus(); return; }
     if (amount > 9999)   { showToast("Хэт их XP (хамгийн ихдээ 9999).", "error"); return; }
 
+    // awardSkillXp() өөрөө XP нэмж, level ахиулж, хадгална.
     const result = awardSkillXp(skillId, amount);
     if (!result) return;
 
-    await saveWebData();
     renderWebUI();
 
     if (result.leveled) {
