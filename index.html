@@ -88,6 +88,11 @@
         </div>
         <div id="categories-container" class="web-grid"></div>
 
+        <div class="section-title" style="margin-top: 40px;">
+            <h2>Холбогдсон Аппууд (Connected)</h2>
+        </div>
+        <div id="connected-container" class="web-grid"></div>
+
         <div class="reset-row">
             <button id="reset-btn" class="reset-link" type="button">// СИСТЕМИЙН ӨГӨГДӨЛ ЦЭВЭРЛЭХ (RESET)</button>
         </div>
@@ -183,32 +188,6 @@
         <div class="quest-layout">
             <aside class="quest-sidebar">
 
-                <!-- TRAINING SECTION (Эхлээд харуулах — хэрэглэгддэг зүйл) -->
-                <div class="skill-sidebar-section">
-                    <div class="skill-sidebar-label">⚡ ТРЕНИНГ</div>
-                    <div class="web-form">
-                        <label for="train-skill-select">Ур чадвар:</label>
-                        <select id="train-skill-select">
-                            <option value="" disabled selected>Сонгох...</option>
-                        </select>
-
-                        <label for="train-exp-amount">Олсон EXP:</label>
-                        <input type="number" id="train-exp-amount" placeholder="Жнь: 20" min="1" max="9999">
-
-                        <!-- Quick XP buttons -->
-                        <div class="quick-xp-row">
-                            <button type="button" class="quick-xp-preset" data-val="10">+10</button>
-                            <button type="button" class="quick-xp-preset" data-val="20">+20</button>
-                            <button type="button" class="quick-xp-preset" data-val="50">+50</button>
-                            <button type="button" class="quick-xp-preset" data-val="100">+100</button>
-                        </div>
-
-                        <button type="button" class="submit-btn" id="submit-skill-exp-btn">EXP нэмэх</button>
-                    </div>
-                </div>
-
-                <!-- DIVIDER -->
-                <div class="skill-sidebar-divider"></div>
 
                 <!-- ADD NEW SKILL (Дор нь — ховор хэрэглэнэ) -->
                 <div class="skill-sidebar-section">
@@ -226,8 +205,6 @@
                             <option value="technology">💻 Технологи</option>
                         </select>
 
-                        <label for="skill-level">Эхлэх Лэвэл:</label>
-                        <input type="number" id="skill-level" value="1" min="1" max="100">
 
                         <button type="button" class="submit-btn secondary" id="submit-skill-btn">Үүсгэх</button>
                     </div>
