@@ -1349,3 +1349,47 @@ html { scroll-behavior: smooth; }
     40%  { transform: scale(1.04); box-shadow: 0 0 30px var(--cat-color); border-color: var(--cat-color); }
     100% { transform: scale(1);    box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
 }
+
+/* ===================== CONNECTED APPS ===================== */
+/* Картын их бие нь .category-card-аас ирнэ — энд зөвхөн доторх мөрүүдийн ялгаа. */
+.connected-card.stale { opacity: 0.5; }
+.connected-card.stale:hover { opacity: 0.8; }
+
+.connected-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+}
+
+.connected-status { margin-bottom: 16px; }
+.connected-status .xp-row { margin-bottom: 6px; gap: 16px; }
+.connected-status .xp-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.connected-status .xp-row span:last-child { color: var(--text-main); text-align: right; word-break: break-word; }
+
+.connected-log {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.connected-log-entry {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+/* "+25 XP"-г мөр таслахгүй — "+25" ба "XP" тусдаа мөрөнд унах ёсгүй. */
+.connected-log-entry strong { color: var(--accent); font-weight: 700; white-space: nowrap; }
+
+.connected-empty {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.65;
+}

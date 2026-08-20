@@ -118,6 +118,7 @@ function renderWebUI() {
     renderCategories();
     if(typeof renderQuests === "function") renderQuests();
     if(typeof renderSkills === "function") renderSkills();
+    if(typeof renderConnectedApps === "function") renderConnectedApps();
     if(typeof renderAttributesRadar === "function") renderAttributesRadar();
     
     // Хэрэв Analytics tab идэвхтэй байвал шууд шинэчлэнэ
