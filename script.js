@@ -135,18 +135,9 @@ async function init() {
         console.error("init error:", err);
         webData = cloneDefault();
     }
-    // Bigu-гийн идэвхийн фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина)
-    if (typeof syncFromBigu === "function") {
-        const sync = await syncFromBigu();
-        // Шинэ session боловсруулагдсан бол л хадгална (syncedIds/mission төлөв алдагдахгүй)
-        if (sync && (sync.awarded > 0 || sync.sessions > 0)) await saveWebData();
-    }
-    // Дасгалын аппын өдрийн фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина)
-    if (typeof syncFromGym === "function") {
-        const g = await syncFromGym();
-        // Шинэ XP олгогдсон бол л хадгална (awardedByDate/mission төлөв алдагдахгүй)
-        if (g && (g.awarded > 0 || g.days > 0)) await saveWebData();
-    }
+    // Холбогдсон бүх аппын фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина).
+    // syncAll() өөрөө хадгална. focus/storage үеийн синкийг bridge.js бүртгэсэн байгаа.
+    if (typeof syncAll === "function") await syncAll();
     // Өдөр бүрийн автомат даалгавруудыг шалгах
     if (typeof checkAndGenerateDailyQuests === "function") {
         checkAndGenerateDailyQuests();
