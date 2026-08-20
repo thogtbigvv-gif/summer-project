@@ -8,19 +8,12 @@ async function completeQuest(questId) {
     quest.completed = true;
     quest.completedDate = todayStr();
 
-    const cat = webData.categories[quest.category];
-    if (cat) {
-        cat.currentXp += quest.xpReward;
-        const metric = Number(quest.metricReward) || 0;
-        if (metric > 0) cat.currentValue = Math.min(cat.currentValue + metric, cat.targetValue * 12);
-        advanceCategoryTier(cat);
-    }
-    addGlobalXp(quest.xpReward);
-    logDailyActivity(quest.xpReward, true, null, quest.category);
+    // Даалгавар бол зорилгын жагсаалт — статуст ямар ч нөлөөгүй (Task A).
+    // XP, тиер, өдрийн лог руу юу ч бичихгүй.
 
     await saveWebData();
     if (typeof renderWebUI === "function") renderWebUI();
-    showToast(`"${quest.title}" биелэв! +${quest.xpReward} EXP 🎯`);
+    showToast(`"${quest.title}" биелэв 🎯`);
     closeQuestModal();
 }
 
@@ -28,14 +21,7 @@ async function resetQuest(questId) {
     const quest = webData.quests.find(q => q.id === questId);
     if (!quest || !quest.completed) return;
 
-    // XP буцааx (repeatable quest дахин хийхэд)
-    const cat = webData.categories[quest.category];
-    if (cat) {
-        cat.currentXp = Math.max(0, cat.currentXp - quest.xpReward);
-    }
-    addGlobalXp(-quest.xpReward);
-    logDailyActivity(-quest.xpReward, true, null, quest.category);
-
+    // Буцаах XP байхгүй — даалгавар олгодог ч үгүй байсан (Task A).
     quest.completed = false;
     quest.completedDate = null;
 
@@ -57,23 +43,16 @@ async function toggleMissionTask(taskId) {
     const task = webData.missionTasks.find(t => t.id === taskId);
     if (!task) return;
 
+    // Өдрийн даалгавар ч мөн адил зүгээр л жагсаалт — статуст нөлөөлөхгүй (Task A).
     if (!task.completed) {
         task.completed = true;
         task.completedDate = todayStr();
-        task.autoCompleted = false;   // гараар биелүүлсэн — XP олгоно
-        addGlobalXp(task.xpReward);
-        logDailyActivity(task.xpReward, false, null, null);
-        showToast(`"${task.name}" — амжилттай! +${task.xpReward} EXP ✓`, "info", "var(--accent)");
+        task.autoCompleted = false;
+        showToast(`"${task.name}" — амжилттай ✓`, "info", "var(--accent)");
     } else {
-        // Автоматаар (Bigu синк) тэмдэглэгдсэн бол XP нь олгогдоогүй тул буцаахгүй.
-        const wasAuto = task.autoCompleted === true;
         task.completed = false;
         task.completedDate = null;
         task.autoCompleted = false;
-        if (!wasAuto) {
-            addGlobalXp(-task.xpReward);
-            logDailyActivity(-task.xpReward, false, null, null);
-        }
     }
 
     await saveWebData();

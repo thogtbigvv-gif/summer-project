@@ -152,23 +152,10 @@ async function syncAll() {
             for (const event of feed.events) {
                 if (synced.has(event.id)) continue;
 
-                // Дүрэм байхгүй event-ийг ч бүртгэнэ — зүгээр л 0 XP-тэй.
-                const xp = bridgeXpFor(source.app, event);
-                let awarded = 0;
-
-                if (xp > 0) {
-                    // awardSkillXp өөрөө logDailyActivity-г дуудна, тиймээс энд дахин лог
-                    // бичихгүй. defer → хадгалалтыг төгсгөлд НЭГ УДАА хийнэ.
-                    const res = awardSkillXp(source.skillId, xp, {
-                        silent:     true,
-                        defer:      true,
-                        categoryId: source.categoryId
-                    });
-                    if (res) {
-                        addGlobalXp(xp);
-                        awarded = xp;
-                    }
-                }
+                // Гүүр XP ОЛГОХОО БОЛИВ (Task A). Энэ давхарга зөвхөн НОТОЛГОО бичнэ;
+                // тооцоог status.js нотолгооноос гаргана. xp талбарыг устгаагүй —
+                // хуучин бичлэгүүдтэй нэг хэлбэртэй байлгахын тулд үргэлж 0.
+                const awarded = 0;
 
                 state.log.push({ id: event.id, at: event.at, type: event.type, detail: event.detail, xp: awarded });
                 state.syncedIds.push(event.id);

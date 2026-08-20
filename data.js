@@ -27,7 +27,11 @@ const defaultWebData = {
     //   { status, updatedAt, syncedIds: [], log: [], lastSyncedAt }
     // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
     // тиймээс шинэ апп нэмэхэд энд юу ч нэмэх шаардлагагүй.
-    integrations: {}
+    integrations: {},
+    // Task A: гар аргаар хуримтлуулсан ур чадварын XP/түвшний СҮҮЛИЙН зураг.
+    // Нэг л удаа бичигдээд цаашид УНШИГДАХГҮЙ — устгасангүй, зүгээр л
+    // идэвхгүй болсон. { capturedAt, totals: { <skillId>: {...} } }
+    legacy: null
 };
 
 const TIERS     = ["E", "D", "C", "B", "A", "S"];
@@ -134,6 +138,10 @@ async function loadWebData() {
             if (entry.lastSyncedAt === undefined) entry.lastSyncedAt = null;
         });
 
+        // Эхний хөрөөдөлт диск дээр тогтох ёстой — эс тэгвээс ачаалал бүрт
+        // дахин "шинээр" авагдаж, capturedAt нь утгагүй болно.
+        const legacyCaptured = captureLegacySkillTotals();
+
         // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.
         // (Зөвхөн энэ нэгийг — бусад ур чадварыг хэрэглэгч устгасан бол дахин сэргээхгүй.)
         if (!webData.skills.some(s => s && s.id === GYM_SKILL_ID)) {
@@ -162,6 +170,8 @@ async function loadWebData() {
         if (!webData.history[today]) {
             webData.history[today] = { totalXp: 0, questsCompleted: 0, categoryXp: {}, skillXp: {} };
         }
+
+        if (legacyCaptured) await saveWebData();
     } catch (err) {
         console.error("loadWebData error:", err);
         webData = cloneDefault();
@@ -182,61 +192,35 @@ async function saveWebData() {
     }
 }
 
-function logDailyActivity(xp, isQuest, skillId, catId) {
-    const today = todayStr();
-    if (!webData.history[today]) {
-        webData.history[today] = { totalXp: 0, questsCompleted: 0, categoryXp: {}, skillXp: {} };
-    }
-    let log = webData.history[today];
-    
-    log.totalXp += xp;
-    if (log.totalXp < 0) log.totalXp = 0;
+/* Task A — гар аргын XP-г НЭГ УДАА хөрөөдөж авах.
+   Ур чадвар бүрийн одоогийн нийлбэрийг webData.legacy.skills-д хуулаад
+   дараа нь хэзээ ч уншихгүй. Хэрэглэгчийн ямар ч өгөгдөл устгагдахгүй:
+   skills[] дэх талбарууд байрандаа үлдэнэ, зүгээр л идэвхгүй болно.
+   Аль хэдийн авсан бол дахин бичихгүй — эх зураг нь ганц удаагийнх. */
+function captureLegacySkillTotals() {
+    if (webData.legacy && webData.legacy.skills) return false;
 
-    if (isQuest && xp > 0) log.questsCompleted += 1;
-    if (isQuest && xp < 0) log.questsCompleted = Math.max(0, log.questsCompleted - 1);
-    
-    if (skillId) {
-        log.skillXp[skillId] = (log.skillXp[skillId] || 0) + xp;
-        if (log.skillXp[skillId] < 0) log.skillXp[skillId] = 0;
-    }
-    if (catId) {
-        log.categoryXp[catId] = (log.categoryXp[catId] || 0) + xp;
-        if (log.categoryXp[catId] < 0) log.categoryXp[catId] = 0;
-    }
+    const totals = {};
+    (webData.skills || []).forEach(s => {
+        if (!s || s.id === undefined) return;
+        totals[s.id] = {
+            name:          s.name,
+            category:      s.category,
+            level:         s.level,
+            currentXp:     s.currentXp,
+            xpToNextLevel: s.xpToNextLevel,
+            totalXp:       s.totalXp,
+            streak:        s.streak,
+            lastTrainDate: s.lastTrainDate
+        };
+    });
+
+    if (!webData.legacy || typeof webData.legacy !== "object") webData.legacy = {};
+    webData.legacy.skills = { capturedAt: Date.now(), totals };
+    return true;   // дуудагч тал үүнийг НЭГ УДАА диск рүү бичнэ
 }
 
-function addGlobalXp(amount) {
-    const p = webData.player;
-    p.currentXp += amount;
-    
-    while (p.currentXp < 0) {
-        if (p.level > 1) {
-            p.level -= 1;
-            // Level-up томьёо: floor(xp * 1.3), тиймээс буцаахдаа floor(xp / 1.3) ашиглана
-            p.xpToNextLevel = Math.floor(p.xpToNextLevel / 1.3);
-            p.currentXp += p.xpToNextLevel;
-        } else {
-            p.currentXp = 0;
-            break;
-        }
-    }
-    
-    while (p.currentXp >= p.xpToNextLevel) {
-        p.currentXp -= p.xpToNextLevel;
-        p.level += 1;
-        p.xpToNextLevel = Math.floor(p.xpToNextLevel * 1.3);
-        showToast(`ШИНЭ ЦОЛ: LEVEL ${p.level} → [${getMilitaryRank(p.level)}] 🎉`, "info", "#fff");
-    }
-}
-
-function advanceCategoryTier(cat) {
-    const tierIdx = TIERS.indexOf(cat.currentTier);
-    if (tierIdx === -1 || tierIdx === TIERS.length - 1) return;
-    while (cat.currentXp >= cat.xpToNextTier && TIERS.indexOf(cat.currentTier) < TIERS.length - 1) {
-        cat.currentXp -= cat.xpToNextTier;
-        const nextTierIdx = TIERS.indexOf(cat.currentTier) + 1;
-        cat.currentTier = TIERS[nextTierIdx];
-        cat.xpToNextTier = TIER_XP[cat.currentTier] || Infinity;
-        showToast(`Ангилал тиер ахиллаа! → ${cat.currentTier}-Tier 🏆`, "info", TIER_HEX[cat.currentTier]);
-    }
-}
+/* Task A-аас хойш XP нэмдэг, түвшин тавьдаг функц энэ кодын баазад БАЙХГҮЙ.
+   logDailyActivity(), addGlobalXp(), advanceCategoryTier() гурвыг устгав —
+   дуудагчгүй үлдсэн ч гэсэн буцаж холбогдох зам нээлттэй байх ёсгүй.
+   Статусын тоо бүр status.js дотор нотолгооноос ГАРГАЖ АВАГДАНА. */

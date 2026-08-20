@@ -13,11 +13,9 @@ const SKILL_ICONS = {
 async function addSkill() {
     const nameEl  = document.getElementById("skill-name");
     const catEl   = document.getElementById("skill-category");
-    const lvlEl   = document.getElementById("skill-level");
 
     const name     = nameEl?.value.trim();
     const category = catEl?.value;
-    const level    = Math.max(1, Math.min(100, parseInt(lvlEl?.value) || 1));
 
     if (!name)     { showToast("Ур чадварын нэр оруулна уу.", "error"); nameEl?.focus(); return; }
     if (!category) { showToast("Ангилал сонгоно уу.", "error"); catEl?.focus(); return; }
@@ -25,27 +23,15 @@ async function addSkill() {
         showToast("Ийм нэртэй ур чадвар аль хэдийн байна.", "error"); return;
     }
 
-    const xpToNext = Math.floor(100 * Math.pow(1.2, level - 1));
-    const newSkill = {
-        id:           Date.now(),
-        name,
-        category,
-        level,
-        currentXp:    0,
-        xpToNextLevel: xpToNext,
-        totalXp:      0,
-        streak:       0,
-        lastTrainDate: null
-    };
+    // Ур чадвар нь зөвхөн НЭР + АНГИЛАЛ. Түвшин, XP гэсэн ойлголт байхгүй —
+    // статусыг status.js нотолгооноос гаргана (Design §4).
+    webData.skills.push({ id: Date.now(), name, category });
 
-    webData.skills.push(newSkill);
     await saveWebData();
     renderWebUI();
-    populateTrainSelect();
 
     nameEl.value  = "";
     catEl.value   = "";
-    lvlEl.value   = "1";
 
     const catInfo = SKILL_CAT[category] || {};
     showToast(`"${name}" нэмэгдлээ! (${catInfo.label || category})`, "info", catInfo.hex);
@@ -56,133 +42,8 @@ async function deleteSkill(skillId) {
     webData.skills = webData.skills.filter(s => s.id !== skillId);
     await saveWebData();
     renderWebUI();
-    populateTrainSelect();
     closeSkillModal();
 }
-
-// Ур чадварт XP нэмэх цөм логик — trainSkill() болон гүүрийн синк хоёулаа үүнийг дуудна.
-// XP нэмэх, level ахиулах, хадгалах гурвыг л хийнэ; UI-гийн юу ч энд байхгүй
-// (toast нь meta.silent-ээр бүрэн унтардаг, render хийх нь дуудагч талын ажил).
-// meta:
-//   silent     — toast харуулахгүй (олон event-ийг нэг дор синк хийхэд)
-//   categoryId — logDailyActivity-д бичих ангиллын түлхүүр (default: null)
-//   skipLog    — өдрийн лог бичихгүй (дуудагч тал өөрөө бичих бол)
-//   defer      — хадгалалтыг алгасана. Гүүр олон event-ийг нэг дор боловсруулаад
-//                төгсгөлд нь ГАНЦ УДАА хадгалдаг тул үүнийг ашиглана.
-// Буцаах утга: { leveled, skill } эсвэл null (ур чадвар олдоогүй / буруу XP)
-function awardSkillXp(skillId, amount, meta = {}) {
-    const skill = webData.skills.find(s => s.id === skillId);
-    if (!skill) return null;
-
-    const xp = Math.floor(Number(amount));
-    if (!isFinite(xp) || xp < 1) return null;
-
-    // Streak шалгах
-    const today = todayStr();
-    const yesterday = (() => {
-        const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        d.setDate(d.getDate() - 1);
-        return d.toISOString().slice(0, 10);
-    })();
-
-    if (skill.lastTrainDate === yesterday) {
-        skill.streak = (skill.streak || 0) + 1;
-    } else if (skill.lastTrainDate !== today) {
-        skill.streak = 1;
-    }
-    skill.lastTrainDate = today;
-
-    // XP нэмэх + level-up
-    skill.currentXp += xp;
-    skill.totalXp   = (skill.totalXp || 0) + xp;
-    if (!meta.skipLog) logDailyActivity(xp, false, skill.id, meta.categoryId || null);
-
-    let leveled = false;
-    while (skill.currentXp >= skill.xpToNextLevel) {
-        skill.currentXp    -= skill.xpToNextLevel;
-        skill.level        += 1;
-        skill.xpToNextLevel = Math.floor(100 * Math.pow(1.2, skill.level - 1));
-        leveled = true;
-    }
-
-    // Хадгалалт нь энэ функцийн үүрэг. saveWebData() өөрөө алдаагаа барьдаг тул
-    // (reject хийдэггүй) await хийлгүй дуудахад аюулгүй — дуудагч тал шууд render хийнэ.
-    if (!meta.defer) saveWebData();
-
-    if (!meta.silent) {
-        const catInfo = SKILL_CAT[skill.category] || {};
-        if (leveled) {
-            showToast(`${SKILL_ICONS[skill.category] || "★"} "${skill.name}" Level ${skill.level} боллоо! 🎉`, "info", catInfo.hex || "#fff");
-        } else {
-            showToast(`+${xp} EXP — "${skill.name}"`, "info", catInfo.hex);
-        }
-    }
-
-    return { leveled, skill };
-}
-
-async function trainSkill() {
-    const selectEl = document.getElementById("train-skill-select");
-    const amountEl = document.getElementById("train-exp-amount");
-
-    const skillId = parseInt(selectEl?.value);
-    const amount  = parseInt(amountEl?.value);
-
-    if (!skillId)        { showToast("Ур чадвар сонгоно уу.", "error"); return; }
-    if (!amount || amount < 1) { showToast("XP хэмжээг оруулна уу.", "error"); amountEl?.focus(); return; }
-    if (amount > 9999)   { showToast("Хэт их XP (хамгийн ихдээ 9999).", "error"); return; }
-
-    // awardSkillXp() өөрөө XP нэмж, level ахиулж, хадгална.
-    const result = awardSkillXp(skillId, amount);
-    if (!result) return;
-
-    renderWebUI();
-
-    if (result.leveled) {
-        // Level-up animation (renderWebUI картуудыг дахин үүсгэсний дараа)
-        const card = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
-        if (card) { card.classList.add("level-up-anim"); setTimeout(() => card.classList.remove("level-up-anim"), 1000); }
-    }
-
-    amountEl.value = "";
-    amountEl.focus();
-    // Refresh the live preview
-    setTimeout(updateTrainPreview, 100);
-}
-
-// ===================== POPULATE TRAIN SELECT =====================
-
-function populateTrainSelect() {
-    const sel = document.getElementById("train-skill-select");
-    if (!sel) return;
-    const prev = sel.value;
-    sel.innerHTML = `<option value="" disabled selected>Ур чадвар сонгох...</option>`;
-    webData.skills
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach(s => {
-            const icon = SKILL_ICONS[s.category] || "★";
-            const opt  = document.createElement("option");
-            opt.value  = s.id;
-            opt.textContent = `${icon} ${s.name} (Lv.${s.level})`;
-            sel.appendChild(opt);
-        });
-    if (prev) {
-        sel.value = prev;
-        updateTrainPreview();
-    } else {
-        const preview = document.getElementById("train-skill-preview");
-        if (preview) preview.style.display = "none";
-    }
-}
-
-// Enter key on EXP input triggers train
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("train-exp-amount")?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") trainSkill();
-    });
-});
 
 // ===================== RENDER: SKILL CARDS =====================
 
@@ -190,7 +51,6 @@ function renderSkills() {
     const container = document.getElementById("skills-container");
     if (!container) return;
     container.innerHTML = "";
-    populateTrainSelect();
 
     if (webData.skills.length === 0) {
         container.innerHTML = `
@@ -292,54 +152,6 @@ function openSkillModal(skillId) {
 
     // Modal-аас шууд тренинг хийх UI
     const modalEl = document.getElementById("skill-modal");
-    let quickTrain = modalEl.querySelector(".modal-quick-train");
-    if (!quickTrain) {
-        quickTrain = document.createElement("div");
-        quickTrain.className = "modal-quick-train";
-        quickTrain.innerHTML = `
-            <div style="border-top:1px solid var(--glass-border);margin-top:20px;padding-top:20px;">
-                <label style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);display:block;margin-bottom:8px;letter-spacing:1px;">QUICK TRAIN</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="number" class="modal-train-input" placeholder="EXP хэмжээ" min="1" max="9999"
-                        style="flex:1;padding:10px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);color:var(--text-main);border-radius:10px;font-family:var(--font-body);font-size:13px;outline:none;">
-                    <button class="modal-train-btn submit-btn" style="width:auto;margin-top:0;padding:10px 20px;flex-shrink:0;">+ EXP</button>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                    ${[10,20,50,100].map(v => `<button class="quick-xp-btn" data-val="${v}" style="flex:1;padding:7px 4px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:11px;transition:all 0.2s;">+${v}</button>`).join("")}
-                </div>
-            </div>`;
-        modalEl.querySelector(".modal-content").appendChild(quickTrain);
-
-        // Quick XP buttons
-        quickTrain.querySelectorAll(".quick-xp-btn").forEach(btn => {
-            btn.addEventListener("mouseenter", () => { btn.style.color = catInfo.hex; btn.style.borderColor = catInfo.hex + "44"; });
-            btn.addEventListener("mouseleave", () => { btn.style.color = ""; btn.style.borderColor = ""; });
-            btn.addEventListener("click", () => {
-                quickTrain.querySelector(".modal-train-input").value = btn.dataset.val;
-            });
-        });
-
-        // Train button
-        quickTrain.querySelector(".modal-train-btn").addEventListener("click", async () => {
-            const inp = quickTrain.querySelector(".modal-train-input");
-            const amt = parseInt(inp.value);
-            if (!amt || amt < 1) { showToast("EXP хэмжээ оруулна уу.", "error"); return; }
-
-            // train-skill-select-ийг зөв skill рүү шилжүүлэх
-            const trainSel = document.getElementById("train-skill-select");
-            if (trainSel) trainSel.value = skillId;
-            document.getElementById("train-exp-amount").value = amt;
-
-            await trainSkill();
-            inp.value = "";
-            // Refresh modal stats
-            openSkillModal(skillId);
-        });
-    } else {
-        // Аль хэдийн байгаа бол input цэвэрлэх
-        quickTrain.querySelector(".modal-train-input").value = "";
-    }
-
     modalEl.classList.add("active");
 }
 
@@ -355,94 +167,3 @@ document.getElementById("skill-modal")?.addEventListener("click", (e) => {
 // ===================== FORM EVENT LISTENERS =====================
 
 document.getElementById("submit-skill-btn")?.addEventListener("click", addSkill);
-document.getElementById("submit-skill-exp-btn")?.addEventListener("click", trainSkill);
-
-// ===== NEW: Live skill preview when selecting from train dropdown =====
-function updateTrainPreview() {
-    const sel = document.getElementById("train-skill-select");
-    const preview = document.getElementById("train-skill-preview");
-    if (!sel || !preview) return;
-
-    const skillId = parseInt(sel.value);
-    const skill = webData.skills.find(s => s.id === skillId);
-
-    if (!skill) {
-        preview.style.display = "none";
-        return;
-    }
-
-    const catInfo = SKILL_CAT[skill.category] || { hex: "#6b7280" };
-    const pct = skill.xpToNextLevel > 0
-        ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100)
-        : 100;
-
-    document.getElementById("tsp-name").textContent = skill.name;
-    document.getElementById("tsp-level").textContent = `Lv.${skill.level}`;
-
-    const bar = document.getElementById("tsp-xp-bar");
-    bar.style.width = `${pct.toFixed(1)}%`;
-    bar.style.background = catInfo.hex;
-    bar.style.boxShadow = `0 0 6px ${catInfo.hex}`;
-
-    document.getElementById("tsp-xp-text").textContent = `${skill.currentXp} / ${skill.xpToNextLevel} EXP`;
-    document.getElementById("tsp-level").style.color = catInfo.hex;
-
-    preview.style.display = "block";
-}
-
-document.getElementById("train-skill-select")?.addEventListener("change", function () {
-    updateTrainPreview();
-    const amountEl = document.getElementById("train-exp-amount");
-    if (amountEl && !amountEl.value) amountEl.focus();
-});
-
-// ===== NEW: EXP preset buttons (new class) =====
-document.querySelectorAll(".exp-preset-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        const amountEl = document.getElementById("train-exp-amount");
-        if (amountEl) {
-            amountEl.value = btn.dataset.val;
-            // Visual feedback
-            document.querySelectorAll(".exp-preset-btn").forEach(b => b.classList.remove("active-preset"));
-            btn.classList.add("active-preset");
-            setTimeout(() => btn.classList.remove("active-preset"), 600);
-            amountEl.focus();
-        }
-    });
-});
-
-// ===== Legacy: quick-xp-preset (sidebar) =====
-document.querySelectorAll(".quick-xp-preset").forEach(btn => {
-    btn.addEventListener("click", () => {
-        const amountEl = document.getElementById("train-exp-amount");
-        if (amountEl) { amountEl.value = btn.dataset.val; amountEl.focus(); }
-    });
-});
-
-// ===== NEW: Add Skill collapsible toggle =====
-const toggleAddSkillBtn = document.getElementById("toggle-add-skill-btn");
-const addSkillPanel = document.getElementById("add-skill-panel");
-if (toggleAddSkillBtn && addSkillPanel) {
-    toggleAddSkillBtn.addEventListener("click", () => {
-        const isOpen = toggleAddSkillBtn.getAttribute("aria-expanded") === "true";
-        toggleAddSkillBtn.setAttribute("aria-expanded", String(!isOpen));
-        addSkillPanel.style.display = isOpen ? "none" : "block";
-    });
-}
-
-// Refresh preview after training
-const _origTrainSkill = trainSkill;
-// Wrap trainSkill to refresh preview afterwards (safe patch)
-const _trainSkillBtn = document.getElementById("submit-skill-exp-btn");
-if (_trainSkillBtn) {
-    // Already bound above; we hook into renderWebUI refresh
-}
-
-// Patch: after renderWebUI, refresh preview
-const _origRenderWebUI = typeof renderWebUI === "function" ? renderWebUI : null;
-// We hook via MutationObserver on the select instead
-const trainSelectEl = document.getElementById("train-skill-select");
-if (trainSelectEl) {
-    const mo = new MutationObserver(() => updateTrainPreview());
-    mo.observe(trainSelectEl, { childList: true });
-}
