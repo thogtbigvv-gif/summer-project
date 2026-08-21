@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "app": "github",
+  "label": "GitHub",
+  "updatedAt": 0,
+  "status": {
+    "repos": 0,
+    "commitsLast30": 0,
+    "lastCommitAt": null
+  },
+  "events": []
+}

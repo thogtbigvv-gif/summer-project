@@ -1,0 +1,56 @@
+name: GitHub evidence
+
+# GitHub localStorage руу бичиж чадахгүй тул бусад холбогдсон аппуудын зам энд
+# ажиллахгүй. Оронд нь өдөрт нэг удаа commit-ийн нотолгоог цуглуулж
+# data/github.json болгон repo руу commit хийнэ — bridge.js түүнийг татаж уншина.
+
+on:
+  schedule:
+    # 04:17 UTC — оргил бус цаг. Минутыг 0 болгохоос зайлсхийв: тэр үед
+    # GitHub-ийн scheduler хамгийн ачаалалтай, ажиллагаа удаан хойшилдог.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # data/github.json-ыг буцааж commit хийхэд
+
+# Хоёр ажиллагаа зэрэг push хийвэл мөргөлдөнө. Дараалуулна, таслахгүй.
+concurrency:
+  group: github-evidence
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"   # дотоод fetch — script-д хамаарал байхгүй
+
+      - name: Цуглуулах
+        env:
+          # Fine-grained PAT (read-only Contents + Metadata) байвал бүх repo-г
+          # хамруулна. Байхгүй бол script нь анхдагч GITHUB_TOKEN руу шилжиж,
+          # хязгаарлалтаа нэрлээд ЗАЛГААД ажиллана — ажиллагаа улаан болохгүй.
+          GH_EVIDENCE_TOKEN: ${{ secrets.GH_EVIDENCE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/collect-github-evidence.js
+
+      - name: Өөрчлөгдсөн бол commit хийх
+        run: |
+          # --porcelain нь өөрчлөгдсөн БОЛОН мөрдөгдөөгүй файлыг хоёуланг барина.
+          # Юу ч өөрчлөгдөөгүй бол commit ХИЙХГҮЙ — эс тэгвээс өдөр бүр хоосон
+          # commit үүсч, pages.yml-ийг дэмий сэрээнэ.
+          if [ -z "$(git status --porcelain -- data/github.json)" ]; then
+            echo "data/github.json өөрчлөгдөөгүй — commit хийхгүй."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/github.json
+          git commit -m "data: refresh GitHub commit evidence"
+          git push

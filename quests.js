@@ -65,7 +65,6 @@ document.getElementById("submit-quest-btn")?.addEventListener("click", async () 
     const titleEl    = document.getElementById("quest-title");
     const categoryEl = document.getElementById("quest-category");
     const rankEl     = document.getElementById("quest-rank");
-    const metricEl   = document.getElementById("quest-metric");
     const repeatEl   = document.getElementById("quest-repeatable");
 
     const title    = titleEl.value.trim();
@@ -75,11 +74,11 @@ document.getElementById("submit-quest-btn")?.addEventListener("click", async () 
     if (!title)    { showToast("Даалгаврын нэрийг оруулна уу.", "error"); titleEl.focus(); return; }
     if (!category) { showToast("Ангилал сонгоно уу.", "error"); categoryEl.focus(); return; }
 
+    // Даалгавар статуст ЯМАР Ч нөлөөгүй — шагнал ч, бодит ахиц ч бичихгүй.
+    // rank нь зөвхөн чухлын зэргийн шошго.
     const newQuest = {
         id: Date.now(),
         title, category, rank,
-        xpReward:     RANK_XP_MAP[rank] || 20,
-        metricReward: parseFloat(metricEl?.value) || 0,
         repeatable:   repeatEl?.checked || false,
         completed:    false,
         completedDate: null
@@ -91,7 +90,6 @@ document.getElementById("submit-quest-btn")?.addEventListener("click", async () 
     titleEl.value = "";
     categoryEl.value = "";
     rankEl.value = "E";
-    if (metricEl) metricEl.value = "";
     if (repeatEl) repeatEl.checked = false;
 
     // Advanced fields хааx
@@ -100,7 +98,7 @@ document.getElementById("submit-quest-btn")?.addEventListener("click", async () 
     const tgl = document.getElementById("toggle-advanced-quest");
     if (tgl) tgl.textContent = "+ Нэмэлт тохиргоо";
 
-    showToast(`"${title}" нэмэгдлээ! +${RANK_XP_MAP[rank] || 20} XP`);
+    showToast(`"${title}" нэмэгдлээ.`);
 
     // Шинэ quest-ийн rank-д тохирсон filter руу шилжих
     setQuestFilter("active");
@@ -118,7 +116,7 @@ document.getElementById("toggle-advanced-quest")?.addEventListener("click", func
 // ===================== FILTER & SORT STATE =====================
 
 let _questFilter = "active"; // "active" | "completed" | "all"
-let _questSort   = "newest"; // "newest" | "rank" | "xp" | "category"
+let _questSort   = "newest"; // "newest" | "rank" | "category"
 
 function setQuestFilter(f) {
     _questFilter = f;
@@ -154,7 +152,6 @@ function getFilteredSortedQuests() {
     // Sort
     if (_questSort === "newest")   list.reverse();
     if (_questSort === "rank")     list.sort((a, b) => (RANK_ORDER[a.rank] || 9) - (RANK_ORDER[b.rank] || 9));
-    if (_questSort === "xp")       list.sort((a, b) => b.xpReward - a.xpReward);
     if (_questSort === "category") list.sort((a, b) => a.category.localeCompare(b.category));
 
     return list;
@@ -218,7 +215,7 @@ function renderQuests() {
             <div class="quest-rank-badge" style="color:${rankColor};border-color:${rankColor}22;">${escapeHTML(q.rank)}</div>
             <div class="quest-info">
                 <h4 title="${escapeHTML(q.title)}">${escapeHTML(q.title)}</h4>
-                <small>${catEmoji} ${escapeHTML(displayName)} · <span style="color:${rankColor}">+${q.xpReward} XP</span>${q.repeatable ? ' · 🔁' : ''}</small>
+                <small>${catEmoji} ${escapeHTML(displayName)} · <span style="color:${rankColor}">${escapeHTML(q.rank)}-Rank</span>${q.repeatable ? ' · 🔁' : ''}</small>
             </div>
             <div class="quest-card-actions">
                 ${q.completed
@@ -258,7 +255,6 @@ function openQuestModal(questId) {
         `${quest.completed && quest.completedDate ? `Биелсэн огноо: ${quest.completedDate}` : "Идэвхтэй"}${quest.repeatable ? " · 🔁 Давтагдах" : ""}`;
     document.getElementById("qm-rank-label").textContent = quest.rank + "-Rank";
     document.getElementById("qm-rank-label").style.color  = rankColor;
-    document.getElementById("qm-xp").textContent = `+${quest.xpReward}`;
     document.getElementById("qm-cat").textContent = `${catEmoji} ${catName}`;
 
     // Actions
@@ -426,7 +422,6 @@ function generateBiguDueQuest() {
             category:    "learning",
             rank,
             target:      count,
-            reward:      { xp: RANK_XP_MAP[rank] || 20, gold: 20 },
             progress:    0,
             completed:   false,
             createdAt:   new Date().getTime()
@@ -463,7 +458,6 @@ function generateGymDailyQuest() {
             category:    "fitness",
             rank,
             target:      total,
-            reward:      { xp: RANK_XP_MAP[rank] || 20, gold: 20 },
             progress:    today.done,
             completed:   false,
             createdAt:   new Date().getTime()

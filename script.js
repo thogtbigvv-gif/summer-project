@@ -51,53 +51,117 @@ document.getElementById("reset-btn")?.addEventListener("click", async () => {
     showToast("Амжилттай шинэчиллээ.");
 });
 
-// Category Renderer
+// Тиерийн үсэг нь ЗОРИЛТЫН ХУВЬ — хадгалагдсан тоо биш. Дүрэм өөрчлөгдвөл
+// бүх түүх шууд дагаж засагдана.
+function tierForPct(pct) {
+    if (pct >= 100) return "S";
+    if (pct >=  80) return "A";
+    if (pct >=  60) return "B";
+    if (pct >=  40) return "C";
+    if (pct >=  20) return "D";
+    return "E";
+}
+
+// Category Renderer — бүх тоо нотолгооноос (status.js), бодит нэгжээр.
 function renderCategories() {
     const catContainer = document.getElementById("categories-container");
     if (!catContainer) return;
 
     catContainer.innerHTML = "";
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+
     for (const key in webData.categories) {
-        const cat       = webData.categories[key];
-        const tierColor = TIER_COLORS[cat.currentTier] || "var(--tier-e)";
-        const tierHex   = TIER_HEX[cat.currentTier]   || "#6b7280";
-        const progressPct = cat.currentTier === "S" ? 100 : (cat.xpToNextTier > 0
-            ? Math.min((cat.currentXp / cat.xpToNextTier) * 100, 100)
-            : 100);
+        const cat    = webData.categories[key];
+        if (!cat) continue;
+        const metric = (status && cat.metricId) ? status.metrics[cat.metricId] : null;
+
+        const target = Number(cat.targetValue) || 0;
+        const value  = metric ? Number(metric.last30) || 0 : 0;
+        const pct    = target > 0 ? Math.min((value / target) * 100, 100) : 0;
+        const tier   = tierForPct(target > 0 ? (value / target) * 100 : 0);
+
+        const tierColor = TIER_COLORS[tier] || "var(--tier-e)";
+        const tierHex   = TIER_HEX[tier]    || "#6b7280";
+        const unit      = cat.unit || (metric ? metric.unit : "");
 
         const card = document.createElement("div");
         card.className = "category-card";
         card.style.setProperty("--tier-color", tierColor);
-        card.dataset.tier = cat.currentTier;
+        card.dataset.tier = tier;
         card.innerHTML = `
             <div class="card-head">
                 <h3>${escapeHTML(cat.name)}</h3>
-                <div class="tier-pill" style="color:${tierHex}">${escapeHTML(cat.currentTier)}</div>
+                <div class="tier-pill" style="color:${tierHex}">${escapeHTML(tier)}</div>
             </div>
             <div class="xp-row">
-                <span>TIER XP</span>
-                <span>${cat.currentTier === "S" ? "MAX" : `${cat.currentXp} / ${cat.xpToNextTier}`}</span>
+                <span>СҮҮЛИЙН 30 ХОНОГ</span>
+                <span>${metric ? formatDelta(metric.change30Pct, metric.last30, metric.prev30) : "—"}</span>
             </div>
             <div class="progress-bg">
-                <div class="progress-bar" style="width:${progressPct}%;background:${tierHex};box-shadow:0 0 8px ${tierHex};"></div>
+                <div class="progress-bar" style="width:${pct.toFixed(1)}%;background:${tierHex};box-shadow:0 0 8px ${tierHex};"></div>
             </div>
             <div class="progress-meta">
-                Бодит ахиц: <strong>${Number(cat.currentValue).toFixed(1)} ${escapeHTML(cat.unit)}</strong> / ${cat.targetValue} ${escapeHTML(cat.unit)}
+                ${metric
+                    ? `Бодит ахиц: <strong>${value.toLocaleString()} ${escapeHTML(unit)}</strong> / ${target.toLocaleString()} ${escapeHTML(unit)}`
+                    : `Нотолгооны эх сурвалж холбоогүй`}
             </div>`;
         catContainer.appendChild(card);
     }
 }
 
+// ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================
+// Оноо = "30 хоногийн бодит зорилтод хэр ойрхон вэ" (status.js). Түвшин, XP биш.
+
+function renderAttributeScores() {
+    const container = document.getElementById("attribute-bars");
+    if (!container) return;
+
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const attributes = (status && status.attributes) ? status.attributes : {};
+    const names = Object.keys(attributes);
+
+    if (names.length === 0) {
+        container.innerHTML = `<div class="connected-empty">нотолгоо алга</div>`;
+        return;
+    }
+
+    container.innerHTML = names.map(name => {
+        const attr = attributes[name] || {};
+        const score = Math.max(0, Math.min(100, Number(attr.score) || 0));
+        const hex   = ATTR_HEX[name] || "#6b7280";
+        const ids   = Array.isArray(attr.metrics) ? attr.metrics : [];
+
+        // Атрибутын өөрчлөлт нь метрикүүдийнх нь 30 хоногийн НИЙЛБЭР дээр тулгуурладаг.
+        let last30 = 0, prev30 = 0;
+        if (status) ids.forEach(id => {
+            const m = status.metrics[id];
+            if (!m) return;
+            last30 += Number(m.last30) || 0;
+            prev30 += Number(m.prev30) || 0;
+        });
+
+        return `
+            <div class="attr-score-row">
+                <div class="xp-row">
+                    <span>${escapeHTML(name)}</span>
+                    <span><strong style="color:${hex};">${score}%</strong> ${formatDelta(attr.change30Pct, last30, prev30)}</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-bar" style="width:${score}%;background:${hex};box-shadow:0 0 8px ${hex};"></div>
+                </div>
+            </div>`;
+    }).join("");
+}
+
 // Үндсэн UI-г Render хийх мастер функц
 function renderWebUI() {
-    const p = webData.player;
+    // Статусын тоо бүр нотолгооноос ГАРГАГДАНА — рендер бүрийн өмнө кэшийг хаяж,
+    // дэлгэц дээрх зүйл одоогийн нотолгоотой ЗААВАЛ тохирдог байлгана.
+    if (typeof Status !== "undefined" && Status && typeof Status.invalidate === "function") {
+        Status.invalidate();
+    }
 
-    document.getElementById("player-rank").textContent    = `Цол: ${getMilitaryRank(p.level)}`;
-    document.getElementById("global-level").textContent   = p.level;
-    document.getElementById("global-xp-text").textContent = `${p.currentXp} / ${p.xpToNextLevel}`;
-    
-    const globalPct = p.xpToNextLevel > 0 ? Math.min((p.currentXp / p.xpToNextLevel) * 100, 100) : 0;
-    document.getElementById("global-xp-bar").style.width  = `${globalPct}%`;
+    renderAttributeScores();
 
     // Бусад модулиудын render-үүдийг дуудах
     if(typeof renderMissionTasks === "function") renderMissionTasks();
@@ -154,9 +218,6 @@ document.getElementById("quest-title")?.addEventListener("keydown", (e) => {
 // Keyboard Enter дэмжих — Skill form
 document.getElementById("skill-name")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") document.getElementById("submit-skill-btn")?.click();
-});
-document.getElementById("train-exp-amount")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("submit-skill-exp-btn")?.click();
 });
 
 // App-ийг асаах
