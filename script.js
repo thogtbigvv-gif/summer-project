@@ -90,6 +90,12 @@ function renderCategories() {
 
 // Үндсэн UI-г Render хийх мастер функц
 function renderWebUI() {
+    // Статусын тоо бүр нотолгооноос ГАРГАГДАНА — рендер бүрийн өмнө кэшийг хаяж,
+    // дэлгэц дээрх зүйл одоогийн нотолгоотой ЗААВАЛ тохирдог байлгана.
+    if (typeof Status !== "undefined" && Status && typeof Status.invalidate === "function") {
+        Status.invalidate();
+    }
+
     const p = webData.player;
 
     document.getElementById("player-rank").textContent    = `Цол: ${getMilitaryRank(p.level)}`;

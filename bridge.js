@@ -294,6 +294,12 @@ async function syncAll() {
         // Хадгалалт: event тус бүрд биш, БҮХ эх сурвалжийг дуусгасны дараа НЭГ УДАА.
         if (touched) await saveWebData();
 
+        // Нотолгоо өөрчлөгдсөн тул гаргасан статус хуучирлаа. Синк амжилттай
+        // дууссан бүрд кэшийг хаяна — status.js юу ч хадгалдаггүй тул үнэгүй.
+        if (typeof Status !== "undefined" && Status && typeof Status.invalidate === "function") {
+            Status.invalidate();
+        }
+
         if (result.events > 0) {
             console.log(`[bridge] ${result.events} шинэ нотолгоо — ${parts.join(", ")}`);
             // UI биш — зүгээр л дэлгэц дээрхийг төлөвтэй нь тэнцүүлэх (boot-оос хойш
