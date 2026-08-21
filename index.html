@@ -213,7 +213,7 @@
 
     <section id="analytics-tab" class="tab-content" role="tabpanel">
         <div class="section-title">
-            <h2>TACTICAL INTELLIGENCE // WEEKLY REPORT</h2>
+            <h2>TACTICAL INTELLIGENCE // 30 DAY REPORT</h2>
         </div>
         
         <div class="web-grid" id="weekly-stats-container"></div>
@@ -228,6 +228,17 @@
             <div class="heatmap-container" id="activity-heatmap"></div>
         </div>
 
+        <div class="mission-panel" style="margin-top: 32px;">
+            <div class="mission-header">
+                <div class="mission-title">
+                    <span class="pulse-dot"></span>
+                    <h2>METRIC TREND (LAST 90 DAYS)</h2>
+                </div>
+            </div>
+            <!-- Мөр бүрийг AnalyticsEngine.renderMetricSparklines() нотолгооноос барина. -->
+            <div class="spark-list" id="metric-sparklines"></div>
+        </div>
+
         <div class="status-top-layout" style="margin-top: 32px;">
             <div class="attributes-card">
                 <h3>SYSTEM INSIGHTS & DIRECTIVES</h3>
@@ -235,7 +246,7 @@
             </div>
 
             <div class="attributes-card">
-                <h3>CATEGORY VELOCITY (7D VS PREV 7D)</h3>
+                <h3>ATTRIBUTE VELOCITY (30D VS PREV 30D)</h3>
                 <div id="category-growth-container" class="quest-list"></div>
             </div>
         </div>
@@ -245,10 +256,10 @@
                 <h2 style="margin:0;">SKILL METRICS & PROGRESSION</h2>
             </div>
             <select id="analytics-sort" class="analytics-sort-select">
-                <option value="level">Highest Level</option>
-                <option value="xp">Highest XP</option>
-                <option value="growth">Fastest Growing</option>
+                <option value="value">Highest 30D Value</option>
+                <option value="change">Biggest Change</option>
                 <option value="streak">Longest Streak</option>
+                <option value="name">Name</option>
             </select>
         </div>
         <div class="attributes-card" style="padding: 0; overflow: hidden; margin-top: 16px;">
@@ -256,9 +267,9 @@
                 <thead>
                     <tr>
                         <th>SKILL</th>
-                        <th>LEVEL</th>
-                        <th>TOTAL XP</th>
-                        <th>7D GAIN</th>
+                        <th>METRIC</th>
+                        <th>LAST 30D</th>
+                        <th>CHANGE 30D</th>
                         <th>STREAK</th>
                     </tr>
                 </thead>

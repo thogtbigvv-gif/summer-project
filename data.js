@@ -26,7 +26,6 @@ const defaultWebData = {
         { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null, autoCompleted: false },
         { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null, autoCompleted: false }
     ],
-    history: {},
     // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
     // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
@@ -39,6 +38,9 @@ const defaultWebData = {
 
 const TIER_COLORS = { E: "var(--tier-e)", D: "var(--tier-d)", C: "var(--tier-c)", B: "var(--tier-b)", A: "var(--tier-a)", S: "var(--tier-s)" };
 const TIER_HEX    = { E: "#6b7280", D: "#0ea5e9", C: "#10b981", B: "#8b5cf6", A: "#f97316", S: "#eab308" };
+
+// Атрибутын өнгө — профайлын багана, радар, спарклайн гурав ижил өнгө хэрэглэнэ.
+const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981" };
 
 const SKILL_CAT = {
     language:   { color: "var(--skill-lang)", hex: "#0ea5e9", label: "Хэлний мэдлэг" },
@@ -114,7 +116,6 @@ async function loadWebData() {
         if (!webData.quests)      webData.quests      = cloneDefault().quests;
         if (!webData.categories)  webData.categories  = cloneDefault().categories;
         if (!webData.missionTasks) webData.missionTasks = cloneDefault().missionTasks;
-        if (!webData.history)     webData.history     = {};
         // Холбогдсон аппуудын төлөвийг НЭГ ерөнхий хэлбэрт оруулна — апп тус бүрд
         // тусдаа код бичихгүй. Танигдахгүй талбарууд (ж: gym-ийн awardedByDate)
         // хэвээрээ хоцорно — синк тэдгээрийг уншихаа больсон тул хор хөнөөлгүй.
@@ -192,11 +193,6 @@ async function loadWebData() {
                 t.autoCompleted = false;
             }
         });
-
-        const today = todayStr();
-        if (!webData.history[today]) {
-            webData.history[today] = { totalXp: 0, questsCompleted: 0, categoryXp: {}, skillXp: {} };
-        }
     } catch (err) {
         console.error("loadWebData error:", err);
         webData = cloneDefault();

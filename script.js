@@ -112,8 +112,6 @@ function renderCategories() {
 // ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================
 // Оноо = "30 хоногийн бодит зорилтод хэр ойрхон вэ" (status.js). Түвшин, XP биш.
 
-const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981" };
-
 function renderAttributeScores() {
     const container = document.getElementById("attribute-bars");
     if (!container) return;

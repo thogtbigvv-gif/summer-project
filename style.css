@@ -590,6 +590,16 @@ body::before {
 .insight-item:hover { background: rgba(255,255,255,0.02); }
 .insight-item.warning { border-left-color: var(--danger); }
 
+/* Метрикийн спарклайн — analytics.js гараар SVG барина */
+.spark-list { display: flex; flex-direction: column; gap: 18px; margin-top: 16px; }
+.spark-row { display: flex; flex-direction: column; gap: 6px; }
+.spark-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.spark-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.spark-value { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-size: 11px; }
+.spark-value strong { font-family: var(--font-display); font-size: 18px; }
+.spark-value small { color: var(--text-muted); }
+.spark-svg { width: 100%; height: 40px; display: block; }
+
 .analytics-sort-select {
     background: rgba(0,0,0,0.3);
     color: var(--text-muted);
