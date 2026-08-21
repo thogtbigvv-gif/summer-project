@@ -24,7 +24,7 @@ const defaultWebData = {
     ],
     history: {},
     // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
-    //   { status, updatedAt, syncedIds: [], log: [], lastSyncedAt }
+    //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
     // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
     // тиймээс шинэ апп нэмэхэд энд юу ч нэмэх шаардлагагүй.
     integrations: {},
@@ -119,20 +119,30 @@ async function loadWebData() {
         if (!webData.missionTasks) webData.missionTasks = cloneDefault().missionTasks;
         if (!webData.history)     webData.history     = {};
         // Холбогдсон аппуудын төлөвийг НЭГ ерөнхий хэлбэрт оруулна — апп тус бүрд
-        // тусдаа код бичихгүй. Хуучин хадгалсан датаас syncedIds нь хэвээр үлдэж,
-        // танигдахгүй талбарууд (ж: gym-ийн awardedByDate) хэвээрээ хоцорно —
-        // синк тэдгээрийг уншихаа больсон тул хор хөнөөлгүй.
+        // тусдаа код бичихгүй. Танигдахгүй талбарууд (ж: gym-ийн awardedByDate)
+        // хэвээрээ хоцорно — синк тэдгээрийг уншихаа больсон тул хор хөнөөлгүй.
         if (!webData.integrations || typeof webData.integrations !== "object" || Array.isArray(webData.integrations)) {
             webData.integrations = {};
         }
         Object.keys(webData.integrations).forEach(app => {
             const entry = webData.integrations[app];
             if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-                webData.integrations[app] = { status: null, updatedAt: 0, syncedIds: [], log: [], lastSyncedAt: null };
+                webData.integrations[app] = {
+                    status: null, updatedAt: 0, evidence: [], rollups: {}, prunedBefore: 0, lastSyncedAt: null
+                };
                 return;
             }
-            if (!Array.isArray(entry.syncedIds)) entry.syncedIds = [];
-            if (!Array.isArray(entry.log))       entry.log       = [];
+            // log → evidence: байрандаа, ЭВДЭЛГҮЙ нүүлгэнэ. Аль хэдийн evidence-тэй
+            // бол ГАР Ч ХҮРЭХГҮЙ — нүүлгэлт хуучин log-оор дарж бичих ёсгүй.
+            // xp талбар бүрмөсөн алга: тооцоо нотолгооноос гаргагдана.
+            if (Array.isArray(entry.log) && !Array.isArray(entry.evidence)) {
+                entry.evidence = entry.log.map(({ xp, ...rest }) => ({ ...rest, data: null }));
+            }
+            delete entry.log;
+            delete entry.syncedIds;
+            if (!Array.isArray(entry.evidence)) entry.evidence = [];
+            if (!entry.rollups || typeof entry.rollups !== "object" || Array.isArray(entry.rollups)) entry.rollups = {};
+            if (typeof entry.prunedBefore !== "number") entry.prunedBefore = 0;
             if (entry.status === undefined)      entry.status    = null;
             if (entry.updatedAt === undefined)   entry.updatedAt = 0;
             if (entry.lastSyncedAt === undefined) entry.lastSyncedAt = null;
@@ -180,6 +190,9 @@ async function loadWebData() {
 
 async function saveWebData() {
     const serialized = JSON.stringify(webData);
+    // Нотолгоо хуримтлагдсаар байх тул хэмжээг нь хардана. ТАСЛАХГҮЙ — зөвхөн
+    // сануулна: нотолгоог хаях нь дээд давхаргын түүхийг устгахтай адил.
+    if (serialized.length > 4000000) console.warn("[storage] webData is", serialized.length, "bytes");
     try {
         if (window.storage && typeof window.storage.set === "function") {
             await window.storage.set(STORAGE_KEY, serialized, false);
