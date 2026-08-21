@@ -21,10 +21,12 @@ const defaultWebData = {
         { id: 103, name: "Swimming",          category: "physical",   metricId: null },
         { id: 104, name: "Gym Training",      category: "physical",   metricId: "gym.volume" }
     ],
+    // Өдрийн жагсаалт — гараар тэмдэглэдэг, статуст ямар ч нөлөөгүй. Шагнал
+    // байхгүй: XP гэж юм системд алга, тиймээс дүр эсгэхээ болив.
     missionTasks: [
-        { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null, autoCompleted: false },
-        { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null, autoCompleted: false },
-        { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null, autoCompleted: false }
+        { id: "m1", name: "Drink 2L Water",          completed: false, completedDate: null },
+        { id: "m2", name: "Japanese Study (30 min)", completed: false, completedDate: null },
+        { id: "m3", name: "Workout (45 min)",        completed: false, completedDate: null }
     ],
     // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
@@ -185,12 +187,14 @@ async function loadWebData() {
         });
 
         webData.missionTasks.forEach(t => {
-            // autoCompleted: XP олгогдоогүй, автоматаар тэмдэглэгдсэн даалгавар
-            if (t.autoCompleted === undefined) t.autoCompleted = false;
+            // Хуучин датаас үлдсэн үхсэн талбарууд. xpReward нь юунд ч хөрвөхөө
+            // больсон; autoCompleted нь "автоматаар тэмдэглэгдсэн, XP аваагүй"
+            // гэсэн утгатай байсан — XP байхгүй болохоор ялгаа нь ч алга.
+            delete t.xpReward;
+            delete t.autoCompleted;
             if (t.completedDate && t.completedDate !== todayStr()) {
                 t.completed = false;
                 t.completedDate = null;
-                t.autoCompleted = false;
             }
         });
     } catch (err) {

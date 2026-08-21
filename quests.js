@@ -43,16 +43,14 @@ async function toggleMissionTask(taskId) {
     const task = webData.missionTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Өдрийн даалгавар ч мөн адил зүгээр л жагсаалт — статуст нөлөөлөхгүй (Task A).
+    // Өдрийн даалгавар ч мөн адил зүгээр л жагсаалт — статуст нөлөөлөхгүй.
     if (!task.completed) {
         task.completed = true;
         task.completedDate = todayStr();
-        task.autoCompleted = false;
         showToast(`"${task.name}" — амжилттай ✓`, "info", "var(--accent)");
     } else {
         task.completed = false;
         task.completedDate = null;
-        task.autoCompleted = false;
     }
 
     await saveWebData();
@@ -304,20 +302,37 @@ document.getElementById("quest-detail-modal")?.addEventListener("click", (e) => 
 
 // ===================== RENDER: MISSION TASKS =====================
 
+// Өнөөдөр хэдэн метрик бодит нотолгоо хүлээж авав. Гараар тэмдэглэдэг жагсаалт
+// энэ тоог ХУУРЧ ЧАДАХГҮЙ — тиймээс л шагналын оронд энэ мөр зогсож байна.
+function todaysEvidenceText() {
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    if (!status || !status.metrics || typeof status.metrics !== "object") return "—";
+
+    const ids   = Object.keys(status.metrics);
+    const today = todayStr();
+    const active = ids.filter(id => {
+        const metric = status.metrics[id];
+        return metric && metric.daily && Number(metric.daily[today]) > 0;
+    }).length;
+
+    // Метрик огт байхгүй ч мөн адил энэ салаанд орно — "0 / 0" гэж харуулахгүй.
+    if (active === 0) return "нотолгоо ирээгүй";
+    return `${active} / ${ids.length} метрик идэвхтэй`;
+}
+
 function renderMissionTasks() {
     const list = document.getElementById("mission-tasks-list");
     if (!list) return;
 
     const tasks = webData.missionTasks;
     const completedCount = tasks.filter(t => t.completed).length;
-    const totalXp        = tasks.reduce((s, t) => s + t.xpReward, 0);
-    const earnedXp       = tasks.filter(t => t.completed).reduce((s, t) => s + t.xpReward, 0);
     const pct            = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
+    // Гараар тоолсон жагсаалт өөрийгөө тоолж байна — энэ нь шударга.
     const progEl = document.getElementById("mission-progress-text");
     if (progEl) progEl.textContent = `${completedCount} / ${tasks.length} (${pct}%)`;
-    const rewEl = document.getElementById("mission-reward-text");
-    if (rewEl) rewEl.textContent = `+${earnedXp} / ${totalXp} EXP`;
+    const evEl = document.getElementById("mission-evidence-text");
+    if (evEl) evEl.textContent = todaysEvidenceText();
     const metaEl = document.getElementById("mission-meta-status");
     if (metaEl) {
         metaEl.textContent = completedCount === tasks.length ? "OBJECTIVE: COMPLETE ✓" : "OBJECTIVE: ACTIVE";
@@ -331,8 +346,7 @@ function renderMissionTasks() {
         el.dataset.taskId = t.id;
         el.innerHTML = `
             <div class="task-box"></div>
-            <div class="task-name">${escapeHTML(t.name)}</div>
-            <span class="task-xp">+${t.xpReward} XP</span>`;
+            <div class="task-name">${escapeHTML(t.name)}</div>`;
         list.appendChild(el);
     });
 }
