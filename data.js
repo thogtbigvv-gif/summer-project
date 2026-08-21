@@ -1,21 +1,25 @@
 "use strict";
 
 const defaultWebData = {
-    player: { level: 1, currentXp: 0, xpToNextLevel: 300 },
+    // Ангилал бүр НЭГ метрикт холбогдоно. Ахиц нь тэр метрикийн сүүлийн 30 хоног
+    // vs targetValue — бодит нэгжээр. Тиер, XP гэсэн хадгалагдах тоо БАЙХГҮЙ.
     categories: {
-        fitness:  { name: "Спорт & Фитнес",   unit: "км",   currentValue: 0, targetValue: 50,  currentTier: "E", currentXp: 0, xpToNextTier: 100 },
-        learning: { name: "Хөгжил & Сурлага", unit: "цаг",  currentValue: 0, targetValue: 100, currentTier: "E", currentXp: 0, xpToNextTier: 100 },
-        habits:   { name: "Зуршил & Дадал",   unit: "өдөр", currentValue: 0, targetValue: 30,  currentTier: "E", currentXp: 0, xpToNextTier: 100 }
+        fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume",   unit: "kg",      targetValue: 40000 },
+        learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews", unit: "cards",   targetValue: 900   },
+        habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons", unit: "lessons", targetValue: 20    }
     },
+    // Даалгавар бол зорилгын жагсаалт. rank нь зөвхөн ЧУХЛЫН ЗЭРЭГ — шагнал биш.
     quests: [
-        { id: 1, title: "Өглөө эрт босох",  category: "habits",  rank: "E", xpReward: 20,  metricReward: 1, completed: false },
-        { id: 2, title: "Фитнесст 5км гүйх", category: "fitness", rank: "D", xpReward: 40, metricReward: 5, completed: false }
+        { id: 1, title: "Өглөө эрт босох",  category: "habits",  rank: "E", completed: false },
+        { id: 2, title: "Фитнесст 5км гүйх", category: "fitness", rank: "D", completed: false }
     ],
+    // Ур чадвар = { id, name, category, metricId }. Өөр ЮУ Ч хадгалагдахгүй —
+    // харагдах тоо бүрийг status.js нотолгооноос гаргана.
     skills: [
-        { id: 101, name: "Japanese Language", category: "language",   level: 3, currentXp: 120, xpToNextLevel: 144, totalXp: 420,  streak: 2, lastTrainDate: null },
-        { id: 102, name: "Coding",            category: "technology", level: 5, currentXp: 0,   xpToNextLevel: 207, totalXp: 1540, streak: 5, lastTrainDate: null },
-        { id: 103, name: "Swimming",          category: "physical",   level: 2, currentXp: 75,  xpToNextLevel: 120, totalXp: 175,  streak: 0, lastTrainDate: null },
-        { id: 104, name: "Gym Training",      category: "physical",   level: 1, currentXp: 0,   xpToNextLevel: 100, totalXp: 0,    streak: 0, lastTrainDate: null }
+        { id: 101, name: "Japanese Language", category: "language",   metricId: "bigu.reviews" },
+        { id: 102, name: "Coding",            category: "technology", metricId: null },
+        { id: 103, name: "Swimming",          category: "physical",   metricId: null },
+        { id: 104, name: "Gym Training",      category: "physical",   metricId: "gym.volume" }
     ],
     missionTasks: [
         { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null, autoCompleted: false },
@@ -27,18 +31,14 @@ const defaultWebData = {
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
     // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
     // тиймээс шинэ апп нэмэхэд энд юу ч нэмэх шаардлагагүй.
-    integrations: {},
-    // Task A: гар аргаар хуримтлуулсан ур чадварын XP/түвшний СҮҮЛИЙН зураг.
-    // Нэг л удаа бичигдээд цаашид УНШИГДАХГҮЙ — устгасангүй, зүгээр л
-    // идэвхгүй болсон. { capturedAt, totals: { <skillId>: {...} } }
-    legacy: null
+    integrations: {}
+    // Тэмдэглэл: хуучин хадгалагдсан датад webData.legacy байж болно — гар аргын
+    // XP-ийн ЦОРЫН ГАНЦ хуулбар. Түүнийг унших код байхгүй, БАС УСТГАХГҮЙ:
+    // хадгалагдсан газраа хэвээр үлдэнэ. Шинэ дата түүнийг үүсгэхээ больсон.
 };
 
-const TIERS     = ["E", "D", "C", "B", "A", "S"];
-const TIER_XP   = { E: 100, D: 250, C: 500, B: 1000, A: 2000, S: Infinity };
 const TIER_COLORS = { E: "var(--tier-e)", D: "var(--tier-d)", C: "var(--tier-c)", B: "var(--tier-b)", A: "var(--tier-a)", S: "var(--tier-s)" };
 const TIER_HEX    = { E: "#6b7280", D: "#0ea5e9", C: "#10b981", B: "#8b5cf6", A: "#f97316", S: "#eab308" };
-const RANK_XP_MAP = { E: 20, D: 40, C: 80, B: 150, A: 300, S: 600 };
 
 const SKILL_CAT = {
     language:   { color: "var(--skill-lang)", hex: "#0ea5e9", label: "Хэлний мэдлэг" },
@@ -60,29 +60,27 @@ function todayStr() {
     return d.toISOString().slice(0, 10);
 }
 
-function getMilitaryRank(level) {
-    if (level <  5) return "Байлдагч (Private)";
-    if (level < 10) return "Дэд түрүүч (Corporal)";
-    if (level < 15) return "Түрүүч (Sergeant)";
-    if (level < 20) return "Ахлагч (Staff Sergeant)";
-    if (level < 30) return "Дэслэгч (Lieutenant)";
-    if (level < 50) return "Ахмад (Captain)";
-    return "Генерал (General)";
-}
-
-function getSkillMasteryRank(level) {
-    if (level < 10) return "Novice";
-    if (level < 25) return "Apprentice";
-    if (level < 50) return "Adept";
-    if (level < 80) return "Expert";
-    return "Master";
-}
-
 function escapeHTML(str) {
     if (str == null) return "";
     const d = document.createElement("div");
     d.textContent = str;
     return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Хувийн өөрчлөлтийн тэмдэглэгээ. status.js null буцаана гэдэг нь ӨМНӨХ цонх
+// ХООСОН байсан гэсэн үг — тэгвэл одоо утга байвал "шинэ", үгүй бол "—".
+// 100% гэж ХЭЗЭЭ Ч зохиохгүй (analytics.js-ийн хуучин алдаа).
+function formatDelta(changePct, curr, prev) {
+    if (changePct === null || changePct === undefined) {
+        return Number(curr) > 0 && !(Number(prev) > 0)
+            ? `<span style="color:var(--accent);">шинэ</span>`
+            : `<span style="color:var(--text-muted);">—</span>`;
+    }
+    const n = Number(changePct);
+    if (!isFinite(n)) return `<span style="color:var(--text-muted);">—</span>`;
+    const color = n > 0 ? "#10b981" : n < 0 ? "#ef4444" : "var(--text-muted)";
+    const arrow = n > 0 ? "↑" : n < 0 ? "↓" : "→";
+    return `<span style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
 }
 
 function showToast(message, variant, color) {
@@ -112,7 +110,6 @@ async function loadWebData() {
         if (!raw) raw = localStorage.getItem(STORAGE_KEY);
         webData = raw ? JSON.parse(raw) : cloneDefault();
 
-        if (!webData.player)      webData.player      = cloneDefault().player;
         if (!webData.skills)      webData.skills      = cloneDefault().skills;
         if (!webData.quests)      webData.quests      = cloneDefault().quests;
         if (!webData.categories)  webData.categories  = cloneDefault().categories;
@@ -148,9 +145,28 @@ async function loadWebData() {
             if (entry.lastSyncedAt === undefined) entry.lastSyncedAt = null;
         });
 
-        // Эхний хөрөөдөлт диск дээр тогтох ёстой — эс тэгвээс ачаалал бүрт
-        // дахин "шинээр" авагдаж, capturedAt нь утгагүй болно.
-        const legacyCaptured = captureLegacySkillTotals();
+        // Ангилал нотолгооны хэлбэрт шилжсэн. Хадгалсан датад ХУУЧИН хэлбэр
+        // (currentTier/currentXp/xpToNextTier/currentValue) үлдсэн бол тэр ангиллыг
+        // БҮТНЭЭР нь default-оор солино — хагас хуучин, хагас шинэ карт үлдээхгүй.
+        const defaultCategories = cloneDefault().categories;
+        Object.keys(webData.categories).forEach(key => {
+            const cat = webData.categories[key];
+            const isLegacy = !cat || typeof cat !== "object" || Array.isArray(cat) || cat.currentTier !== undefined;
+            if (!isLegacy) return;
+
+            if (defaultCategories[key]) {
+                webData.categories[key] = defaultCategories[key];
+                return;
+            }
+            // Хэрэглэгчийн өөрийн нэмсэн ангилал — default байхгүй. Нэрийг нь ҮЛДЭЭЖ,
+            // үхсэн талбаруудыг нь салгана. Хэрэглэгчийн датаг устгахгүй.
+            webData.categories[key] = {
+                name:        (cat && typeof cat.name === "string") ? cat.name : key,
+                metricId:    null,
+                unit:        (cat && typeof cat.unit === "string") ? cat.unit : "",
+                targetValue: Number(cat && cat.targetValue) || 0
+            };
+        });
 
         // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.
         // (Зөвхөн энэ нэгийг — бусад ур чадварыг хэрэглэгч устгасан бол дахин сэргээхгүй.)
@@ -159,11 +175,12 @@ async function loadWebData() {
             if (gymSkill) webData.skills.push(gymSkill);
         }
 
+        // Ур чадвар нотолгооны эх сурвалжтайгаа metricId-аар холбогдоно. Хуучин
+        // датад байхгүй тул нөхөж тавина. Хуучин level/totalXp зэрэг талбарууд
+        // хадгалагдсан газраа үлдэнэ — уншигдахгүй тул хор хөнөөлгүй.
         webData.skills.forEach(s => {
-            if (s.lastTrainDate === undefined) s.lastTrainDate = null;
-            // Хуучин буруу xpToNextLevel-г формулаар засах
-            const expectedXp = Math.floor(100 * Math.pow(1.2, s.level - 1));
-            if (s.xpToNextLevel !== expectedXp) s.xpToNextLevel = expectedXp;
+            if (!s || typeof s !== "object") return;
+            if (typeof s.metricId !== "string" || !s.metricId) s.metricId = null;
         });
 
         webData.missionTasks.forEach(t => {
@@ -180,8 +197,6 @@ async function loadWebData() {
         if (!webData.history[today]) {
             webData.history[today] = { totalXp: 0, questsCompleted: 0, categoryXp: {}, skillXp: {} };
         }
-
-        if (legacyCaptured) await saveWebData();
     } catch (err) {
         console.error("loadWebData error:", err);
         webData = cloneDefault();
@@ -205,35 +220,8 @@ async function saveWebData() {
     }
 }
 
-/* Task A — гар аргын XP-г НЭГ УДАА хөрөөдөж авах.
-   Ур чадвар бүрийн одоогийн нийлбэрийг webData.legacy.skills-д хуулаад
-   дараа нь хэзээ ч уншихгүй. Хэрэглэгчийн ямар ч өгөгдөл устгагдахгүй:
-   skills[] дэх талбарууд байрандаа үлдэнэ, зүгээр л идэвхгүй болно.
-   Аль хэдийн авсан бол дахин бичихгүй — эх зураг нь ганц удаагийнх. */
-function captureLegacySkillTotals() {
-    if (webData.legacy && webData.legacy.skills) return false;
-
-    const totals = {};
-    (webData.skills || []).forEach(s => {
-        if (!s || s.id === undefined) return;
-        totals[s.id] = {
-            name:          s.name,
-            category:      s.category,
-            level:         s.level,
-            currentXp:     s.currentXp,
-            xpToNextLevel: s.xpToNextLevel,
-            totalXp:       s.totalXp,
-            streak:        s.streak,
-            lastTrainDate: s.lastTrainDate
-        };
-    });
-
-    if (!webData.legacy || typeof webData.legacy !== "object") webData.legacy = {};
-    webData.legacy.skills = { capturedAt: Date.now(), totals };
-    return true;   // дуудагч тал үүнийг НЭГ УДАА диск рүү бичнэ
-}
-
 /* Task A-аас хойш XP нэмдэг, түвшин тавьдаг функц энэ кодын баазад БАЙХГҮЙ.
    logDailyActivity(), addGlobalXp(), advanceCategoryTier() гурвыг устгав —
    дуудагчгүй үлдсэн ч гэсэн буцаж холбогдох зам нээлттэй байх ёсгүй.
-   Статусын тоо бүр status.js дотор нотолгооноос ГАРГАЖ АВАГДАНА. */
+   Статусын тоо бүр status.js дотор нотолгооноос ГАРГАЖ АВАГДАНА.
+   Түвшин, цол, мастери, тиерийн XP гэсэн ойлголт энэ кодын баазад БАЙХГҮЙ. */

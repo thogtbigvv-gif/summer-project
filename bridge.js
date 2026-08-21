@@ -19,9 +19,11 @@
 //
 // ШИНЭ АПП НЭМЭХ: BRIDGE_SOURCES-д НЭГ мөр нэмнэ. Өөр код бичихгүй.
 
+// hex нь зөвхөн картын өнгө. Гүүр ур чадвар, ангилалын талаар ЮУ Ч МЭДЭХГҮЙ —
+// нотолгоо ямар метрик болохыг status.js-ийн METRICS бүртгэл шийднэ.
 const BRIDGE_SOURCES = [
-    { app: "bigu", key: "bigu:bridge", label: "Bigu", skillId: 101,          categoryId: "learning" },
-    { app: "gym",  key: "gym:bridge",  label: "Gym",  skillId: GYM_SKILL_ID, categoryId: "fitness"  }
+    { app: "bigu", key: "bigu:bridge", label: "Bigu", hex: "#0ea5e9" },
+    { app: "gym",  key: "gym:bridge",  label: "Gym",  hex: "#ef4444" }
 ];
 
 const BRIDGE_MAX_EVENTS = 500;  // нэг эх сурвалжаас нэг удаад боловсруулах дээд хязгаар
@@ -455,11 +457,9 @@ function renderConnectedApps() {
         card.className = "category-card connected-card";
         card.dataset.app = source.app;
 
-        // Картын өнцгийн туяаг эх сурвалжийн ур чадварын ангиллаас авна
+        // Картын өнцгийн туяа — эх сурвалжийн өөрийнх нь өнгө
         // (.category-card::before --tier-color-г ашигладаг).
-        const skill = Array.isArray(webData.skills) ? webData.skills.find(s => s && s.id === source.skillId) : null;
-        const hex = (SKILL_CAT[skill && skill.category] || {}).hex;
-        if (hex) card.style.setProperty("--tier-color", hex);
+        if (source.hex) card.style.setProperty("--tier-color", source.hex);
 
         // lastSyncedAt тавигдсан гэдэг нь фийдийг нь наад зах нь нэг удаа
         // амжилттай уншсан гэсэн үг. Хэзээ ч нийтлээгүй бол — алдаа биш, чимээгүй мөр.

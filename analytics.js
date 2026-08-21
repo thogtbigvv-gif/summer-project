@@ -1,32 +1,31 @@
 "use strict";
 
+// Радар нь атрибутын оноог зурна — status.js-ийн гаргасан "30 хоногийн бодит
+// зорилтод хэр ойрхон вэ" гэсэн хувь. Түвшин, XP уншихаа больсон.
 function renderAttributesRadar() {
     const container = document.getElementById("radar-container");
     if (!container) return;
 
-    function avgLevel(cat) {
-        const matches = webData.skills.filter(s => s.category === cat);
-        if (!matches.length) return 0;
-        const avg = matches.reduce((sum, s) => sum + s.level, 0) / matches.length;
-        return Math.min(100, avg * 2);
-    }
+    const status     = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const attributes = (status && status.attributes) ? status.attributes : {};
+    const hexes      = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981" };
 
-    const stats = [
-        { name: "LANG",  value: avgLevel("language"),   hex: "#0ea5e9" },
-        { name: "PHYS",  value: avgLevel("physical"),   hex: "#ef4444" },
-        { name: "MENT",  value: avgLevel("mental"),     hex: "#8b5cf6" },
-        { name: "TECH",  value: avgLevel("technology"), hex: "#10b981" },
-        { name: "LVL",   value: Math.min(100, webData.player.level * 3.33), hex: "#eab308" }
-    ];
+    const stats = Object.keys(attributes).map(name => ({
+        name,
+        value: Math.max(0, Math.min(100, Number(attributes[name].score) || 0)),
+        hex:   hexes[name] || "#eab308"
+    }));
+    if (stats.length < 3) { container.innerHTML = ""; return; }
 
+    const axes = stats.length;
     const size = 300, center = size / 2, radius = 100;
     let svg = `<svg class="radar-svg" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
 
-    for (let lvl = 1; lvl <= 3; lvl++) {
-        const r = radius * (lvl / 3);
+    for (let ring = 1; ring <= 3; ring++) {
+        const r = radius * (ring / 3);
         let pts = "";
-        for (let i = 0; i < 5; i++) {
-            const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        for (let i = 0; i < axes; i++) {
+            const a = (Math.PI * 2 * i) / axes - Math.PI / 2;
             pts += `${center + r * Math.cos(a)},${center + r * Math.sin(a)} `;
         }
         svg += `<polygon points="${pts.trim()}" class="radar-grid"/>`;
@@ -34,7 +33,7 @@ function renderAttributesRadar() {
 
     let dataPoints = "";
     stats.forEach((stat, i) => {
-        const a    = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        const a    = (Math.PI * 2 * i) / axes - Math.PI / 2;
         const endX = center + radius * Math.cos(a);
         const endY = center + radius * Math.sin(a);
         svg += `<line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="radar-axis"/>`;
@@ -184,10 +183,7 @@ const AnalyticsEngine = {
         const sortBy = select ? select.value : "level";
         
         let sorted = [...webData.skills];
-        if (sortBy === "level") sorted.sort((a,b) => b.level - a.level);
-        if (sortBy === "xp") sorted.sort((a,b) => (b.totalXp||0) - (a.totalXp||0));
         if (sortBy === "growth") sorted.sort((a,b) => (curr.skillXp[b.id]||0) - (curr.skillXp[a.id]||0));
-        if (sortBy === "streak") sorted.sort((a,b) => (b.streak||0) - (a.streak||0));
 
         let html = '';
         sorted.forEach(s => {
@@ -196,10 +192,10 @@ const AnalyticsEngine = {
             html += `
                 <tr>
                     <td><span style="color:${catHex}; margin-right:8px;">■</span>${escapeHTML(s.name)}</td>
-                    <td style="font-family: var(--font-display); color: var(--accent);">Lv. ${s.level}</td>
-                    <td style="font-family: var(--font-mono);">${(s.totalXp||0).toLocaleString()}</td>
+                    <td style="font-family: var(--font-display); color: var(--accent);">—</td>
+                    <td style="font-family: var(--font-mono);">—</td>
                     <td style="color: ${wGain > 0 ? 'var(--accent)' : 'var(--text-muted)'}; font-family: var(--font-mono);">+${wGain}</td>
-                    <td style="font-family: var(--font-mono);">${s.streak > 0 ? s.streak + ' 🔥' : '-'}</td>
+                    <td style="font-family: var(--font-mono);">${'-'}</td>
                 </tr>
             `;
         });

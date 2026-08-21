@@ -59,22 +59,11 @@
                     <div class="avatar-frame">Ω</div>
                     <div class="player-info">
                         <h2>ХЭРЭГЛЭГЧИЙН ПРОФАЙЛ</h2>
-                        <p id="player-rank">Цол: Байлдагч (Private)</p>
+                        <p>Сүүлийн 30 хоногийн бодит зорилтод хүрсэн хувь</p>
                     </div>
                 </div>
-                <div class="level-badge-zone">
-                    <div class="level-row">
-                        <span>CURRENT LEVEL</span>
-                        <strong id="global-level">1</strong>
-                    </div>
-                    <div class="xp-row">
-                        <span>GLOBAL EXP</span>
-                        <span id="global-xp-text">0 / 300</span>
-                    </div>
-                    <div class="progress-bg">
-                        <div id="global-xp-bar" class="progress-bar" style="width:0%;background:var(--accent);box-shadow:0 0 10px var(--accent);"></div>
-                    </div>
-                </div>
+                <!-- Оноо бүрийг status.js нотолгооноос гаргана — энд хадгалагдсан тоо байхгүй. -->
+                <div class="level-badge-zone" id="attribute-bars"></div>
             </div>
 
             <div class="attributes-card">
@@ -133,8 +122,6 @@
                         <button type="button" class="toggle-link" id="toggle-advanced-quest">+ Нэмэлт тохиргоо</button>
                     </div>
                     <div id="advanced-quest-fields" style="display:none;">
-                        <label for="quest-metric">Бодит ахиц (сонголттой):</label>
-                        <input type="number" id="quest-metric" placeholder="Жнь: 5" min="0" step="any">
                         <label class="checkbox-label">
                             <input type="checkbox" id="quest-repeatable"> Давтагдах даалгавар
                         </label>
@@ -158,7 +145,6 @@
                     <select id="quest-sort" class="quest-sort-select">
                         <option value="newest">Шинэ эхэнд</option>
                         <option value="rank">Rank-аар</option>
-                        <option value="xp">XP-аар</option>
                         <option value="category">Ангилалаар</option>
                     </select>
                 </div>
@@ -174,9 +160,8 @@
                 <div class="quest-modal-rank" id="qm-rank"></div>
                 <h2 id="qm-title" style="font-family:var(--font-display);font-size:20px;margin:12px 0 4px;"></h2>
                 <p id="qm-meta" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-bottom:20px;"></p>
-                <div class="modal-stats" style="grid-template-columns:1fr 1fr 1fr;">
+                <div class="modal-stats" style="grid-template-columns:1fr 1fr;">
                     <div class="stat-box"><label>RANK</label><span id="qm-rank-label"></span></div>
-                    <div class="stat-box"><label>XP REWARD</label><span id="qm-xp" style="color:var(--accent);"></span></div>
                     <div class="stat-box"><label>АНГИЛАЛ</label><span id="qm-cat" style="font-size:14px;"></span></div>
                 </div>
                 <div id="qm-actions" style="display:flex;gap:12px;margin-top:20px;"></div>
@@ -205,6 +190,11 @@
                             <option value="technology">💻 Технологи</option>
                         </select>
 
+                        <!-- Сонголтуудыг renderSkills() METRIC_DEFS-ээс дүүргэнэ. -->
+                        <label for="skill-metric">Нотолгооны эх сурвалж:</label>
+                        <select id="skill-metric">
+                            <option value="">— холбоогүй —</option>
+                        </select>
 
                         <button type="button" class="submit-btn secondary" id="submit-skill-btn">Үүсгэх</button>
                     </div>
@@ -290,28 +280,21 @@
         </div>
         <div class="modal-stats">
             <div class="stat-box">
-                <label>CURRENT LEVEL</label>
-                <span id="modal-skill-level">0</span>
+                <label>LAST 30D</label>
+                <span id="modal-skill-last30">—</span>
             </div>
             <div class="stat-box">
-                <label>TOTAL EXP</label>
-                <span id="modal-skill-total-exp">0</span>
+                <label>CHANGE</label>
+                <span id="modal-skill-change">—</span>
             </div>
             <div class="stat-box">
                 <label>STREAK</label>
-                <span id="modal-skill-streak">0 🔥</span>
+                <span id="modal-skill-streak">—</span>
             </div>
             <div class="stat-box">
-                <label>MASTERY</label>
-                <span id="modal-skill-rank" style="color:var(--tier-s);">Novice</span>
+                <label>ACTIVE DAYS</label>
+                <span id="modal-skill-active">—</span>
             </div>
-        </div>
-        <div class="xp-row">
-            <span>LEVEL PROGRESS</span>
-            <span id="modal-skill-progress-text">0 / 0</span>
-        </div>
-        <div class="progress-bg">
-            <div id="modal-skill-progress-bar" class="progress-bar" style="width:0%;background:var(--accent);"></div>
         </div>
     </div>
 </div>

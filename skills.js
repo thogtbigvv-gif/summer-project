@@ -11,11 +11,13 @@ const SKILL_ICONS = {
 // ===================== SKILL CORE ACTIONS =====================
 
 async function addSkill() {
-    const nameEl  = document.getElementById("skill-name");
-    const catEl   = document.getElementById("skill-category");
+    const nameEl    = document.getElementById("skill-name");
+    const catEl     = document.getElementById("skill-category");
+    const metricEl  = document.getElementById("skill-metric");
 
     const name     = nameEl?.value.trim();
     const category = catEl?.value;
+    const metricId = (metricEl && metricEl.value) ? metricEl.value : null;
 
     if (!name)     { showToast("Ур чадварын нэр оруулна уу.", "error"); nameEl?.focus(); return; }
     if (!category) { showToast("Ангилал сонгоно уу.", "error"); catEl?.focus(); return; }
@@ -23,15 +25,16 @@ async function addSkill() {
         showToast("Ийм нэртэй ур чадвар аль хэдийн байна.", "error"); return;
     }
 
-    // Ур чадвар нь зөвхөн НЭР + АНГИЛАЛ. Түвшин, XP гэсэн ойлголт байхгүй —
-    // статусыг status.js нотолгооноос гаргана (Design §4).
-    webData.skills.push({ id: Date.now(), name, category });
+    // Ур чадвар нь НЭР + АНГИЛАЛ + нотолгооны эх сурвалж (metricId). Түвшин, XP
+    // гэсэн ойлголт байхгүй — харагдах тоо бүрийг status.js нотолгооноос гаргана.
+    webData.skills.push({ id: Date.now(), name, category, metricId });
 
     await saveWebData();
     renderWebUI();
 
     nameEl.value  = "";
     catEl.value   = "";
+    if (metricEl) metricEl.value = "";
 
     const catInfo = SKILL_CAT[category] || {};
     showToast(`"${name}" нэмэгдлээ! (${catInfo.label || category})`, "info", catInfo.hex);
@@ -45,9 +48,32 @@ async function deleteSkill(skillId) {
     closeSkillModal();
 }
 
+// ===================== METRIC PICKER =====================
+// Сонголтуудыг METRIC_DEFS-ээс рендерийн үед барина — метрик нэмэхэд энд юу ч
+// засахгүй. status.js-ийн бүртгэл л цорын ганц эх сурвалж.
+
+function renderSkillMetricOptions() {
+    const select = document.getElementById("skill-metric");
+    if (!select) return;
+
+    const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
+    const keep = select.value;
+
+    select.innerHTML = `<option value="">— холбоогүй —</option>` +
+        Object.keys(defs).map(id => {
+            const def  = defs[id] || {};
+            const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
+            return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;
+        }).join("");
+
+    if (keep && defs[keep]) select.value = keep;
+}
+
 // ===================== RENDER: SKILL CARDS =====================
 
 function renderSkills() {
+    renderSkillMetricOptions();
+
     const container = document.getElementById("skills-container");
     if (!container) return;
     container.innerHTML = "";
@@ -62,20 +88,47 @@ function renderSkills() {
         return;
     }
 
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+
     webData.skills.forEach(skill => {
-        const catInfo  = SKILL_CAT[skill.category]  || { hex: "#6b7280", label: "Бусад" };
-        const icon     = SKILL_ICONS[skill.category] || "★";
-        const pct      = skill.xpToNextLevel > 0
-            ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100)
-            : 100;
-        const mastery  = getSkillMasteryRank(skill.level);
-        const today    = todayStr();
-        const trained  = skill.lastTrainDate === today;
+        const catInfo = SKILL_CAT[skill.category]  || { hex: "#6b7280", label: "Бусад" };
+        const icon    = SKILL_ICONS[skill.category] || "★";
+        const metric  = (status && skill.metricId) ? status.metrics[skill.metricId] : null;
 
         const card = document.createElement("div");
         card.className  = "skill-card";
         card.dataset.skillId = skill.id;
         card.style.setProperty("--cat-color", catInfo.color || catInfo.hex);
+
+        // Тоо бүр НОТОЛГООНООС. Холбоогүй ур чадвар нь худал тоо харуулахгүй —
+        // холбоогүй гэдгээ шулуухан хэлнэ.
+        const body = metric
+            ? `
+            <div class="skill-xp-area">
+                <div class="skill-xp-label">
+                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">СҮҮЛИЙН 30 ХОНОГ</span>
+                    <span style="font-family:var(--font-mono);font-size:11px;">${formatDelta(metric.change30Pct, metric.last30, metric.prev30)}</span>
+                </div>
+                <div class="skill-headline" style="font-family:var(--font-display);font-size:22px;color:${catInfo.hex};">
+                    ${Number(metric.last30).toLocaleString()} <span style="font-size:12px;color:var(--text-muted);">${escapeHTML(metric.unit)}</span>
+                </div>
+            </div>
+
+            <div class="skill-footer">
+                <div class="skill-meta-row">
+                    <span class="skill-active-days" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">
+                        ${metric.activeDays30}/30 идэвхтэй өдөр
+                    </span>
+                </div>
+                ${metric.streakDays > 0
+                    ? `<div class="skill-streak">🔥 ${metric.streakDays} өдөр</div>`
+                    : `<div class="skill-streak" style="opacity:0.3;">— streak</div>`
+                }
+            </div>`
+            : `
+            <div class="skill-xp-area">
+                <div class="connected-empty">нотолгооны эх сурвалж холбоогүй</div>
+            </div>`;
 
         card.innerHTML = `
             <div class="skill-card-header">
@@ -83,32 +136,8 @@ function renderSkills() {
                     <h4>${escapeHTML(skill.name)}</h4>
                     <span style="color:${catInfo.hex}">${icon} ${escapeHTML(catInfo.label)}</span>
                 </div>
-                <div class="skill-level-badge" style="background:${catInfo.hex};box-shadow:0 0 14px ${catInfo.hex}55;">
-                    ${skill.level}
-                </div>
             </div>
-
-            <div class="skill-xp-area">
-                <div class="skill-xp-label">
-                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">EXP</span>
-                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">${skill.currentXp} / ${skill.xpToNextLevel}</span>
-                </div>
-                <div class="progress-bg" style="margin-bottom:10px;">
-                    <div class="progress-bar" style="width:${pct.toFixed(1)}%;background:${catInfo.hex};box-shadow:0 0 8px ${catInfo.hex}88;"></div>
-                </div>
-            </div>
-
-            <div class="skill-footer">
-                <div class="skill-meta-row">
-                    <span class="skill-mastery-badge" style="border-color:${catInfo.hex}44;color:${catInfo.hex};">${mastery}</span>
-                    ${trained ? `<span class="skill-trained-today">✓ Өнөөдөр</span>` : ""}
-                </div>
-                ${skill.streak > 0
-                    ? `<div class="skill-streak">🔥 ${skill.streak} өдөр</div>`
-                    : `<div class="skill-streak" style="opacity:0.3;">— streak</div>`
-                }
-            </div>
-
+            ${body}
             <button class="delete-btn" data-id="${skill.id}" data-type="skill" aria-label="Устгах" title="Устгах">×</button>`;
 
         card.addEventListener("click", (e) => {
@@ -128,31 +157,29 @@ function openSkillModal(skillId) {
 
     const catInfo = SKILL_CAT[skill.category] || { hex: "#6b7280", label: "Бусад" };
     const icon    = SKILL_ICONS[skill.category] || "★";
-    const pct     = skill.xpToNextLevel > 0
-        ? Math.min((skill.currentXp / skill.xpToNextLevel) * 100, 100)
-        : 100;
+    const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const metric  = (status && skill.metricId) ? status.metrics[skill.metricId] : null;
 
     document.getElementById("modal-skill-icon").textContent  = icon;
     document.getElementById("modal-skill-icon").style.color  = catInfo.hex;
     document.getElementById("modal-skill-icon").style.borderColor = catInfo.hex + "44";
     document.getElementById("modal-skill-name").textContent  = skill.name;
-    document.getElementById("modal-skill-category").textContent = catInfo.label;
-    document.getElementById("modal-skill-level").textContent = `Lv. ${skill.level}`;
-    document.getElementById("modal-skill-level").style.color = catInfo.hex;
-    document.getElementById("modal-skill-total-exp").textContent = (skill.totalXp || 0).toLocaleString();
-    document.getElementById("modal-skill-streak").textContent = skill.streak > 0 ? `${skill.streak} 🔥` : "—";
-    document.getElementById("modal-skill-rank").textContent  = getSkillMasteryRank(skill.level);
-    document.getElementById("modal-skill-rank").style.color  = catInfo.hex;
-    document.getElementById("modal-skill-progress-text").textContent = `${skill.currentXp} / ${skill.xpToNextLevel}`;
+    document.getElementById("modal-skill-category").textContent = metric
+        ? `${catInfo.label} · ${metric.label}`
+        : `${catInfo.label} · нотолгооны эх сурвалж холбоогүй`;
 
-    const bar = document.getElementById("modal-skill-progress-bar");
-    bar.style.width = `${pct.toFixed(1)}%`;
-    bar.style.background = catInfo.hex;
-    bar.style.boxShadow  = `0 0 10px ${catInfo.hex}`;
+    const last30El = document.getElementById("modal-skill-last30");
+    last30El.textContent = metric ? `${Number(metric.last30).toLocaleString()} ${metric.unit}` : "—";
+    last30El.style.color = metric ? catInfo.hex : "var(--text-muted)";
 
-    // Modal-аас шууд тренинг хийх UI
-    const modalEl = document.getElementById("skill-modal");
-    modalEl.classList.add("active");
+    document.getElementById("modal-skill-change").innerHTML =
+        metric ? formatDelta(metric.change30Pct, metric.last30, metric.prev30) : "—";
+    document.getElementById("modal-skill-streak").textContent =
+        (metric && metric.streakDays > 0) ? `${metric.streakDays} 🔥` : "—";
+    document.getElementById("modal-skill-active").textContent =
+        metric ? `${metric.activeDays30}/30` : "—";
+
+    document.getElementById("skill-modal").classList.add("active");
 }
 
 function closeSkillModal() {
