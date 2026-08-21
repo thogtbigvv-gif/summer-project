@@ -21,10 +21,12 @@ const defaultWebData = {
         { id: 103, name: "Swimming",          category: "physical",   metricId: null },
         { id: 104, name: "Gym Training",      category: "physical",   metricId: "gym.volume" }
     ],
+    // Өдрийн жагсаалт — гараар тэмдэглэдэг, статуст ямар ч нөлөөгүй. Шагнал
+    // байхгүй: XP гэж юм системд алга, тиймээс дүр эсгэхээ болив.
     missionTasks: [
-        { id: "m1", name: "Drink 2L Water",        xpReward: 30, completed: false, completedDate: null, autoCompleted: false },
-        { id: "m2", name: "Japanese Study (30 min)", xpReward: 50, completed: false, completedDate: null, autoCompleted: false },
-        { id: "m3", name: "Workout (45 min)",       xpReward: 40, completed: false, completedDate: null, autoCompleted: false }
+        { id: "m1", name: "Drink 2L Water",          completed: false, completedDate: null },
+        { id: "m2", name: "Japanese Study (30 min)", completed: false, completedDate: null },
+        { id: "m3", name: "Workout (45 min)",        completed: false, completedDate: null }
     ],
     // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
@@ -53,6 +55,21 @@ const SKILL_CAT = {
 const GYM_SKILL_ID = 104;
 
 const STORAGE_KEY = "summerProjectWebData_v4";
+
+/* НЭГ УДААГИЙН ЦЭВЭРЛЭГЭЭ — устгагдсан "өдрийн даалгавар"-ын үлдэгдэл.
+   Эдгээр түлхүүр STORAGE_KEY-ийн БЛОБООС ГАДНА, шууд localStorage-д сууж
+   байсан тул RESET товч webData-г шинээр босгоод ч тэднийг арилгаж чаддаггүй
+   байв — хэрэглэгчийн браузерт мөнхөд үлдэнэ гэсэн үг. Уншигч код БАЙХГҮЙ.
+   Хэдэн долоо хоногийн дараа энэ функц болон дуудалтуудыг нь устгаж болно.
+
+   Тэмдэглэл: daily_quests_data нь зөвхөн window.storage руу бичигддэг байсан
+   (localStorage руу хэзээ ч биш). Тэр давхарга байхгүй энгийн браузерт энэ мөр
+   юу ч олохгүй — хор хөнөөлгүй, найдвартай байхын тулд л жагсаалтад байна. */
+const REMOVED_FEATURE_KEYS = ["current_daily_quests", "last_daily_quest_date", "daily_quests_data"];
+
+function sweepRemovedFeatureKeys() {
+    REMOVED_FEATURE_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+}
 let webData = null;
 
 function cloneDefault() { return JSON.parse(JSON.stringify(defaultWebData)); }
@@ -101,6 +118,7 @@ function showToast(message, variant, color) {
 }
 
 async function loadWebData() {
+    sweepRemovedFeatureKeys();
     try {
         let raw = null;
         if (window.storage && typeof window.storage.get === "function") {
@@ -185,12 +203,14 @@ async function loadWebData() {
         });
 
         webData.missionTasks.forEach(t => {
-            // autoCompleted: XP олгогдоогүй, автоматаар тэмдэглэгдсэн даалгавар
-            if (t.autoCompleted === undefined) t.autoCompleted = false;
+            // Хуучин датаас үлдсэн үхсэн талбарууд. xpReward нь юунд ч хөрвөхөө
+            // больсон; autoCompleted нь "автоматаар тэмдэглэгдсэн, XP аваагүй"
+            // гэсэн утгатай байсан — XP байхгүй болохоор ялгаа нь ч алга.
+            delete t.xpReward;
+            delete t.autoCompleted;
             if (t.completedDate && t.completedDate !== todayStr()) {
                 t.completed = false;
                 t.completedDate = null;
-                t.autoCompleted = false;
             }
         });
     } catch (err) {
