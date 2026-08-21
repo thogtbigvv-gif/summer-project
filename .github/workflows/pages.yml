@@ -3,6 +3,14 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # github-evidence.yml өдөр бүр data/github.json-ыг commit хийдэг. Тэр болгонд
+    # сайтыг дахин deploy хийх шаардлагагүй тул энд оруулахгүй.
+    #
+    # ТЭМДЭГЛЭЛ: data/github.json ЯМАР Ч БАЙСАН түгээгдэнэ — Pages нь дараагийн
+    # жинхэнэ deploy-д БҮХ модыг upload хийдэг. Зөвхөн шинэ дата нь дараагийн
+    # кодын өөрчлөлт хүртэл хоцорно. Дата ШУУД live болох нь чухал бол энэ
+    # paths-ignore мөрийг УСТГА — тэгвэл өдөр бүр deploy явна.
+    paths-ignore: ['data/**']
   workflow_dispatch:
 
 permissions:

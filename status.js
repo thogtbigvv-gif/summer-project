@@ -27,18 +27,18 @@ const METRICS = {
     "gym:workout.completed": { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: null },
     "gym:workout.partial":   { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: null },
     "bigu:review.session":   { metric: "bigu.reviews", amount: e => num(e.value),                   fromRollup: b => num(b.valueSum) },
-    "bigu:lesson.quiz":      { metric: "bigu.lessons", amount: () => 1,                             fromRollup: b => num(b.count) }
+    "bigu:lesson.quiz":      { metric: "bigu.lessons", amount: () => 1,                             fromRollup: b => num(b.count) },
+    "github:commit.pushed":  { metric: "github.commits", amount: () => 1,                            fromRollup: b => num(b.count) }
 };
 
 const METRIC_DEFS = {
     "gym.volume":   { label: "Volume lifted",    unit: "kg",      attr: "BODY", target30: 40000 },
     "bigu.reviews": { label: "Cards reviewed",   unit: "cards",   attr: "MIND", target30: 900   },
-    "bigu.lessons": { label: "Lessons finished", unit: "lessons", attr: "MIND", target30: 20    }
+    "bigu.lessons": { label: "Lessons finished", unit: "lessons", attr: "MIND", target30: 20    },
+    "github.commits": { label: "Commits", unit: "commits", attr: "CREATION", target30: 60 }
 };
 
-// CREATION нь метрикгүй хэвээр — Task 5 (GitHub) түүнийг METRIC_DEFS-д дүүргэнэ.
-// Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0), эс тэгвээс Task 5 хүртэл
-// дэлгэц дээр нүх үлдэнэ.
+// Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0) — дэлгэц дээр нүх үлдээхгүй.
 const ATTRIBUTE_ORDER = ["BODY", "MIND", "CREATION"];
 
 const SERIES_DAYS = 365;   // series-ийн урт: сүүлийн жил, тэгээр дүүргэсэн

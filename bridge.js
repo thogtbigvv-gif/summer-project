@@ -17,16 +17,26 @@
 // Түлхүүр байхгүй, гэмтсэн, эсвэл v !== 1 бол тэр эх сурвалжийг чимээгүй алгасна —
 // апп өнөөдрийнхтэй яг адилхан ажиллана.
 //
+// ХОЁР ТӨРЛИЙН ЭХ СУРВАЛЖ (kind):
+//   "local" — ижил origin дээрх апп localStorage-д бичдэг (анхдагч).
+//   "fetch" — фийд нь repo дотор commit хийгдсэн JSON файл. GitHub localStorage
+//             руу бичиж чадахгүй тул түүний нотолгоо Action-аар дамжиж
+//             data/github.json болж ирдэг. Гэрээ нь ЯГ АДИЛХАН — зөвхөн
+//             хүргэх зам нь өөр.
+//
 // ШИНЭ АПП НЭМЭХ: BRIDGE_SOURCES-д НЭГ мөр нэмнэ. Өөр код бичихгүй.
 
 // hex нь зөвхөн картын өнгө. Гүүр ур чадвар, ангилалын талаар ЮУ Ч МЭДЭХГҮЙ —
 // нотолгоо ямар метрик болохыг status.js-ийн METRICS бүртгэл шийднэ.
 const BRIDGE_SOURCES = [
-    { app: "bigu", key: "bigu:bridge", label: "Bigu", hex: "#0ea5e9" },
-    { app: "gym",  key: "gym:bridge",  label: "Gym",  hex: "#ef4444" }
+    { app: "bigu",   kind: "local", key: "bigu:bridge", label: "Bigu",   hex: "#0ea5e9" },
+    { app: "gym",    kind: "local", key: "gym:bridge",  label: "Gym",    hex: "#ef4444" },
+    { app: "github", kind: "fetch", url: "data/github.json", label: "GitHub", hex: "#8b5cf6" }
 ];
 
-const BRIDGE_MAX_EVENTS = 500;  // нэг эх сурвалжаас нэг удаад боловсруулах дээд хязгаар
+// Commit хийгдсэн файл нь үйлдвэрлэгчийн 50 event-ийн буфертэй холбоогүй бөгөөд
+// эхний ажиллагаа нь бүх түүхийг нөхөж авчирна — тиймээс хязгаар нь өндөр.
+const BRIDGE_MAX_EVENTS = 2000;  // нэг эх сурвалжаас нэг удаад боловсруулах дээд хязгаар
 
 // НОТОЛГООНЫ ХАДГАЛАЛТ. Гүүрийн бичлэг бол холбогдсон аппууд юу мэдээлснийг харуулах
 // ЦОРЫН ГАНЦ бүртгэл — дээд давхаргын бүх тоо түүнээс ГАРГАЖ АВАГДАНА. Тиймээс бичлэгийг
@@ -87,7 +97,29 @@ function bridgeData(value, id) {
     return value;
 }
 
-// Хамгаалалттай унших + parse. Хүлээгдсэнээс өөр юм ирвэл null.
+// Задалсан JSON-ыг гэрээнд тулгана. Хүлээгдсэнээс өөр юм ирвэл null.
+// localStorage-ийн ч, татаж авсан ч фийд ЯГ ЭНЭ шалгуураар дамжина —
+// хүргэх зам нь өөр ч гэрээ нь нэг.
+function validateBridgeFeed(parsed) {
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    if (parsed.v !== 1) return null;
+
+    // Хуучнаас нь шинэ рүү эрэмбэлнэ — ингэснээр BRIDGE_MAX_EVENTS-ийн таслалт
+    // ХАМГИЙН СҮҮЛИЙН event-үүдийг үлдээнэ.
+    let events = Array.isArray(parsed.events)
+        ? parsed.events.map(normalizeBridgeEvent).filter(Boolean).sort((a, b) => a.at - b.at)
+        : [];
+    if (events.length > BRIDGE_MAX_EVENTS) events = events.slice(-BRIDGE_MAX_EVENTS);
+
+    // status-ыг БҮТНЭЭР нь дамжуулна. Дотор нь юу байгааг энэ давхарга мэдэхгүй.
+    const status = (parsed.status && typeof parsed.status === "object" && !Array.isArray(parsed.status))
+        ? parsed.status
+        : null;
+
+    return { status, updatedAt: bridgeNum(parsed.updatedAt), events };
+}
+
+// kind: "local" — Хамгаалалттай унших + parse.
 function readBridgeFeed(key) {
     try {
         if (typeof localStorage === "undefined") return null;
@@ -95,25 +127,31 @@ function readBridgeFeed(key) {
         const raw = localStorage.getItem(key);
         if (!raw || typeof raw !== "string") return null;
 
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-        if (parsed.v !== 1) return null;
-
-        // Хуучнаас нь шинэ рүү эрэмбэлнэ — ингэснээр BRIDGE_MAX_EVENTS-ийн таслалт
-        // ХАМГИЙН СҮҮЛИЙН event-үүдийг үлдээнэ.
-        let events = Array.isArray(parsed.events)
-            ? parsed.events.map(normalizeBridgeEvent).filter(Boolean).sort((a, b) => a.at - b.at)
-            : [];
-        if (events.length > BRIDGE_MAX_EVENTS) events = events.slice(-BRIDGE_MAX_EVENTS);
-
-        // status-ыг БҮТНЭЭР нь дамжуулна. Дотор нь юу байгааг энэ давхарга мэдэхгүй.
-        const status = (parsed.status && typeof parsed.status === "object" && !Array.isArray(parsed.status))
-            ? parsed.status
-            : null;
-
-        return { status, updatedAt: bridgeNum(parsed.updatedAt), events };
+        return validateBridgeFeed(JSON.parse(raw));
     } catch (err) {
         console.warn(`readBridgeFeed: "${key}" уншиж чадсангүй —`, err);
+        return null;
+    }
+}
+
+// kind: "fetch" — repo дотор commit хийгдсэн фийдийг татна. Файл байхгүй,
+// сүлжээ унтарсан, JSON гэмтсэн — бүгд null. Байхгүй localStorage түлхүүртэй
+// яг адил: тэр эх сурвалжийг чимээгүй алгасна, синк үргэлжилнэ.
+async function fetchBridgeFeed(url) {
+    try {
+        if (typeof fetch !== "function") return null;
+
+        // Кэш тойрно: Pages-ийн CDN хуучин хуулбарыг өгвөл шинэ commit
+        // хэдэн цагаар харагдахгүй байж мэднэ.
+        const res = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
+        if (!res || !res.ok) {
+            console.warn(`fetchBridgeFeed: "${url}" — HTTP ${res ? res.status : "?"}`);
+            return null;
+        }
+
+        return validateBridgeFeed(await res.json());
+    } catch (err) {
+        console.warn(`fetchBridgeFeed: "${url}" татаж чадсангүй —`, err);
         return null;
     }
 }
@@ -253,7 +291,11 @@ async function syncAll() {
         const parts = [];
 
         for (const source of BRIDGE_SOURCES) {
-            const feed = readBridgeFeed(source.key);
+            // Татдаг эх сурвалжийг хүлээнэ. Аль нь ч алдаа шидэхгүй — үхсэн нэг
+            // эх сурвалж бусдынхаа синкийг ЗОГСООХ ЁСГҮЙ.
+            const feed = source.kind === "fetch"
+                ? await fetchBridgeFeed(source.url)
+                : readBridgeFeed(source.key);
             if (!feed) continue;   // байхгүй / гэмтсэн / v !== 1 — чимээгүй алгасна
 
             const state = getIntegrationState(source.app);
