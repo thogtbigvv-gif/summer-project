@@ -47,6 +47,8 @@ document.getElementById("reset-btn")?.addEventListener("click", async () => {
     if (!confirm("Бүх зүйлсийг устгаад анхны төлөвт шилжүүлэх үү?")) return;
     webData = cloneDefault();
     await saveWebData();
+    // RESET нь ҮНЭХЭЭР reset байх ёстой: блобын гадна үлдсэн түлхүүрүүд ч цэвэрлэгдэнэ.
+    sweepRemovedFeatureKeys();
     renderWebUI();
     showToast("Амжилттай шинэчиллээ.");
 });
@@ -203,10 +205,6 @@ async function init() {
     // Холбогдсон бүх аппын фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина).
     // syncAll() өөрөө хадгална. focus/storage үеийн синкийг bridge.js бүртгэсэн байгаа.
     if (typeof syncAll === "function") await syncAll();
-    // Өдөр бүрийн автомат даалгавруудыг шалгах
-    if (typeof checkAndGenerateDailyQuests === "function") {
-        checkAndGenerateDailyQuests();
-    }
     renderWebUI();
 }
 

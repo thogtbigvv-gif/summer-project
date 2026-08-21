@@ -55,6 +55,21 @@ const SKILL_CAT = {
 const GYM_SKILL_ID = 104;
 
 const STORAGE_KEY = "summerProjectWebData_v4";
+
+/* НЭГ УДААГИЙН ЦЭВЭРЛЭГЭЭ — устгагдсан "өдрийн даалгавар"-ын үлдэгдэл.
+   Эдгээр түлхүүр STORAGE_KEY-ийн БЛОБООС ГАДНА, шууд localStorage-д сууж
+   байсан тул RESET товч webData-г шинээр босгоод ч тэднийг арилгаж чаддаггүй
+   байв — хэрэглэгчийн браузерт мөнхөд үлдэнэ гэсэн үг. Уншигч код БАЙХГҮЙ.
+   Хэдэн долоо хоногийн дараа энэ функц болон дуудалтуудыг нь устгаж болно.
+
+   Тэмдэглэл: daily_quests_data нь зөвхөн window.storage руу бичигддэг байсан
+   (localStorage руу хэзээ ч биш). Тэр давхарга байхгүй энгийн браузерт энэ мөр
+   юу ч олохгүй — хор хөнөөлгүй, найдвартай байхын тулд л жагсаалтад байна. */
+const REMOVED_FEATURE_KEYS = ["current_daily_quests", "last_daily_quest_date", "daily_quests_data"];
+
+function sweepRemovedFeatureKeys() {
+    REMOVED_FEATURE_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+}
 let webData = null;
 
 function cloneDefault() { return JSON.parse(JSON.stringify(defaultWebData)); }
@@ -103,6 +118,7 @@ function showToast(message, variant, color) {
 }
 
 async function loadWebData() {
+    sweepRemovedFeatureKeys();
     try {
         let raw = null;
         if (window.storage && typeof window.storage.get === "function") {
