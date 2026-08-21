@@ -285,7 +285,10 @@ async function syncAll() {
     _syncing = true;
 
     try {
-        if (!webData || !Array.isArray(webData.skills)) return result;
+        // Энэ функц webData.integrations-аас өөр юу ч хөнддөггүй. Ур чадварыг
+        // шалгах нь XP-ийн үеийн үлдэгдэл байсан: гэмтэлтэй skills массив бүх
+        // нотолгооны цуглуулгыг чимээгүй зогсоох аюултай.
+        if (!webData || typeof webData !== "object") return result;
 
         let touched = false;
         const parts = [];
@@ -368,7 +371,9 @@ window.addEventListener("focus", () => { syncAll(); });
 
 window.addEventListener("storage", (e) => {
     // Өөрсдийн хадгалалт болон хамаагүй түлхүүрүүдээс болж синк ажиллуулахгүй.
-    if (e && e.key && !BRIDGE_SOURCES.some(s => s.key === e.key)) return;
+    // fetch төрлийн эх сурвалжид key БАЙХГҮЙ — тэднийг харьцуулалтаас ил гаргана,
+    // эс тэгвээс undefined === undefined гэсэн санамсаргүй таарал үүсэж мэднэ.
+    if (e && e.key && !BRIDGE_SOURCES.some(s => s.kind !== "fetch" && s.key === e.key)) return;
     syncAll();
 });
 
