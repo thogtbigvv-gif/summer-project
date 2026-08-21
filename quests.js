@@ -353,11 +353,13 @@ function renderMissionTasks() {
 
 // ===================== DAILY QUEST SYSTEM =====================
 
+// Өдрийн даалгаврын сан. Шагнал БАЙХГҮЙ: XP, алт гэж юм системд алга —
+// эдгээр нь зүгээр л зорилгын жагсаалт.
 const DEFAULT_DAILY_POOL = [
-    { id: 'daily_monster', title: "Шидар Цэрэг", description: "Дурын 5 монстр устгах", target: 5, reward: { xp: 50, gold: 20 } },
-    { id: 'daily_gold',    title: "Сангийн Эзэн", description: "Тоглоомоос 100 алт цуглуулах", target: 100, reward: { xp: 30, gold: 50 } },
-    { id: 'daily_skill',   title: "Эрдмийн Занги", description: "Дурын ур чадварыг 3 удаа ашиглах", target: 3, reward: { xp: 40, gold: 30 } },
-    { id: 'daily_complete',title: "Тэргүүлэгч Баатар", description: "Үндсэн 1 даалгавар дуусгах", target: 1, reward: { xp: 60, gold: 40 } }
+    { id: 'daily_monster', title: "Шидар Цэрэг", description: "Дурын 5 монстр устгах", target: 5 },
+    { id: 'daily_gold',    title: "Сангийн Эзэн", description: "Тоглоомоос 100 алт цуглуулах", target: 100 },
+    { id: 'daily_skill',   title: "Эрдмийн Занги", description: "Дурын ур чадварыг 3 удаа ашиглах", target: 3 },
+    { id: 'daily_complete',title: "Тэргүүлэгч Баатар", description: "Үндсэн 1 даалгавар дуусгах", target: 1 }
 ];
 
 function checkAndGenerateDailyQuests() {
