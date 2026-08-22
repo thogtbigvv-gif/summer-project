@@ -2,11 +2,432 @@
   "v": 1,
   "app": "github",
   "label": "GitHub",
-  "updatedAt": 0,
+  "updatedAt": 1787374324442,
   "status": {
-    "repos": 0,
-    "commitsLast30": 0,
-    "lastCommitAt": null
+    "repos": 1,
+    "commitsLast30": 10,
+    "lastCommitAt": "2026-08-21T16:31:14.000Z"
   },
-  "events": []
+  "events": [
+    {
+      "id": "gh:d5465960dfdae29709034ccc588d8a23486c0658",
+      "at": 1781699047000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Initial commit",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:7c898d63a1c375db728a824938b0eca8f937c038",
+      "at": 1781699370000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Add files via upload",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:8056885781ea945b132c3099d4cdfdc5fad1e2b2",
+      "at": 1782402775000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update print statement from 'Hello' to 'Goodbye'",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:ea007a7bdbff83977ea52309eee26bde3b9aea48",
+      "at": 1782403388000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor skill metrics and analytics rendering",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:2928a86bc0a1bdcf4497a06c766eb9245062c4d2",
+      "at": 1782436872000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update index.html",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:5e4984992d687bd80f6ade3baae809e3fac8d171",
+      "at": 1782436907000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create style.css",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:11126dc6482658dd331ce88c2641eb5f025e7d0e",
+      "at": 1782436993000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create data.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:698bcd87ee8a1925f1ae3dff662335f7a5c8014d",
+      "at": 1782437045000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create quests.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:5b2ec587ad2f632562c02ce2377f5b4dd7dc9452",
+      "at": 1782437072000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create skills.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:4a2c9eac771b034c5446325c40af71b6697c06c2",
+      "at": 1782437136000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create analytics.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:6b968018deb57f3703e9e5847a81e8393ca5cc53",
+      "at": 1782437166000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Create script.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:7157f30a433b4063e656349f2db0904b38149f5b",
+      "at": 1782438079000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update quests.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:34134050d46e9ecf3e53bddc57c7bf4eca1ca490",
+      "at": 1782441855000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update skill levels and xpToNextLevel calculations",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:a5b014bb6b25649c227e01d41d0eb7ad4201c7c0",
+      "at": 1782441903000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor quest display and daily quest generation",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:09e465a7d9011e7064bf3fad7b065818578841cf",
+      "at": 1782441940000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Check and generate daily quests on app init",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:a0b1452b3a4e755e13596ec8d1b3e7a0eb15412d",
+      "at": 1782442426000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Implement motivational quotes and keyboard shortcuts",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:ca5ccce6e40984d2d0bab729f3a9dbe634dccbb1",
+      "at": 1782442464000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update quest and mission progress display logic",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:3f44154bf0f011be47744f2f19ae801413106d79",
+      "at": 1782458163000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Improve empty state message in skills.js",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:9294c62de78d84ee14d706736d9ce420f89c9bdb",
+      "at": 1782459397000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Correct XP calculation on level down",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:9488029b2d60432a043b9e8cbe71827eee684263",
+      "at": 1782459583000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor daily quest generation and localStorage usage",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:8ec1637544ceb14cc34f7d16acb9cba0e674cb80",
+      "at": 1782459758000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor getPastDays to calculate dates correctly",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:d7d91f236aad1cc63b1dc58b6bf25805f11b2470",
+      "at": 1782460385000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Enhance quest system with repeatable quests",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:c7303d4c0bfae14bed050d875af71579d3f4ad4d",
+      "at": 1782460443000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Update quest form labels and options",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:a05a30b52c525cea8c0bf97cf3b3e34dba7bf7cc",
+      "at": 1782460491000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor quest card styles and add controls bar",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:b51b606edddda057758413a38aa0bfcb6b2dbaa5",
+      "at": 1782460530000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor event delegation to include reset button",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:5993d76b2f7899e8cb9b1b07e85baa29e04fb734",
+      "at": 1782465007000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Add mission quote and update analytics sort select",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:7a689f40e5ea7faeafd88b3da2b3a607e847d0d9",
+      "at": 1782465045000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor styles for buttons and UI elements",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:10d63694ed3a83843dbfc71fb79aa91f563895b5",
+      "at": 1782465923000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor skill management functions and UI updates",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:f7f15410c66cb1f6b215a5d540420333d3940c86",
+      "at": 1782465959000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Enhance styling for skill sidebar and cards",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:62dbebb380ac7e9f45eeb049a09723e7c3e0f468",
+      "at": 1782465993000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Refactor skill section and update labels",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:8d43ae72ee25f92c74d1f24f6d83999ff961b10d",
+      "at": 1782467100000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Enhance skill training UI with previews and presets",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:93f91dc9389194b72c2f603b127699422c467074",
+      "at": 1782467321000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Redesign training section and add skill toggle styles",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:5cef6108b042043bc8b573f8054a9ce2c8a71df5",
+      "at": 1786384653000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge pull request #2 from thogtbigvv-gif/claude/bigu-xp-syn",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:3812fa1fc325b521363d0e2f28665c4bf0dc4ddd",
+      "at": 1787086143000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Дасгалын аппын фийдээс XP автоматаар синк хийх",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:3254a8546caaadf8bb62fd7d702b3e591df83b25",
+      "at": 1787099481000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge branch 'claude/gym-training-bridge-tlvokb'",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:1461d8b927a7c17ae746d003cd5072900f75b0e8",
+      "at": 1787200038000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Холбогдсон аппуудын XP синкийг нэг ерөнхий давхарга болгов",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:3794071de1d7e946936794db90e203c95e7dda51",
+      "at": 1787201120000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge pull request #3 from thogtbigvv-gif/claude/generic-xp-",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:c58bcaf8ac28c1c4115c444a08a346714b28be69",
+      "at": 1787203219000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Холбогдсон аппуудын самбар нэмэв (Connected)",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:f7349975238de0c5145d270f0bab3e2358e8d3cf",
+      "at": 1787244215000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Task A — гар аргаар статус өөрчлөх бүх замыг хаав",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:4db0233839631ebe59c4be559386bf6817cc325e",
+      "at": 1787246577000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge pull request #4 from thogtbigvv-gif/claude/generic-xp-",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:e6972c1ed00c66e2202714056e7bb0bb2f6b372a",
+      "at": 1787325733000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge pull request #5 from thogtbigvv-gif/claude/bridge-evid",
+      "data": {
+        "repo": "summer-project"
+      }
+    },
+    {
+      "id": "gh:5a6e161f7743bb236c9a083eb46f42af2cab3cbb",
+      "at": 1787329874000,
+      "type": "commit.pushed",
+      "value": 1,
+      "detail": "summer-project: Merge pull request #6 from thogtbigvv-gif/claude/bridge-evid",
+      "data": {
+        "repo": "summer-project"
+      }
+    }
+  ]
 }
