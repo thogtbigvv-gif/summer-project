@@ -136,6 +136,39 @@ function renderCategories() {
     }
 }
 
+// ===================== ПРОФАЙЛ: НОТОЛГООНЫ ҮНДЭС =====================
+// Профайлын оноо бүр нотолгооноос гардаг. Тэгвэл ХЭДЭН нотолгоо, ХЭЗЭЭНЭЭС
+// хойш гэдэг нь тэр онооны жин — түүнгүйгээр "100%" гэдэг нь нэг өдрийн
+// нэг бичлэгээс ч гарч болно. status.overall эдгээрийг аль эрт тооцдог
+// байсан ч дэлгэц дээр хаана ч гардаггүй байв.
+
+function renderProfileEvidence() {
+    const el = document.getElementById("profile-evidence");
+    if (!el) return;
+
+    const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const overall = (status && status.overall) ? status.overall : null;
+
+    if (!overall || !(Number(overall.totalEvents) > 0)) {
+        el.innerHTML = `<div class="connected-empty">нотолгоо хараахан ирээгүй</div>`;
+        return;
+    }
+
+    const firstAt = Number(overall.firstEvidenceAt) || 0;
+    const since   = (firstAt > 0 && typeof dayKeyOf === "function") ? dayKeyOf(firstAt) : null;
+
+    el.innerHTML = `
+        <div class="profile-evidence-row">
+            <span>НИЙТ НОТОЛГОО</span><strong>${Number(overall.totalEvents).toLocaleString()}</strong>
+        </div>
+        <div class="profile-evidence-row">
+            <span>БҮРТГЭЛ ЭХЭЛСЭН</span><strong>${escapeHTML(since || "—")}</strong>
+        </div>
+        <div class="profile-evidence-row">
+            <span>ИДЭВХТЭЙ ӨДӨР</span><strong>${Number(overall.activeDays30) || 0} / 30</strong>
+        </div>`;
+}
+
 // ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================
 // Оноо = "30 хоногийн бодит зорилтод хэр ойрхон вэ" (status.js). Түвшин, XP биш.
 
@@ -188,6 +221,7 @@ function renderWebUI() {
         Status.invalidate();
     }
 
+    renderProfileEvidence();
     renderAttributeScores();
 
     // Бусад модулиудын render-үүдийг дуудах

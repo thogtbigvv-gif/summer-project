@@ -8,7 +8,7 @@
 const { makeCtx, load, ago } = require("./harness.js");
 const assert = require("assert");
 
-module.exports = function ({ t, section }) {
+module.exports = async function ({ t, section }) {
 
 const FILES = ["data.js", "bridge.js", "status.js", "quests.js", "analytics.js"];
 
@@ -39,14 +39,14 @@ function api(quests, evidence) {
 
 section("Даалгавар: нотолгоогоор баталгаажих");
 
-t("метрикгүй даалгавар ГАРААР удирдагдана", () => {
+await t("метрикгүй даалгавар ГАРААР удирдагдана", () => {
     const a = api([{ id: 1, title: "Эрт босох", category: "habits", rank: "E", completed: true }]);
     const p = a.questProgress(a.webData.quests[0], a.Status.get());
     assert.strictEqual(p.verified, false);
     assert.strictEqual(p.done, true, "гар аргын completed хүндлэгдээгүй");
 });
 
-t("зорилтод хүрсэн даалгавар — товч дарахгүйгээр биелнэ", () => {
+await t("зорилтод хүрсэн даалгавар — товч дарахгүйгээр биелнэ", () => {
     const a = api(
         [{ id: 2, title: "30k", category: "fitness", rank: "A",
            completed: false, metricId: "gym.volume", targetValue: 30000 }],
@@ -58,7 +58,7 @@ t("зорилтод хүрсэн даалгавар — товч дарахгү�
     assert.strictEqual(p.pct, 100);
 });
 
-t("зорилтод хүрээгүй бол ХАДГАЛАГДСАН completed ч гэсэн биелээгүй", () => {
+await t("зорилтод хүрээгүй бол ХАДГАЛАГДСАН completed ч гэсэн биелээгүй", () => {
     // Гараар тэмдэглэсэн түүх байсан ч нотолгоо шийднэ — энэ л гол санаа.
     const a = api(
         [{ id: 3, title: "100k", category: "fitness", rank: "S",
@@ -71,14 +71,14 @@ t("зорилтод хүрээгүй бол ХАДГАЛАГДСАН completed �
     assert.strictEqual(Math.round(p.pct), 40);
 });
 
-t("зорилт 0 бол нотолгоотой гэж ДҮР ЭСГЭХГҮЙ", () => {
+await t("зорилт 0 бол нотолгоотой гэж ДҮР ЭСГЭХГҮЙ", () => {
     const a = api([{ id: 4, title: "x", category: "fitness", rank: "E",
                      completed: false, metricId: "gym.volume", targetValue: 0 }],
                   gymEvidence(40000));
     assert.strictEqual(a.questProgress(a.webData.quests[0], a.Status.get()).verified, false);
 });
 
-t("бүртгэлээс хасагдсан метрик — гар арга руу аюулгүй буцна", () => {
+await t("бүртгэлээс хасагдсан метрик — гар арга руу аюулгүй буцна", () => {
     const a = api([{ id: 5, title: "x", category: "fitness", rank: "E",
                      completed: false, metricId: "устсан.метрик", targetValue: 100 }],
                   gymEvidence(40000));
@@ -87,14 +87,14 @@ t("бүртгэлээс хасагдсан метрик — гар арга ру
     assert.strictEqual(p.done, false);
 });
 
-t("status огт байхгүй ч унахгүй", () => {
+await t("status огт байхгүй ч унахгүй", () => {
     const a = api([{ id: 6, title: "x", category: "fitness", rank: "E",
                      completed: false, metricId: "gym.volume", targetValue: 100 }]);
     const p = a.questProgress(a.webData.quests[0], null);
     assert.strictEqual(p.verified, false);
 });
 
-t("шүүлтүүр ГАРГАСАН төлөвөөр ажиллана, хадгалагдсанаар биш", () => {
+await t("шүүлтүүр ГАРГАСАН төлөвөөр ажиллана, хадгалагдсанаар биш", () => {
     const a = api([
         { id: 7, title: "хүрсэн",    category: "fitness", rank: "A",
           completed: false, metricId: "gym.volume", targetValue: 30000 },
@@ -108,7 +108,7 @@ t("шүүлтүүр ГАРГАСАН төлөвөөр ажиллана, хадг
     assert.strictEqual(all.filter(x => !x.progress.done).length, 1, "идэвхтэй тоо буруу");
 });
 
-t("pct нь 100-аас ХЭТРЭХГҮЙ (баганы өргөн эвдрэхгүй)", () => {
+await t("pct нь 100-аас ХЭТРЭХГҮЙ (баганы өргөн эвдрэхгүй)", () => {
     const a = api([{ id: 10, title: "x", category: "fitness", rank: "E",
                      completed: false, metricId: "gym.volume", targetValue: 1000 }],
                   gymEvidence(40000));
@@ -128,27 +128,27 @@ function statusApi(integrations) {
 
 const DAY = 86400000;
 
-t("сая мэдээлсэн эх сурвалж — live", () => {
+await t("сая мэдээлсэн эх сурвалж — live", () => {
     const a = statusApi({ gym: { status: null, updatedAt: Date.now(), lastSyncedAt: Date.now(),
         prunedBefore: 0, rollups: {}, evidence: gymEvidence(1000) } });
     const rows = a.AnalyticsEngine.integrityRows(a.Status.get());
     assert.strictEqual(rows.find(r => r.app === "gym").state, "live");
 });
 
-t("удаан чимээгүй байсан эх сурвалж — stale", () => {
+await t("удаан чимээгүй байсан эх сурвалж — stale", () => {
     const a = statusApi({ gym: { status: null, updatedAt: Date.now() - 10 * DAY,
         lastSyncedAt: Date.now(), prunedBefore: 0, rollups: {}, evidence: [] } });
     assert.strictEqual(a.AnalyticsEngine.integrityRows(a.Status.get()).find(r => r.app === "gym").state, "stale");
 });
 
-t("хэзээ ч мэдээлээгүй нь ТАСАРСАН биш, ХОЛБОГДООГҮЙ", () => {
+await t("хэзээ ч мэдээлээгүй нь ТАСАРСАН биш, ХОЛБОГДООГҮЙ", () => {
     const a = statusApi({});
     const rows = a.AnalyticsEngine.integrityRows(a.Status.get());
     assert.ok(rows.length >= 3, "тохируулгын эх сурвалжууд жагсаагүй");
     rows.forEach(r => assert.strictEqual(r.state, "silent", r.app + " буруу төлөвтэй"));
 });
 
-t("нэгтгэсэн бичлэг ч тоологдоно", () => {
+await t("нэгтгэсэн бичлэг ч тоологдоно", () => {
     const a = statusApi({ github: { status: null, updatedAt: Date.now(), lastSyncedAt: Date.now(),
         prunedBefore: 0, evidence: [],
         rollups: { "2025-02": { "commit.pushed": { count: 120, valueSum: 120, dataSums: {}, firstAt: 1, lastAt: 2 } } } } });
@@ -158,7 +158,7 @@ t("нэгтгэсэн бичлэг ч тоологдоно", () => {
     assert.strictEqual(row.rolled, 120);
 });
 
-t("нэгтгэгдээд түүхий бичлэггүй үлдсэн эх сурвалжийг \"идэвхгүй\" гэж ХЭЛЭХГҮЙ", () => {
+await t("нэгтгэгдээд түүхий бичлэггүй үлдсэн эх сурвалжийг \"идэвхгүй\" гэж ХЭЛЭХГҮЙ", () => {
     // Энэ нь өмнө нь "no activity yet" гэж бичдэг байсан — олон жилийн түүхтэй
     // эх сурвалжийг хоосон мэт харуулна гэсэн үг.
     const a = statusApi({});
@@ -167,14 +167,14 @@ t("нэгтгэгдээд түүхий бичлэггүй үлдсэн эх су
     assert.ok(html.indexOf("1,200") !== -1, "нэгтгэсэн тоо харагдахгүй байна");
 });
 
-t("үнэхээр хоосон эх сурвалж хэвээрээ \"no activity yet\"", () => {
+await t("үнэхээр хоосон эх сурвалж хэвээрээ \"no activity yet\"", () => {
     const a = statusApi({});
     assert.ok(a.connectedEvidenceHtml([], 0).indexOf("no activity yet") !== -1);
 });
 
 section("Нотолгооны мөшгөлт");
 
-t("provenanceHtml нь бичлэг бүрийг хэмжээтэй нь харуулна", () => {
+await t("provenanceHtml нь бичлэг бүрийг хэмжээтэй нь харуулна", () => {
     const a = statusApi({ gym: { status: null, updatedAt: Date.now(), lastSyncedAt: Date.now(),
         prunedBefore: 0, rollups: {}, evidence: gymEvidence(1000, 4) } });
     const html = a.provenanceHtml(a.Status.get().metrics["gym.volume"]);
@@ -183,12 +183,12 @@ t("provenanceHtml нь бичлэг бүрийг хэмжээтэй нь хар�
     assert.ok(html.indexOf("kg") !== -1, "нэгж алга");
 });
 
-t("нотолгоогүй метрикт тоо ЗОХИОХГҮЙ", () => {
+await t("нотолгоогүй метрикт тоо ЗОХИОХГҮЙ", () => {
     const a = statusApi({});
     assert.ok(a.provenanceHtml(a.Status.get().metrics["gym.volume"]).indexOf("нотолгоо алга") !== -1);
 });
 
-t("нэгжээ сэргээж чадаагүй нэгтгэл дүгнэлтэд ГАРНА", () => {
+await t("нэгжээ сэргээж чадаагүй нэгтгэл дүгнэлтэд ГАРНА", () => {
     const a = statusApi({ gym: { status: null, updatedAt: Date.now(), lastSyncedAt: Date.now(),
         prunedBefore: 0, evidence: [],
         rollups: { "2025-01": { "workout.completed": { count: 17, valueSum: 17, firstAt: 1, lastAt: 2 } } } } });

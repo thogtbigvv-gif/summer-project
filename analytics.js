@@ -255,6 +255,16 @@ const AnalyticsEngine = {
         const container = document.getElementById('activity-heatmap');
         if (!container) return;
 
+        const legend = document.getElementById('heatmap-legend');
+        // Тайлбаргүй халуун зураглал бол зүгээр л ногоон дөрвөлжингүүд. Хэмжээсийг
+        // нь рендерийн үед барина — түвшний тоо өөрчлөгдвөл тайлбар дагаж засагдана.
+        if (legend) {
+            legend.innerHTML = `<span class="heatmap-legend-text">Тэр өдөр хэдэн метрик хөдөлсөн бэ:</span>` +
+                [0, 1, 2, 3, 4].map(level =>
+                    `<span class="heat-box ${level > 0 ? `heat-lvl-${level}` : ""}"></span>` +
+                    `<small>${level}${level === 4 ? "+" : ""}</small>`).join("");
+        }
+
         if (!this.hasEvidence(status)) {
             container.innerHTML = EMPTY_HTML("нотолгоо алга — холбогдсон апп мэдээлэл илгээгээгүй байна");
             return;

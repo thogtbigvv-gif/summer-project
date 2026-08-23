@@ -15,9 +15,12 @@ const failures = [];
 
 function section(name) { console.log("\n\x1b[1m== " + name + " ==\x1b[0m"); }
 
-function t(name, fn) {
+// ЗААВАЛ await хийнэ. Энэ функц async тестийг хүлээхгүй бол доторх assert
+// унасан ч promise дотор баригдаж, тест ХУДЛААР ноогдоно — өөрөөр хэлбэл
+// тестийн иж бүрдэл өөрөө чимээгүй худал хэлж эхэлнэ.
+async function t(name, fn) {
     try {
-        fn();
+        await fn();
         console.log("  \x1b[32m✓\x1b[0m " + name);
         pass++;
     } catch (err) {
@@ -28,17 +31,24 @@ function t(name, fn) {
     }
 }
 
-const files = fs.readdirSync(__dirname)
-    .filter(f => f.endsWith(".test.js"))
-    .sort();
+async function main() {
+    const files = fs.readdirSync(__dirname)
+        .filter(f => f.endsWith(".test.js"))
+        .sort();
 
-files.forEach(file => {
-    console.log("\n\x1b[1m▸ " + file + "\x1b[0m");
-    require(path.join(__dirname, file))({ t, section });
-});
+    for (const file of files) {
+        console.log("\n\x1b[1m▸ " + file + "\x1b[0m");
+        await require(path.join(__dirname, file))({ t, section });
+    }
 
-console.log(`\n${pass} passed, ${fail} failed`);
-if (fail > 0) {
-    console.log("Унасан: " + failures.join(", "));
-    process.exit(1);
+    console.log(`\n${pass} passed, ${fail} failed`);
+    if (fail > 0) {
+        console.log("Унасан: " + failures.join(", "));
+        process.exit(1);
+    }
 }
+
+main().catch(err => {
+    console.error("\nТест ажиллуулагч унав:", err);
+    process.exit(1);
+});

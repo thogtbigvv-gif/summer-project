@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Профайлын Ω-тэй ижил тэмдэг. Гадаад файл биш — өөр нэг сүлжээний дуудлага,
+     өөр нэг 404-ийн эх үүсвэр байх шаардлагагүй. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23030712'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='20' font-weight='700' fill='%2310b981' text-anchor='middle'%3E%CE%A9%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -62,6 +65,10 @@
                         <p>Сүүлийн 30 хоногийн бодит зорилтод хүрсэн хувь</p>
                     </div>
                 </div>
+                <!-- Профайлын үндэс: энэ хүн хэдэн нотолгоотой, хэзээнээс хойш.
+                     status.overall тэдгээрийг тооцдог байсан ч хаана ч гардаггүй байв. -->
+                <div class="profile-evidence" id="profile-evidence"></div>
+
                 <!-- Оноо бүрийг status.js нотолгооноос гаргана — энд хадгалагдсан тоо байхгүй. -->
                 <div class="level-badge-zone" id="attribute-bars"></div>
             </div>
@@ -242,6 +249,8 @@
                 </div>
             </div>
             <div class="heatmap-container" id="activity-heatmap"></div>
+            <!-- Өнгөний хүч юу гэсэн үг вэ. renderHeatmap() дүүргэнэ. -->
+            <div class="heatmap-legend" id="heatmap-legend"></div>
         </div>
 
         <div class="mission-panel" style="margin-top: 32px;">

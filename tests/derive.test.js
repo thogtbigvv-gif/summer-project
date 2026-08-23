@@ -8,7 +8,7 @@
 const { makeCtx, load, ago } = require("./harness.js");
 const assert = require("assert");
 
-module.exports = function ({ t, section }) {
+module.exports = async function ({ t, section }) {
 
 function api(integrations) {
   const ctx = makeCtx();
@@ -23,7 +23,7 @@ const src = (evidence, rollups) => ({ status: null, updatedAt: Date.now(), lastS
 
 section("Нотолгооноос гаргалт");
 
-t("түүхий gym нотолгоо → бодит kg", () => {
+await t("түүхий gym нотолгоо → бодит kg", () => {
   const a = api({ gym: src([
     { id: "a", at: ago(1), type: "workout.completed", value: 1, detail: "Push", data: { volumeKg: 4200 } },
     { id: "b", at: ago(2), type: "workout.completed", value: 1, detail: "Pull", data: { volumeKg: 3800 } }
@@ -33,7 +33,7 @@ t("түүхий gym нотолгоо → бодит kg", () => {
   assert.strictEqual(m.activeDays30, 2);
 });
 
-t("НЭГТГЭСЭН хувин dataSums-аас kg-аа СЭРГЭЭНЭ (өмнө нь мөнхөд 0 болдог байсан)", () => {
+await t("НЭГТГЭСЭН хувин dataSums-аас kg-аа СЭРГЭЭНЭ (өмнө нь мөнхөд 0 болдог байсан)", () => {
   const a = api({ gym: src([], { "2025-01": { "workout.completed":
     { count: 10, valueSum: 10, dataSums: { volumeKg: 52000 }, firstAt: 1, lastAt: 2 } } }) });
   const s = a.Status.get();
@@ -41,7 +41,7 @@ t("НЭГТГЭСЭН хувин dataSums-аас kg-аа СЭРГЭЭНЭ (өм�
   assert.strictEqual(s.overall.rollupGaps.length, 0);
 });
 
-t("dataSums-гүй ХУУЧИН хувин → 0, ГЭХДЭЭ rollupGaps-д ил гарна", () => {
+await t("dataSums-гүй ХУУЧИН хувин → 0, ГЭХДЭЭ rollupGaps-д ил гарна", () => {
   const a = api({ gym: src([], { "2025-01": { "workout.completed":
     { count: 10, valueSum: 10, firstAt: 1, lastAt: 2 } } }) });
   const s = a.Status.get();
@@ -50,14 +50,14 @@ t("dataSums-гүй ХУУЧИН хувин → 0, ГЭХДЭЭ rollupGaps-д и�
   assert.strictEqual(s.overall.rollupGaps[0].metric, "gym.volume");
 });
 
-t("нэгтгэсэн сар monthly хүснэгтэд ордог", () => {
+await t("нэгтгэсэн сар monthly хүснэгтэд ордог", () => {
   const a = api({ gym: src([], { "2025-01": { "workout.completed":
     { count: 2, valueSum: 2, dataSums: { volumeKg: 900 }, firstAt: 1, lastAt: 2 } } }) });
   const monthly = a.Status.get().metrics["gym.volume"].monthly;
   assert.deepEqual(monthly.map(x => [x.month, x.value]), [["2025-01", 900]]);
 });
 
-t("provenance: metric.recent нотолгоог буцааж заана, шинийг нь дээр нь", () => {
+await t("provenance: metric.recent нотолгоог буцааж заана, шинийг нь дээр нь", () => {
   const a = api({ gym: src([
     { id: "a", at: ago(3), type: "workout.completed", value: 1, detail: "Хуучин", data: { volumeKg: 100 } },
     { id: "b", at: ago(1), type: "workout.completed", value: 1, detail: "Шинэ",  data: { volumeKg: 200 } }
@@ -69,14 +69,14 @@ t("provenance: metric.recent нотолгоог буцааж заана, шин�
   assert.strictEqual(r[0].app, "gym");
 });
 
-t("recent нь 12 мөрөөр таслагдана", () => {
+await t("recent нь 12 мөрөөр таслагдана", () => {
   const ev = [];
   for (let i = 0; i < 40; i++) ev.push({ id: "e" + i, at: ago(i % 20), type: "commit.pushed", value: 1, detail: "c" + i, data: null });
   const a = api({ github: src(ev) });
   assert.strictEqual(a.Status.get().metrics["github.commits"].recent.length, 12);
 });
 
-t("sources түүхий ба нэгтгэсэн тоог ЯЛГАНА", () => {
+await t("sources түүхий ба нэгтгэсэн тоог ЯЛГАНА", () => {
   const a = api({ github: src(
     [{ id: "x", at: ago(1), type: "commit.pushed", value: 1, detail: "c", data: null }],
     { "2025-01": { "commit.pushed": { count: 40, valueSum: 40, dataSums: {}, firstAt: 1, lastAt: 2 } } }) });
@@ -86,7 +86,7 @@ t("sources түүхий ба нэгтгэсэн тоог ЯЛГАНА", () => {
   assert.strictEqual(s.evidenceCount, 41);
 });
 
-t("нотолгоо огт байхгүй → бүрэн, тэг үр дүн", () => {
+await t("нотолгоо огт байхгүй → бүрэн, тэг үр дүн", () => {
   const s = api({}).Status.get();
   assert.strictEqual(Object.keys(s.metrics).length, 4);
   assert.strictEqual(s.attributes.BODY.score, 0);
@@ -94,19 +94,19 @@ t("нотолгоо огт байхгүй → бүрэн, тэг үр дүн", (
   assert.strictEqual(s.overall.totalEvents, 0);
 });
 
-t("танигдаагүй төрөл чимээгүй алга болохгүй", () => {
+await t("танигдаагүй төрөл чимээгүй алга болохгүй", () => {
   const s = api({ gym: src([{ id: "z", at: ago(1), type: "sauna.session", value: 1, detail: "", data: null }]) }).Status.get();
   assert.deepEqual(s.overall.unmappedTypes, ["gym:sauna.session"]);
 });
 
-t("100%-ийг ХЭЗЭЭ Ч зохиохгүй: өмнөх цонх хоосон бол change нь null", () => {
+await t("100%-ийг ХЭЗЭЭ Ч зохиохгүй: өмнөх цонх хоосон бол change нь null", () => {
   const s = api({ github: src([{ id: "n", at: ago(1), type: "commit.pushed", value: 1, detail: "", data: null }]) }).Status.get();
   assert.strictEqual(s.metrics["github.commits"].change30Pct, null);
 });
 
 section("Ангилал ↔ метрикийн зорилт");
 
-t("ангилал дээр зорилтын ХУУЛБАР үлдээгүй", () => {
+await t("ангилал дээр зорилтын ХУУЛБАР үлдээгүй", () => {
   const a = api({});
   Object.keys(a.webData.categories).forEach(k => {
     const cat = a.webData.categories[k];
@@ -117,13 +117,13 @@ t("ангилал дээр зорилтын ХУУЛБАР үлдээгүй", ()
   });
 });
 
-t("метрик бүр ангилалтай — CREATION нүх үлдээгүй", () => {
+await t("метрик бүр ангилалтай — CREATION нүх үлдээгүй", () => {
   const a = api({});
   const linked = new Set(Object.keys(a.webData.categories).map(k => a.webData.categories[k].metricId));
   Object.keys(a.METRIC_DEFS).forEach(id => assert.ok(linked.has(id), id + " ангилалгүй"));
 });
 
-t("METRICS-ийн заасан метрик бүр METRIC_DEFS-д бүртгэлтэй", () => {
+await t("METRICS-ийн заасан метрик бүр METRIC_DEFS-д бүртгэлтэй", () => {
   const a = api({});
   Object.keys(a.METRICS).forEach(k => {
     const id = a.METRICS[k].metric;
@@ -133,7 +133,7 @@ t("METRICS-ийн заасан метрик бүр METRIC_DEFS-д бүртгэл
 
 section("bridge: rollUpEvidence");
 
-t("data-гийн тоон талбарыг нэрээр нь хураана", () => {
+await t("data-гийн тоон талбарыг нэрээр нь хураана", () => {
   const a = api();
   const state = { rollups: {} };
   a.rollUpEvidence(state, [
@@ -146,7 +146,7 @@ t("data-гийн тоон талбарыг нэрээр нь хураана", ()
   assert.strictEqual(b.dataSums.reps, 60);
 });
 
-t("тоо биш талбарыг (repo: 'x') нийлбэрт оруулахгүй", () => {
+await t("тоо биш талбарыг (repo: 'x') нийлбэрт оруулахгүй", () => {
   const a = api();
   const state = { rollups: {} };
   a.rollUpEvidence(state, [{ at: ago(300), type: "commit.pushed", value: 1, data: { repo: "summer-project" } }]);
@@ -154,7 +154,7 @@ t("тоо биш талбарыг (repo: 'x') нийлбэрт оруулахг�
   assert.deepEqual(Object.keys(b.dataSums), []);
 });
 
-t("байгаа хувин дээр НЭМНЭ — дарж бичихгүй", () => {
+await t("байгаа хувин дээр НЭМНЭ — дарж бичихгүй", () => {
   const a = api();
   const state = { rollups: {} };
   const rec = { at: ago(300), type: "workout.completed", value: 2, data: { volumeKg: 100 } };
@@ -166,7 +166,7 @@ t("байгаа хувин дээр НЭМНЭ — дарж бичихгүй", (
   assert.strictEqual(b.dataSums.volumeKg, 200);
 });
 
-t("dataSums-гүй ХУУЧИН хувин дээр нэмэхэд эвдрэхгүй", () => {
+await t("dataSums-гүй ХУУЧИН хувин дээр нэмэхэд эвдрэхгүй", () => {
   const a = api();
   const month = new Date(ago(300)); month.setMinutes(month.getMinutes() - month.getTimezoneOffset());
   const key = month.toISOString().slice(0, 7);
@@ -177,7 +177,7 @@ t("dataSums-гүй ХУУЧИН хувин дээр нэмэхэд эвдрэх�
   assert.strictEqual(b.dataSums.volumeKg, 700);
 });
 
-t("pruneEvidence: хуучин бичлэгийг ХАЯХГҮЙ, нэгтгээд нэгжийг нь үлдээнэ", () => {
+await t("pruneEvidence: хуучин бичлэгийг ХАЯХГҮЙ, нэгтгээд нэгжийг нь үлдээнэ", () => {
   const a = api();
   const state = { evidence: [
     { id: "old", at: ago(300), type: "workout.completed", value: 1, data: { volumeKg: 900 } },
@@ -190,7 +190,7 @@ t("pruneEvidence: хуучин бичлэгийг ХАЯХГҮЙ, нэгтгээ
   assert.strictEqual(b.dataSums.volumeKg, 900, "нэгтгэсэн kg алдагдсан");
 });
 
-t("нэгтгэсний дараа НИЙТ дүн хэвээр (түүх агшихгүй)", () => {
+await t("нэгтгэсний дараа НИЙТ дүн хэвээр (түүх агшихгүй)", () => {
   const a = api();
   const state = { evidence: [
     { id: "old", at: ago(300), type: "workout.completed", value: 1, data: { volumeKg: 900 } },

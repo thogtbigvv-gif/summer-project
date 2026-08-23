@@ -76,6 +76,7 @@ function makeCtx(opts = {}) {
 const EXPORTS = [
   "defaultWebData", "METRIC_DEFS", "METRICS", "Status", "BRIDGE_SOURCES",
   "cloneDefault", "todayStr", "escapeHTML", "formatDelta", "tierForPct",
+  "loadWebData", "saveWebData", "STORAGE_KEY",
   "rollUpEvidence", "pruneEvidence", "getIntegrationState", "syncAll",
   "renderCategories", "renderQuests", "renderSkills", "renderMissionTasks",
   "renderConnectedApps", "AnalyticsEngine", "questProgress", "SKILL_CAT",
