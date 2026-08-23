@@ -2,11 +2,21 @@
 
 const defaultWebData = {
     // Ангилал бүр НЭГ метрикт холбогдоно. Ахиц нь тэр метрикийн сүүлийн 30 хоног
-    // vs targetValue — бодит нэгжээр. Тиер, XP гэсэн хадгалагдах тоо БАЙХГҮЙ.
+    // vs зорилт — бодит нэгжээр. Тиер, XP гэсэн хадгалагдах тоо БАЙХГҮЙ.
+    //
+    // ЗОРИЛТ БОЛОН НЭГЖИЙГ ЭНД ХАДГАЛАХГҮЙ. Тэдгээр нь status.js-ийн METRIC_DEFS-д
+    // нэг л удаа бичигдэнэ. Өмнө нь энд targetValue/unit гэсэн ХУУЛБАР сууж
+    // байсан: картын тиер тэр хуулбараас, профайлын оноо METRIC_DEFS-ээс
+    // тооцогдож, хоёр тоо ЧИМЭЭГҮЙ ЗӨРӨХ зам нээлттэй байв. Одоо метрик холбоотой
+    // ангилалын хувьд бүртгэл л ганцаараа шийднэ.
+    //
+    // Метрик холбоогүй ангилалд (хэрэглэгчийн өөрийн нэмсэн) unit/targetValue
+    // талбарыг ХЭВЭЭР дэмжинэ — тэдэнд бүртгэл гэж байхгүй.
     categories: {
-        fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume",   unit: "kg",      targetValue: 40000 },
-        learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews", unit: "cards",   targetValue: 900   },
-        habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons", unit: "lessons", targetValue: 20    }
+        fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume"     },
+        learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews"   },
+        habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons"   },
+        creation: { name: "Бүтээл & Код",     metricId: "github.commits" }
     },
     // Даалгавар бол зорилгын жагсаалт. rank нь зөвхөн ЧУХЛЫН ЗЭРЭГ — шагнал биш.
     quests: [
@@ -185,6 +195,14 @@ async function loadWebData() {
                 unit:        (cat && typeof cat.unit === "string") ? cat.unit : "",
                 targetValue: Number(cat && cat.targetValue) || 0
             };
+        });
+
+        // Шинэ АНХДАГЧ ангилал (ж: CREATION-ы "Бүтээл & Код") хуучин хадгалсан
+        // датад байхгүй. Нөхөж нэмэхгүй бол метрик нь бүрэн ажиллаж байхад
+        // Tiers самбар дээр нүх үлдэж, "GitHub тоологдохоо больжээ" мэт харагдана.
+        // Ангилал устгах UI байхгүй тул энэ нөхөлт хэрэглэгчийн сонголтыг дарахгүй.
+        Object.keys(defaultCategories).forEach(key => {
+            if (!webData.categories[key]) webData.categories[key] = defaultCategories[key];
         });
 
         // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.

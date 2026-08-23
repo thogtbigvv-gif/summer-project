@@ -18,14 +18,17 @@
 // эдгээр хүснэгтэд мөр нэмэх, өөр ХААНА Ч код хөндөхгүй.
 //
 // amount(e)     — түүхий нотолгооны бичлэгээс бодит нэгжийг гаргана.
-// fromRollup(b) — Task 1-ийн нэгтгэсэн хувингаас (rollups) ижил нэгжийг гаргана.
-//                 Хувинд { count, valueSum, firstAt, lastAt } л үлддэг тул event.data
-//                 дээр тулгуурласан метрикийг ТҮҮНЭЭС СЭРГЭЭХ БОЛОМЖГҮЙ — тэнд null
-//                 бичнэ. null бол тэр сар 0 нэмнэ, гэхдээ чимээгүй алга болохгүй:
-//                 overall.rollupGaps-д бүртгэгдэнэ.
+// fromRollup(b) — нэгтгэсэн хувингаас (rollups) ЯГ ИЖИЛ нэгжийг гаргана. Хувинд
+//                 { count, valueSum, dataSums, firstAt, lastAt } үлддэг: dataSums
+//                 нь event.data-гийн тоон талбар бүрийн нийлбэр, тиймээс volumeKg
+//                 мэтийн нэгж 180 хоногийн дараа ч сэргээгддэг.
+//                 Функц нь null буцаах эрхтэй = "энэ хувингаас сэргээх аргагүй"
+//                 (ж: dataSums нэвтрэхээс өмнө нэгтгэгдсэн хуучин хувин). Тэр
+//                 тохиолдолд 0 нэмнэ, гэхдээ чимээгүй алга болохгүй:
+//                 overall.rollupGaps-д бүртгэгдээд Аналитик таб дээр гарна.
 const METRICS = {
-    "gym:workout.completed": { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: null },
-    "gym:workout.partial":   { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: null },
+    "gym:workout.completed": { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: b => fromDataSum(b, "volumeKg") },
+    "gym:workout.partial":   { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: b => fromDataSum(b, "volumeKg") },
     "bigu:review.session":   { metric: "bigu.reviews", amount: e => num(e.value),                   fromRollup: b => num(b.valueSum) },
     "bigu:lesson.quiz":      { metric: "bigu.lessons", amount: () => 1,                             fromRollup: b => num(b.count) },
     "github:commit.pushed":  { metric: "github.commits", amount: () => 1,                            fromRollup: b => num(b.count) }
@@ -41,7 +44,20 @@ const METRIC_DEFS = {
 // Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0) — дэлгэц дээр нүх үлдээхгүй.
 const ATTRIBUTE_ORDER = ["BODY", "MIND", "CREATION"];
 
-const SERIES_DAYS = 365;   // series-ийн урт: сүүлийн жил, тэгээр дүүргэсэн
+const SERIES_DAYS = 365;      // series-ийн урт: сүүлийн жил, тэгээр дүүргэсэн
+const RECENT_EVIDENCE = 12;   // метрик бүрд хадгалах "энэ тоо хаанаас гарав" мөрийн тоо
+
+// Хувин доторх data.<key>-ийн нийлбэрийг гаргана (bridge.js-ийн rollUpEvidence
+// event.data-гийн ТООН талбар бүрийг ингэж хураадаг). Хувинд dataSums байхгүй —
+// өөрөөр хэлбэл dataSums нэвтрэхээс ӨМНӨ нэгтгэгдсэн хуучин хувин — бол null
+// буцаана: "энэ хувингаас бодит нэгжийг сэргээх боломжгүй" гэсэн үг бөгөөд
+// дуудагч түүнийг 0 гэж ЧИМЭЭГҮЙ нөхөхгүй, rollupGaps-д ил бүртгэнэ.
+function fromDataSum(bucket, key) {
+    const sums = bucket && bucket.dataSums;
+    if (!sums || typeof sums !== "object") return null;
+    const value = Number(sums[key]);
+    return isFinite(value) ? value : null;
+}
 
 // ===================== ЖИЖИГ ТУСЛАХУУД =====================
 
@@ -114,7 +130,10 @@ function emptyMetric(id, dayKeys) {
         change7Pct: null, change30Pct: null,
         pct30: 0,
         best: null,
-        activeDays30: 0, streakDays: 0, lastActiveAt: 0
+        activeDays30: 0, streakDays: 0, lastActiveAt: 0,
+        // Энэ тоог үүсгэсэн СҮҮЛИЙН бичлэгүүд — "тоо хаанаас гарав" гэдгийг
+        // дэлгэц дээр буцааж харуулах зам. Гаргалт бүрт шинээр цуглуулагдана.
+        recent: []
     };
 }
 
@@ -269,6 +288,12 @@ function buildStatus(generatedAt) {
             metric.daily[date] = tidy(num(metric.daily[date]) + amount);
             eventDays[row.metric].add(date);
             if (at > metric.lastActiveAt) metric.lastActiveAt = at;
+
+            metric.recent.push({
+                at, app, date,
+                detail: (typeof rec.detail === "string" && rec.detail) ? rec.detail : (rec.type || ""),
+                amount: tidy(amount)
+            });
         });
 
         // Нэгтгэсэн хувингууд — өдрийн нарийвчлалгүй, зөвхөн total/monthly-д ордог.
@@ -301,19 +326,25 @@ function buildStatus(generatedAt) {
                 if (lastAt > metric.lastActiveAt) metric.lastActiveAt = lastAt;
 
                 if (typeof row.fromRollup !== "function") {
-                    // Нэгжийг нь сэргээх боломжгүй (event.data хувинд үлддэггүй).
-                    // 0 нэмнэ — гэхдээ ЧИМЭЭГҮЙ биш: доор нь ил тайлагнана.
                     rollupGaps.push({ app, type, month, count, metric: row.metric });
                     return;
                 }
 
-                let amount = 0;
+                // fromRollup null буцаах нь ЗӨВШӨӨРӨГДСӨН хариулт: "энэ хувингаас
+                // бодит нэгжийг сэргээх аргагүй". Тэр үед 0 нэмнэ — гэхдээ
+                // ЧИМЭЭГҮЙ биш: rollupGaps-д бүртгэгдээд дэлгэц дээр гарна.
+                let amount = null;
                 try {
-                    amount = num(row.fromRollup(bucket));
+                    amount = row.fromRollup(bucket);
                 } catch (err) {
                     console.warn(`METRICS["${key}"].fromRollup алдаа —`, err);
-                    amount = 0;
+                    amount = null;
                 }
+                if (amount === null || amount === undefined || !isFinite(Number(amount))) {
+                    rollupGaps.push({ app, type, month, count, metric: row.metric });
+                    return;
+                }
+                amount = num(amount);
 
                 rollupTotal[row.metric] = tidy(num(rollupTotal[row.metric]) + amount);
                 rollupMonth[row.metric][month] = tidy(num(rollupMonth[row.metric][month]) + amount);
@@ -327,6 +358,10 @@ function buildStatus(generatedAt) {
             // Тухайн апп ХЭЗЭЭ НЭГЭН ЦАГТ мэдээлсэн бүхэн: түүхий + нэгтгэсэн.
             // Нэгтгэснийг хасвал тоо цаг хугацаанд агшиж, түүхийг худал харуулна.
             evidenceCount: evidence.length + rolledCount,
+            // UI "идэвхгүй" гэж худал хэлэхгүйн тулд хоёуланг нь ил гаргана:
+            // түүхий бичлэг нь нэгтгэгдээд хоосорсон ч түүх алга болоогүй.
+            rawCount:    evidence.length,
+            rolledCount,
             last30Count,
             stale: !(updatedAt > 0) || (generatedAt - updatedAt) > staleMs
         };
@@ -385,6 +420,10 @@ function buildStatus(generatedAt) {
         metric.pct30 = metric.target30 > 0
             ? tidy(clamp(0, 100, (metric.last30 / metric.target30) * 100))
             : 0;
+
+        // Шинийг нь дээр нь — сүүлийн хэдэн бичлэг л дэлгэцэнд хэрэгтэй.
+        metric.recent.sort((a, b) => b.at - a.at);
+        if (metric.recent.length > RECENT_EVIDENCE) metric.recent.length = RECENT_EVIDENCE;
     });
 
     return {
@@ -407,14 +446,22 @@ function buildStatus(generatedAt) {
 // Санах ойд л байна. webData-д ХЭЗЭЭ Ч хүрэхгүй — тиймээс хаясан ч ямар ч
 // мэдээлэл алдагдахгүй, дараагийн get() бүгдийг нотолгооноос дахин гаргана.
 
-let _cache = null;
+let _cache    = null;
+let _cacheDay = "";
 
 const Status = {
     get() {
-        if (!_cache) _cache = deriveStatus();
+        // Кэш нь ямар ӨДӨР гаргагдсаныг санана. Шөнө дундыг өнгөрөхөд "сүүлийн
+        // 30 хоног" гэсэн цонх өөрөө шилждэг тул өчигдрийн гаргалт худал болно —
+        // таб нээлттэй хэвээр байсан ч. Тиймээс өдөр солигдсоныг мэдээд дахин гаргана.
+        const day = dayKeyOf(Date.now());
+        if (!_cache || _cacheDay !== day) {
+            _cache    = deriveStatus();
+            _cacheDay = day;
+        }
         return _cache;
     },
-    invalidate() { _cache = null; }
+    invalidate() { _cache = null; _cacheDay = ""; }
 };
 
 window.Status = Status;

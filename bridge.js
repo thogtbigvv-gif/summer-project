@@ -42,6 +42,9 @@ const BRIDGE_MAX_EVENTS = 2000;  // нэг эх сурвалжаас нэг уд
 // ЦОРЫН ГАНЦ бүртгэл — дээд давхаргын бүх тоо түүнээс ГАРГАЖ АВАГДАНА. Тиймээс бичлэгийг
 // хэзээ ч зүгээр хаяхгүй: хугацаа хэтэрсэн түүхий бичлэгийг сар/төрлөөр НЭГТГЭЭД
 // (state.rollups) үлдээнэ. rollups-ыг ХЭЗЭЭ Ч устгахгүй — тэр бол урт хугацааны түүх.
+// Нэгтгэсэн хувин нь { count, valueSum, dataSums, firstAt, lastAt } — dataSums
+// нь event.data-гийн тоон талбар бүрийн нийлбэр. Түүхий бичлэг алга болсон ч
+// БОДИТ НЭГЖ (жишээ нь өргөсөн кг) хувинд үлдэж, статус түүнийг сэргээж чадна.
 const RAW_RETENTION_DAYS = 180;   // үүнээс хуучин түүхий бичлэгийг нэгтгэнэ
 const MAX_RAW_EVIDENCE   = 5000;  // үүнээс олон түүхий бичлэг үлдвэл хуучнаас нь нэгтгэнэ
 
@@ -212,15 +215,33 @@ function rollUpEvidence(state, records) {
         const amount = isFinite(value) ? value : 0;
         const at     = Number(rec.at) || 0;
 
-        const bucket = byType[type];
+        let bucket = byType[type];
         if (!bucket || typeof bucket !== "object") {
-            byType[type] = { count: 1, valueSum: amount, firstAt: at, lastAt: at };
-            return;
+            bucket = byType[type] = { count: 0, valueSum: 0, dataSums: {}, firstAt: at, lastAt: at };
         }
+        if (!bucket.dataSums || typeof bucket.dataSums !== "object" || Array.isArray(bucket.dataSums)) {
+            bucket.dataSums = {};
+        }
+
         bucket.count    = (Number(bucket.count)    || 0) + 1;
         bucket.valueSum = (Number(bucket.valueSum) || 0) + amount;
+        sumDataFields(bucket.dataSums, rec.data);
         if (!(Number(bucket.firstAt) > 0) || at < bucket.firstAt) bucket.firstAt = at;
         if (!(Number(bucket.lastAt)  > 0) || at > bucket.lastAt)  bucket.lastAt  = at;
+    });
+}
+
+// event.data-гийн ТООН талбар бүрийг нэрээр нь хурааж нэмнэ. Энэ давхарга
+// талбарууд ЮУ ГЭСЭН УТГАТАЙГ мэдэхгүй хэвээр — зөвхөн "тоо мөн үү" гэдгийг
+// шалгана. Ингэснээр нэгтгэлт бодит нэгжийг (volumeKg, correct, ...) авч
+// үлддэг болж, 180 хоногийн дараа түүх нэгжгүй хоосон тоо болж хувирахаа болино.
+function sumDataFields(sums, data) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) return;
+    Object.keys(data).forEach(key => {
+        const value = Number(data[key]);
+        // Тоо биш талбар (ж: { repo: "summer-project" }) — нийлбэрт утгагүй, алгасна.
+        if (typeof data[key] !== "number" || !isFinite(value)) return;
+        sums[key] = (Number(sums[key]) || 0) + value;
     });
 }
 

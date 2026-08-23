@@ -77,14 +77,18 @@ function renderCategories() {
         if (!cat) continue;
         const metric = (status && cat.metricId) ? status.metrics[cat.metricId] : null;
 
-        const target = Number(cat.targetValue) || 0;
-        const value  = metric ? Number(metric.last30) || 0 : 0;
+        // Зорилт болон нэгжийн ЦОРЫН ГАНЦ эх сурвалж нь метрикийн бүртгэл
+        // (status.js → METRIC_DEFS). Ангилалд хуулбар хадгалахаа больсон тул
+        // картын тиер ба профайлын оноо ХЭЗЭЭ Ч өөр зорилтоор тооцогдохгүй.
+        // Метрик холбоогүй ангилал л өөрийн targetValue/unit-даа найдна.
+        const target = metric ? Number(metric.target30) || 0 : Number(cat.targetValue) || 0;
+        const value  = metric ? Number(metric.last30)   || 0 : 0;
         const pct    = target > 0 ? Math.min((value / target) * 100, 100) : 0;
         const tier   = tierForPct(target > 0 ? (value / target) * 100 : 0);
 
         const tierColor = TIER_COLORS[tier] || "var(--tier-e)";
         const tierHex   = TIER_HEX[tier]    || "#6b7280";
-        const unit      = cat.unit || (metric ? metric.unit : "");
+        const unit      = metric ? metric.unit : (cat.unit || "");
 
         const card = document.createElement("div");
         card.className = "category-card";
