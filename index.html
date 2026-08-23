@@ -98,11 +98,11 @@
                     <div class="form-row-2">
                         <div>
                             <label for="quest-category">Ангилал:</label>
+                            <!-- Сонголтуудыг renderQuests() → renderQuestCategoryOptions()
+                                 webData.categories-ээс дүүргэнэ. Энд гараар жагсаахаа
+                                 больсон: шинэ ангилал нэмэхэд форм хоцордог байв. -->
                             <select id="quest-category">
                                 <option value="" disabled selected>Сонгох...</option>
-                                <option value="fitness">💪 Фитнес</option>
-                                <option value="learning">📚 Сурлага</option>
-                                <option value="habits">🔁 Зуршил</option>
                             </select>
                         </div>
                         <div>
@@ -125,6 +125,19 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="quest-repeatable"> Давтагдах даалгавар
                         </label>
+
+                        <!-- НОТОЛГООНД ХОЛБОГДСОН ДААЛГАВАР. Эх сурвалж сонговол
+                             биелэлтийг нь хэн ч дардаггүй: сүүлийн 30 хоногийн
+                             бодит тоо зорилтод хүрсэн эсэхээс гарна.
+                             Сонголтуудыг renderQuestMetricOptions() METRIC_DEFS-ээс барина. -->
+                        <label for="quest-metric">Нотолгооны эх сурвалж:</label>
+                        <select id="quest-metric">
+                            <option value="">— гараар тэмдэглэх —</option>
+                        </select>
+
+                        <label for="quest-target">30 хоногийн зорилт:</label>
+                        <input type="number" id="quest-target" placeholder="Жнь: 40000" min="1" step="any" autocomplete="off">
+                        <p class="form-hint">Эх сурвалж сонгосон даалгаврыг гараар биелүүлэх боломжгүй — нотолгоо шийднэ.</p>
                     </div>
 
                     <button type="button" class="submit-btn" id="submit-quest-btn">⚡ Идэвхжүүлэх</button>
@@ -164,6 +177,9 @@
                     <div class="stat-box"><label>RANK</label><span id="qm-rank-label"></span></div>
                     <div class="stat-box"><label>АНГИЛАЛ</label><span id="qm-cat" style="font-size:14px;"></span></div>
                 </div>
+                <!-- Нотолгоотой даалгаврын ахиц ба түүнийг үүсгэсэн бичлэгүүд.
+                     Гараар тэмдэглэдэг даалгаварт хоосон үлдэнэ. -->
+                <div id="qm-evidence" class="qm-evidence"></div>
                 <div id="qm-actions" style="display:flex;gap:12px;margin-top:20px;"></div>
             </div>
         </div>
@@ -239,6 +255,22 @@
             <div class="spark-list" id="metric-sparklines"></div>
         </div>
 
+        <!-- Нотолгооны хэлхээ өөрөө эрүүл үү гэдгийг харуулах самбар. Чимээгүй
+             тасарсан эх сурвалж, танигдаагүй event төрөл, нэгжээ сэргээж
+             чадаагүй нэгтгэл — эдгээр нь бүгд статусыг ЧИМЭЭГҮЙ буруу болгодог
+             зүйлс. Өмнө нь зөвхөн console-д л амьдардаг байв. -->
+        <div class="mission-panel" style="margin-top: 32px;">
+            <div class="mission-header">
+                <div class="mission-title">
+                    <span class="pulse-dot"></span>
+                    <h2>EVIDENCE CHAIN // INTEGRITY</h2>
+                </div>
+                <div class="mission-meta" id="integrity-meta">—</div>
+            </div>
+            <div id="integrity-sources" class="integrity-list"></div>
+            <div id="integrity-warnings" class="integrity-warnings"></div>
+        </div>
+
         <div class="status-top-layout" style="margin-top: 32px;">
             <div class="attributes-card">
                 <h3>SYSTEM INSIGHTS & DIRECTIVES</h3>
@@ -307,6 +339,8 @@
                 <span id="modal-skill-active">—</span>
             </div>
         </div>
+        <!-- Дээрх тоонуудыг үүсгэсэн бичлэгүүд — openSkillModal() дүүргэнэ. -->
+        <div id="modal-skill-evidence"></div>
     </div>
 </div>
 

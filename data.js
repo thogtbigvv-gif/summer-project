@@ -112,6 +112,38 @@ function formatDelta(changePct, curr, prev) {
     return `<span style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
 }
 
+// ===================== НОТОЛГООНЫ МӨШГӨЛТ =====================
+// "Энэ тоо хаанаас гарав?" — метрикийн ард зогсох сүүлийн бичлэгүүд.
+// status.js метрик бүрд .recent-ийг гаргалт бүрт шинээр бэлдэж өгдөг.
+//
+// Систем "42,000 kg" гэж хэлэхдээ ТЭР ТООГ ХЭН ҮҮСГЭСНИЙГ зааж чаддаг байх нь
+// "нотолгоонд суурилсан" гэдгийн бодит утга. Заахгүй бол хэрэглэгчийн хувьд
+// энэ ч бас л ялгаагүй зохиосон тоо — итгэх, эс итгэхээс өөр сонголтгүй.
+function provenanceHtml(metric, limit) {
+    const rows = (metric && Array.isArray(metric.recent)) ? metric.recent : [];
+    if (rows.length === 0) {
+        return `<div class="provenance"><div class="connected-empty">нотолгоо алга</div></div>`;
+    }
+
+    const max   = Number(limit) > 0 ? Number(limit) : 6;
+    const shown = rows.slice(0, max);
+    const unit  = metric.unit ? " " + metric.unit : "";
+    // relativeTime() нь bridge.js-д — энэ функц зөвхөн рендерийн үед дуудагддаг
+    // тул тэр үед аль хэдийн ачаалагдсан байна. Болгоомжийн үүднээс хамгаална.
+    const when  = at => (typeof relativeTime === "function" ? relativeTime(at) : null) || "—";
+
+    return `
+        <div class="provenance">
+            <div class="provenance-label">НОТОЛГОО // ЭНЭ ТОО ХААНААС ГАРАВ</div>
+            ${shown.map(row => `
+                <div class="provenance-row">
+                    <span class="provenance-when">${escapeHTML(when(row.at))}</span>
+                    <span class="provenance-detail">${escapeHTML(row.detail || "—")}</span>
+                    <span class="provenance-amount">+${Number(row.amount).toLocaleString()}${escapeHTML(unit)}</span>
+                </div>`).join("")}
+        </div>`;
+}
+
 function showToast(message, variant, color) {
     const container = document.getElementById("toast-container");
     if(!container) return;

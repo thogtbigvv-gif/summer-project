@@ -79,6 +79,7 @@ const EXPORTS = [
   "rollUpEvidence", "pruneEvidence", "getIntegrationState", "syncAll",
   "renderCategories", "renderQuests", "renderSkills", "renderMissionTasks",
   "renderConnectedApps", "AnalyticsEngine", "questProgress", "SKILL_CAT",
+  "questsWithProgress", "connectedEvidenceHtml", "provenanceHtml",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"
 ];
 

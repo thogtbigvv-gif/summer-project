@@ -497,9 +497,20 @@ function connectedStatusHtml(status) {
 }
 
 // Сүүлийн CONNECTED_LOG_SHOWN бичлэг, шинийг нь дээр нь.
-function connectedEvidenceHtml(evidence) {
+//
+// ТҮҮХИЙ бичлэг хоосон байх нь "идэвхгүй" гэсэн үг БИШ: 180 хоногийн дараа
+// бичлэгүүд нэгтгэгдэж хувин болдог. Өмнө нь энэ карт тэр ялгааг мэдэлгүй
+// "no activity yet" гэж бичдэг байсан — олон жилийн түүхтэй эх сурвалжийг
+// хоосон мэт харуулна гэсэн үг. Одоо нэгтгэгдсэн тоог нь шулуухан хэлнэ.
+function connectedEvidenceHtml(evidence, rolledCount) {
     const entries = Array.isArray(evidence) ? evidence : [];
-    if (entries.length === 0) return `<div class="connected-empty">no activity yet</div>`;
+    const rolled  = Number(rolledCount) || 0;
+
+    if (entries.length === 0) {
+        return rolled > 0
+            ? `<div class="connected-empty">${rolled.toLocaleString()} бичлэг нэгтгэсэн түүхэд шилжсэн</div>`
+            : `<div class="connected-empty">no activity yet</div>`;
+    }
 
     return entries.slice(-CONNECTED_LOG_SHOWN).reverse().map(entry => {
         const when   = relativeTime(entry && entry.at) || "unknown time";
@@ -507,6 +518,21 @@ function connectedEvidenceHtml(evidence) {
         const detail = (entry && (entry.detail || entry.type)) || "—";
         return `<div class="connected-log-entry">${escapeHTML(when)} · ${escapeHTML(detail)}</div>`;
     }).join("");
+}
+
+// Нотолгооны хэмжээ — түүхий болон нэгтгэсэн хоёрын НИЙЛБЭР, дээр нь сүүлийн
+// 30 хоногийнх. Статусын давхарга аль хэдийн тоолсон байдаг тул энд дахин
+// тоолохгүй: хоёр газар хоёр өөр тоо гаргах эрсдэлийг ингэж хаана.
+function connectedVolumeHtml(source) {
+    if (!source) return "";
+    const total  = Number(source.evidenceCount) || 0;
+    const last30 = Number(source.last30Count)   || 0;
+    if (total === 0) return "";
+    return `
+        <div class="connected-volume">
+            <span>${total.toLocaleString()} нотолгоо</span>
+            <span>${last30.toLocaleString()} · сүүлийн 30 хоног</span>
+        </div>`;
 }
 
 function renderConnectedApps() {
@@ -517,24 +543,35 @@ function renderConnectedApps() {
     const integrations = (webData && webData.integrations && typeof webData.integrations === "object")
         ? webData.integrations
         : {};
+    const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const sources = (status && status.sources) ? status.sources : {};
 
-    BRIDGE_SOURCES.forEach(source => {
-        const entry = integrations[source.app];
+    // Тохируулгад бичигдсэн эх сурвалж бүр, МӨН датад л байгаа нь ч. status.js
+    // яг ингэж жагсаадаг: BRIDGE_SOURCES-оос хасагдсан апп нотолгоогоо
+    // хадгалсаар байхад самбараас чимээгүй алга болох ёсгүй.
+    const apps = BRIDGE_SOURCES.map(s => s.app);
+    Object.keys(integrations).forEach(app => { if (apps.indexOf(app) === -1) apps.push(app); });
+
+    apps.forEach(app => {
+        const source = BRIDGE_SOURCES.find(s => s && s.app === app) || null;
+        const entry  = integrations[app];
+        const stats  = sources[app] || null;
+        const label  = (source && source.label) || (stats && stats.label) || app;
 
         const card = document.createElement("div");
         card.className = "category-card connected-card";
-        card.dataset.app = source.app;
+        card.dataset.app = app;
 
         // Картын өнцгийн туяа — эх сурвалжийн өөрийнх нь өнгө
         // (.category-card::before --tier-color-г ашигладаг).
-        if (source.hex) card.style.setProperty("--tier-color", source.hex);
+        if (source && source.hex) card.style.setProperty("--tier-color", source.hex);
 
         // lastSyncedAt тавигдсан гэдэг нь фийдийг нь наад зах нь нэг удаа
         // амжилттай уншсан гэсэн үг. Хэзээ ч нийтлээгүй бол — алдаа биш, чимээгүй мөр.
         if (!entry || !entry.lastSyncedAt) {
             card.innerHTML = `
                 <div class="card-head">
-                    <h3>${escapeHTML(source.label)}</h3>
+                    <h3>${escapeHTML(label)}</h3>
                 </div>
                 <div class="connected-empty">not connected yet</div>`;
             container.appendChild(card);
@@ -547,11 +584,12 @@ function renderConnectedApps() {
 
         card.innerHTML = `
             <div class="card-head">
-                <h3>${escapeHTML(source.label)}</h3>
+                <h3>${escapeHTML(label)}</h3>
                 <div class="connected-time">${escapeHTML(relativeTime(updatedAt) || "no updates yet")}</div>
             </div>
+            ${connectedVolumeHtml(stats)}
             <div class="connected-status">${connectedStatusHtml(entry.status)}</div>
-            <div class="connected-log">${connectedEvidenceHtml(entry.evidence)}</div>`;
+            <div class="connected-log">${connectedEvidenceHtml(entry.evidence, stats && stats.rolledCount)}</div>`;
 
         container.appendChild(card);
     });

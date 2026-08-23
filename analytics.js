@@ -123,9 +123,104 @@ const AnalyticsEngine = {
         this.renderWeeklyStats(status);
         this.renderHeatmap(status);
         this.renderMetricSparklines(status);
+        this.renderIntegrity(status);
         this.renderCategoryGrowth(status);
         this.generateInsights(status);
         this.renderSkillTable(status);
+    },
+
+    // ---- НОТОЛГООНЫ ХЭЛХЭЭНИЙ БҮРЭН БҮТЭН БАЙДАЛ ----
+    // Дээрх бүх самбар "нотолгоо зөв ирж байгаа" гэдэгт найдана. Тэр таамаг
+    // худал болвол тоонууд эвдрэхгүй — ЧИМЭЭГҮЙ БУУРНА, тэгээд хэрэглэгч
+    // өөрийгөө буруутгана. Энэ самбар яг тэр ялгааг харуулах үүрэгтэй:
+    // эх сурвалж тус бүр хэзээ юу мэдээлсэн, юу нь тасарсан бэ.
+
+    integrityRows(status) {
+        const sources = (status && status.sources && typeof status.sources === "object")
+            ? status.sources : {};
+        return Object.keys(sources).map(app => {
+            const source = sources[app] || {};
+            const updatedAt = Number(source.updatedAt) || 0;
+            return {
+                app,
+                label:    source.label || app,
+                updatedAt,
+                total:    Number(source.evidenceCount) || 0,
+                raw:      Number(source.rawCount)      || 0,
+                rolled:   Number(source.rolledCount)   || 0,
+                last30:   Number(source.last30Count)   || 0,
+                // Хэзээ ч мэдээлж үзээгүй эх сурвалж нь "тасарсан" биш —
+                // зүгээр л холбогдоогүй. Хоёрыг ялгана.
+                state:    updatedAt <= 0 ? "silent" : (source.stale ? "stale" : "live")
+            };
+        }).sort((a, b) => b.updatedAt - a.updatedAt);
+    },
+
+    INTEGRITY_STATE_TEXT: { live: "LIVE", stale: "ТАСАРСАН", silent: "ХОЛБОГДООГҮЙ" },
+
+    renderIntegrity(status) {
+        const list = document.getElementById("integrity-sources");
+        const warn = document.getElementById("integrity-warnings");
+        const meta = document.getElementById("integrity-meta");
+        if (!list) return;
+
+        const rows = this.integrityRows(status);
+
+        if (meta) {
+            const live = rows.filter(r => r.state === "live").length;
+            meta.textContent = rows.length === 0
+                ? "ЭХ СУРВАЛЖ АЛГА"
+                : `${live} / ${rows.length} ЭХ СУРВАЛЖ ИДЭВХТЭЙ`;
+        }
+
+        list.innerHTML = rows.length === 0
+            ? EMPTY_HTML("эх сурвалж бүртгэгдээгүй байна")
+            : rows.map(row => `
+                <div class="integrity-row" data-state="${row.state}">
+                    <span class="integrity-name">${escapeHTML(row.label)}</span>
+                    <span class="integrity-state">${this.INTEGRITY_STATE_TEXT[row.state] || row.state}</span>
+                    <span class="integrity-when">${escapeHTML(
+                        (typeof relativeTime === "function" ? relativeTime(row.updatedAt) : null) || "—")}</span>
+                    <span class="integrity-count">
+                        ${row.total.toLocaleString()} нотолгоо
+                        <small>${row.rolled > 0 ? `${row.raw.toLocaleString()} түүхий · ${row.rolled.toLocaleString()} нэгтгэсэн` : "бүгд түүхий"}</small>
+                    </span>
+                    <span class="integrity-30">${row.last30.toLocaleString()}<small>30 хоног</small></span>
+                </div>`).join("");
+
+        if (!warn) return;
+
+        // Хэлхээ тасарсан ХОЁР шалтгаан. Хоёулаа статусыг чимээгүй буруу болгоно.
+        const overall  = (status && status.overall) ? status.overall : {};
+        const unmapped = Array.isArray(overall.unmappedTypes) ? overall.unmappedTypes : [];
+        const gaps     = Array.isArray(overall.rollupGaps)    ? overall.rollupGaps    : [];
+
+        const blocks = [];
+        if (unmapped.length > 0) {
+            blocks.push(`
+                <div class="integrity-warning">
+                    <strong>Танигдаагүй event төрөл</strong>
+                    <p>Эдгээрийг ямар метрик болгохыг status.js-ийн METRICS бүртгэл мэдэхгүй тул
+                       статуст ОГТ ороогүй: ${escapeHTML(unmapped.join(", "))}</p>
+                </div>`);
+        }
+        if (gaps.length > 0) {
+            const byMetric = {};
+            gaps.forEach(gap => {
+                const key = gap.metric || "?";
+                byMetric[key] = (byMetric[key] || 0) + (Number(gap.count) || 0);
+            });
+            const detail = Object.keys(byMetric)
+                .map(id => `${id} (${byMetric[id].toLocaleString()})`).join(", ");
+            blocks.push(`
+                <div class="integrity-warning">
+                    <strong>Нэгжээ алдсан нэгтгэл</strong>
+                    <p>dataSums нэвтрэхээс өмнө нэгтгэгдсэн хувингуудаас бодит нэгжийг сэргээх
+                       боломжгүй — тэдгээр бичлэг нийт дүнд ороогүй: ${escapeHTML(detail)}</p>
+                </div>`);
+        }
+
+        warn.innerHTML = blocks.join("");
     },
 
     // ---- 1. Дээд мөрийн 4 карт ----
@@ -314,6 +409,21 @@ const AnalyticsEngine = {
             : [];
         if (unmapped.length > 0) {
             insights.push({ type: "warning", text: `Танигдаагүй event төрөл: ${unmapped.join(", ")}` });
+        }
+
+        // Нэгжээ сэргээж чадаагүй нэгтгэл. status.js эдгээрийг ЗОРИУД бүртгэдэг
+        // ("чимээгүй алга болохгүй" гэж) — гэтэл өмнө нь тэр жагсаалтыг хаана ч
+        // харуулдаггүй байсан тул амлалт нь биелдэггүй байв.
+        const gaps = (status.overall && Array.isArray(status.overall.rollupGaps))
+            ? status.overall.rollupGaps
+            : [];
+        if (gaps.length > 0) {
+            const events  = gaps.reduce((sum, gap) => sum + (Number(gap.count) || 0), 0);
+            const metrics = Array.from(new Set(gaps.map(gap => gap.metric))).join(", ");
+            insights.push({
+                type: "warning",
+                text: `${events.toLocaleString()} нэгтгэсэн бичлэгээс нэгжийг сэргээж чадсангүй (${metrics}) — нийт дүнд ороогүй.`
+            });
         }
 
         return insights;
