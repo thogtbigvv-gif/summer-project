@@ -31,18 +31,27 @@ const METRICS = {
     "gym:workout.partial":   { metric: "gym.volume",   amount: e => num(e.data && e.data.volumeKg), fromRollup: b => fromDataSum(b, "volumeKg") },
     "bigu:review.session":   { metric: "bigu.reviews", amount: e => num(e.value),                   fromRollup: b => num(b.valueSum) },
     "bigu:lesson.quiz":      { metric: "bigu.lessons", amount: () => 1,                             fromRollup: b => num(b.count) },
-    "github:commit.pushed":  { metric: "github.commits", amount: () => 1,                            fromRollup: b => num(b.count) }
+    "github:commit.pushed":  { metric: "github.commits", amount: () => 1,                            fromRollup: b => num(b.count) },
+
+    // ӨӨРӨӨ МЭДЭЭЛСЭН. Гадны апп биш, хэрэглэгч өөрөө өдрийн даалгавраа
+    // тэмдэглэхэд үүсдэг. Тусдаа метрик, тусдаа атрибут — БОДИТ хэмжигдсэн
+    // BODY/MIND/CREATION-ыг батлагдаагүй тоогоор бохирдуулахгүйн тулд.
+    "self:checkin.done":     { metric: "self.checkins",  amount: () => 1,                            fromRollup: b => num(b.count) }
 };
 
 const METRIC_DEFS = {
     "gym.volume":   { label: "Volume lifted",    unit: "kg",      attr: "BODY", target30: 40000 },
     "bigu.reviews": { label: "Cards reviewed",   unit: "cards",   attr: "MIND", target30: 900   },
     "bigu.lessons": { label: "Lessons finished", unit: "lessons", attr: "MIND", target30: 20    },
-    "github.commits": { label: "Commits", unit: "commits", attr: "CREATION", target30: 60 }
+    "github.commits": { label: "Commits", unit: "commits", attr: "CREATION", target30: 60 },
+    "self.checkins":  { label: "Өөрөө бүртгэсэн", unit: "удаа", attr: "DISCIPLINE", target30: 90 }
 };
 
 // Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0) — дэлгэц дээр нүх үлдээхгүй.
-const ATTRIBUTE_ORDER = ["BODY", "MIND", "CREATION"];
+// DISCIPLINE нь ӨӨРӨӨ МЭДЭЭЛСЭН тэнхлэг: түүнийг гадны апп батлаагүй. Тусдаа
+// атрибут байх нь зориуд — сахилга бат нь бодит хэмжилт биш гэдгийг дэлгэц
+// дээр ялгаж харуулна. Дарж хуурч болох ганц тоо энэ бөгөөд тэр нь ил байна.
+const ATTRIBUTE_ORDER = ["BODY", "MIND", "CREATION", "DISCIPLINE"];
 
 const SERIES_DAYS = 365;      // series-ийн урт: сүүлийн жил, тэгээр дүүргэсэн
 const RECENT_EVIDENCE = 12;   // метрик бүрд хадгалах "энэ тоо хаанаас гарав" мөрийн тоо
@@ -357,13 +366,19 @@ function buildStatus(generatedAt) {
             updatedAt,
             // Тухайн апп ХЭЗЭЭ НЭГЭН ЦАГТ мэдээлсэн бүхэн: түүхий + нэгтгэсэн.
             // Нэгтгэснийг хасвал тоо цаг хугацаанд агшиж, түүхийг худал харуулна.
+            // Өөрөө мэдээлсэн эх сурвалж нь "чимээгүй тасарсан үйлдвэрлэгч" биш —
+            // хэрэглэгч дараагүй л бол чимээгүй байх нь хэвийн. Тиймээс stale гэж
+            // тэмдэглэхгүй, харин өөрийнх нь төрлийг ил гаргана.
+            selfReported: !!(source && source.kind === "self"),
             evidenceCount: evidence.length + rolledCount,
             // UI "идэвхгүй" гэж худал хэлэхгүйн тулд хоёуланг нь ил гаргана:
             // түүхий бичлэг нь нэгтгэгдээд хоосорсон ч түүх алга болоогүй.
             rawCount:    evidence.length,
             rolledCount,
             last30Count,
-            stale: !(updatedAt > 0) || (generatedAt - updatedAt) > staleMs
+            stale: (source && source.kind === "self")
+                ? false
+                : (!(updatedAt > 0) || (generatedAt - updatedAt) > staleMs)
         };
         totalEvents += appEvents;
     });

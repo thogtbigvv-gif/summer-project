@@ -1274,3 +1274,49 @@ html { scroll-behavior: smooth; }
 .heatmap-legend .heat-box:hover { transform: none; border-color: rgba(255,255,255,0.03); }
 .heatmap-legend .heat-box::after { content: none; }
 .heatmap-legend small { margin-right: 8px; }
+
+/* ===================== ӨДРИЙН ДААЛГАВРЫН НОТОЛГОО =====================
+   Тэмдэглэгээний ард юу зогсож байгааг ялгаж харуулна: аппын баталсан нь
+   ногоон, өөрөө мэдээлсэн нь алтан. Хоёр өөр жинтэй тоог нүдээр андуурах
+   ёсгүй — энэ ялгаа бол самбарын үнэнч байдлын үндэс. */
+
+.mission-task { position: relative; }
+
+.task-proof {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    margin-left: auto;
+    padding-left: 16px;
+    flex-shrink: 0;
+}
+
+.task-proof.proven  { color: var(--accent); }
+.task-proof.self    { color: var(--tier-s); }
+.task-proof.waiting { color: var(--text-muted); opacity: 0.55; }
+
+/* Аппаар батлагдсан даалгаварт дарах юм байхгүй — заагч нь түүнийг хэлнэ. */
+.mission-task.proven { cursor: default; }
+.mission-task.proven .task-box {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+/* Өөрөө мэдээлсэн нь биелсэн ч гэсэн бүдгэрэхгүй: буцааж авч болно гэдгийг
+   харуулахын тулд бүтэн харагдана. */
+.mission-task.self-reported { opacity: 1; }
+.mission-task.self-reported .task-box {
+    border-color: var(--tier-s);
+    background: rgba(234, 179, 8, 0.12);
+}
+
+@media (max-width: 700px) {
+    .task-proof {
+        margin-left: 0;
+        padding-left: 0;
+        flex-basis: 100%;
+        white-space: normal;
+        margin-top: 6px;
+    }
+}

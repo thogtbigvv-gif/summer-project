@@ -28,11 +28,19 @@
 
 // hex нь зөвхөн картын өнгө. Гүүр ур чадвар, ангилалын талаар ЮУ Ч МЭДЭХГҮЙ —
 // нотолгоо ямар метрик болохыг status.js-ийн METRICS бүртгэл шийднэ.
+//   "self"  — ГАДНЫ АПП БИШ. Хэрэглэгч өөрөө өдрийн даалгавраа тэмдэглэхэд
+//             энэ апп өөрөө нотолгоо бичдэг. Уншиж авах фийд байхгүй тул
+//             syncAll() түүнийг алгасна. Тусад нь эх сурвалж болгосон нь
+//             ЗОРИУД: "энэ тоог хэн хэлсэн бэ" гэдэг дэлгэц дээр ил байх ёстой.
 const BRIDGE_SOURCES = [
     { app: "bigu",   kind: "local", key: "bigu:bridge", label: "Bigu",   hex: "#0ea5e9" },
     { app: "gym",    kind: "local", key: "gym:bridge",  label: "Gym",    hex: "#ef4444" },
-    { app: "github", kind: "fetch", url: "data/github.json", label: "GitHub", hex: "#8b5cf6" }
+    { app: "github", kind: "fetch", url: "data/github.json", label: "GitHub", hex: "#8b5cf6" },
+    { app: "self",   kind: "self",  label: "Гар бүртгэл", hex: "#eab308" }
 ];
+
+// Өөрөө мэдээлсэн эх сурвалжийн нэр — олон газар ашиглагдана.
+const SELF_APP = "self";
 
 // Commit хийгдсэн файл нь үйлдвэрлэгчийн 50 event-ийн буфертэй холбоогүй бөгөөд
 // эхний ажиллагаа нь бүх түүхийг нөхөж авчирна — тиймээс хязгаар нь өндөр.
@@ -292,6 +300,74 @@ function pruneEvidence(state) {
     }
 }
 
+// ===================== ӨӨРӨӨ МЭДЭЭЛСЭН НОТОЛГОО =====================
+// Систем дэх ЦОРЫН ГАНЦ газар бөгөөд нотолгоог гадны апп биш, хэрэглэгч өөрөө
+// үүсгэдэг. Тиймээс энд хоёр зүйл чухал:
+//
+//   1) Бичлэг нь тусдаа "self" эх сурвалжид, тусдаа метрикт (self.checkins),
+//      тусдаа атрибутад (DISCIPLINE) орно. Аппын хэмжсэн BODY/MIND/CREATION-д
+//      ХЭЗЭЭ Ч холилдохгүй — батлагдсан, батлагдаагүй хоёр ялгаатай хэвээр.
+//
+//   2) id нь тодорхойлогдсон: "self:<taskId>:<өдөр>". Тиймээс нэг өдөр нэг
+//      даалгавар яг НЭГ УДАА тоологдоно, дахин дарахад давхардахгүй, буцааж
+//      авахад яг тэр бичлэгийг олж устгана.
+
+function selfCheckinId(taskId, dayKey) {
+    return `${SELF_APP}:${taskId}:${dayKey}`;
+}
+
+// Тухайн өдөр аль даалгаврууд өөрөө тэмдэглэгдсэн бэ — рендерийн үед НЭГ УДАА
+// барьж, даалгавар бүрээр нотолгоо гүйлгэхээс сэргийлнэ.
+function selfCheckinIds() {
+    const state    = (webData && webData.integrations) ? webData.integrations[SELF_APP] : null;
+    const evidence = (state && Array.isArray(state.evidence)) ? state.evidence : [];
+    const ids = new Set();
+    evidence.forEach(rec => { if (rec && rec.id) ids.add(rec.id); });
+    return ids;
+}
+
+// Өөрөө мэдээлсэн бичлэг НЭМНЭ. Аль хэдийн байвал юу ч хийхгүй (давхардахгүй).
+// Буцаах утга: үнэхээр бичсэн эсэх.
+function recordSelfCheckin(taskId, taskName, dayKey) {
+    const id    = selfCheckinId(taskId, dayKey);
+    const state = getIntegrationState(SELF_APP);
+    if (state.evidence.some(rec => rec && rec.id === id)) return false;
+
+    const at = Date.now();
+    state.evidence.push({
+        id,
+        at,
+        type:   "checkin.done",
+        value:  1,
+        // detail нь мөшгөлтийн жагсаалтад шууд харагдана — тиймээс даалгаврын
+        // нэрийг тэр чигээр нь хадгална.
+        detail: typeof taskName === "string" ? taskName : String(taskId),
+        data:   null
+    });
+
+    state.status       = { source: "гар бүртгэл" };
+    state.updatedAt    = at;
+    state.lastSyncedAt = at;
+    pruneEvidence(state);
+    return true;
+}
+
+// Буцааж авна. Хэрэглэгч андуурч дарсан бол тоо нь үлдэх ёсгүй — өөрөө
+// мэдээлсэн нотолгоо бол өөрөө буцаах эрхтэй. (Аппын нотолгоог УСТГАХ арга
+// байхгүй, тэр нь зөв: түүнийг бид хэлээгүй.)
+function removeSelfCheckin(taskId, dayKey) {
+    const state = (webData && webData.integrations) ? webData.integrations[SELF_APP] : null;
+    if (!state || !Array.isArray(state.evidence)) return false;
+
+    const id     = selfCheckinId(taskId, dayKey);
+    const before = state.evidence.length;
+    state.evidence = state.evidence.filter(rec => !(rec && rec.id === id));
+    if (state.evidence.length === before) return false;
+
+    state.updatedAt = Date.now();
+    return true;
+}
+
 // ===================== SYNC =====================
 
 // Хоёр синк зэрэг явбал нэг event хоёр удаа бичигдэж мэднэ (seen олонлог нь
@@ -315,6 +391,11 @@ async function syncAll() {
         const parts = [];
 
         for (const source of BRIDGE_SOURCES) {
+            // Өөрөө мэдээлсэн эх сурвалжид уншиж авах фийд БАЙХГҮЙ — түүний
+            // нотолгоог энэ апп өөрөө бичдэг (recordSelfCheckin). Синк түүнд
+            // хүрвэл шинээр бичсэн бүхнийг дарж бичих байсан.
+            if (source.kind === "self") continue;
+
             // Татдаг эх сурвалжийг хүлээнэ. Аль нь ч алдаа шидэхгүй — үхсэн нэг
             // эх сурвалж бусдынхаа синкийг ЗОГСООХ ЁСГҮЙ.
             const feed = source.kind === "fetch"
@@ -394,7 +475,7 @@ window.addEventListener("storage", (e) => {
     // Өөрсдийн хадгалалт болон хамаагүй түлхүүрүүдээс болж синк ажиллуулахгүй.
     // fetch төрлийн эх сурвалжид key БАЙХГҮЙ — тэднийг харьцуулалтаас ил гаргана,
     // эс тэгвээс undefined === undefined гэсэн санамсаргүй таарал үүсэж мэднэ.
-    if (e && e.key && !BRIDGE_SOURCES.some(s => s.kind !== "fetch" && s.key === e.key)) return;
+    if (e && e.key && !BRIDGE_SOURCES.some(s => s.kind === "local" && s.key === e.key)) return;
     syncAll();
 });
 
@@ -569,11 +650,15 @@ function renderConnectedApps() {
         // lastSyncedAt тавигдсан гэдэг нь фийдийг нь наад зах нь нэг удаа
         // амжилттай уншсан гэсэн үг. Хэзээ ч нийтлээгүй бол — алдаа биш, чимээгүй мөр.
         if (!entry || !entry.lastSyncedAt) {
+            // Гар бүртгэл "холбогдох" зүйл биш — хэрэглэгч эхлээгүй л байна.
+            const empty = (source && source.kind === "self")
+                ? "бүртгэл эхлээгүй"
+                : "not connected yet";
             card.innerHTML = `
                 <div class="card-head">
                     <h3>${escapeHTML(label)}</h3>
                 </div>
-                <div class="connected-empty">not connected yet</div>`;
+                <div class="connected-empty">${escapeHTML(empty)}</div>`;
             container.appendChild(card);
             return;
         }

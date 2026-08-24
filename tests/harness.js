@@ -81,6 +81,9 @@ const EXPORTS = [
   "renderCategories", "renderQuests", "renderSkills", "renderMissionTasks",
   "renderConnectedApps", "AnalyticsEngine", "questProgress", "SKILL_CAT",
   "questsWithProgress", "connectedEvidenceHtml", "provenanceHtml",
+  "missionTaskState", "missionTasksWithState", "toggleMissionTask",
+  "recordSelfCheckin", "removeSelfCheckin", "selfCheckinId", "selfCheckinIds",
+  "SELF_APP", "ATTR_HEX",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"
 ];
 

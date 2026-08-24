@@ -143,7 +143,9 @@ await t("удаан чимээгүй байсан эх сурвалж — stale"
 
 await t("хэзээ ч мэдээлээгүй нь ТАСАРСАН биш, ХОЛБОГДООГҮЙ", () => {
     const a = statusApi({});
-    const rows = a.AnalyticsEngine.integrityRows(a.Status.get());
+    // Гар бүртгэл нь гадны үйлдвэрлэгч биш — түүнд "холбогдох" гэсэн ойлголт
+    // байхгүй тул өөрийн гэсэн төлөвтэй. Энд гадаад эх сурвалжуудыг л шалгана.
+    const rows = a.AnalyticsEngine.integrityRows(a.Status.get()).filter(r => r.state !== "self");
     assert.ok(rows.length >= 3, "тохируулгын эх сурвалжууд жагсаагүй");
     rows.forEach(r => assert.strictEqual(r.state, "silent", r.app + " буруу төлөвтэй"));
 });

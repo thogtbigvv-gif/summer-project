@@ -16,7 +16,10 @@ const defaultWebData = {
         fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume"     },
         learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews"   },
         habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons"   },
-        creation: { name: "Бүтээл & Код",     metricId: "github.commits" }
+        creation: { name: "Бүтээл & Код",     metricId: "github.commits" },
+        // Өөрөө тэмдэглэсэн өдрийн даалгаврууд. Бусад ангиллаас ялгаатай нь
+        // үүнийг гадны апп батлаагүй — тиймээс тусдаа зогсоно.
+        discipline: { name: "Сахилга бат",    metricId: "self.checkins"  }
     },
     // Даалгавар бол зорилгын жагсаалт. rank нь зөвхөн ЧУХЛЫН ЗЭРЭГ — шагнал биш.
     quests: [
@@ -31,12 +34,20 @@ const defaultWebData = {
         { id: 103, name: "Swimming",          category: "physical",   metricId: null },
         { id: 104, name: "Gym Training",      category: "physical",   metricId: "gym.volume" }
     ],
-    // Өдрийн жагсаалт — гараар тэмдэглэдэг, статуст ямар ч нөлөөгүй. Шагнал
-    // байхгүй: XP гэж юм системд алга, тиймээс дүр эсгэхээ болив.
+    // ӨДРИЙН ЖАГСААЛТ. Даалгавар бүр metricId зарлаж болно:
+    //
+    //   Тэр метрикт ӨНӨӨДӨР бодит нотолгоо ирсэн бол даалгавар ӨӨРӨӨ
+    //   тэмдэглэгдэнэ — дарах юм байхгүй, аппын хэлсэн нь хангалттай.
+    //
+    //   Ирээгүй бол (эсвэл metricId огт байхгүй бол) дарж болно. Дарахад
+    //   "өөрөө мэдээлсэн" нотолгоо үүсэж, self.checkins метрикт орно.
+    //
+    // Ингэснээр өдрийн даалгавар анх удаа СИСТЕМД ХОЛБОГДОВ: өмнө нь тэр
+    // зөвхөн 0/3 гэсэн тоолуурыг хөдөлгөдөг, диаграмд ямар ч нөлөөгүй байв.
     missionTasks: [
-        { id: "m1", name: "Drink 2L Water",          completed: false, completedDate: null },
-        { id: "m2", name: "Japanese Study (30 min)", completed: false, completedDate: null },
-        { id: "m3", name: "Workout (45 min)",        completed: false, completedDate: null }
+        { id: "m1", name: "Drink 2L Water",          metricId: null,           completed: false, completedDate: null },
+        { id: "m2", name: "Japanese Study (30 min)", metricId: "bigu.reviews", completed: false, completedDate: null },
+        { id: "m3", name: "Workout (45 min)",        metricId: "gym.volume",   completed: false, completedDate: null }
     ],
     // Холбогдсон аппуудын синк төлөв (зөвхөн унших гүүр). Апп тус бүрд:
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
@@ -52,7 +63,9 @@ const TIER_COLORS = { E: "var(--tier-e)", D: "var(--tier-d)", C: "var(--tier-c)"
 const TIER_HEX    = { E: "#6b7280", D: "#0ea5e9", C: "#10b981", B: "#8b5cf6", A: "#f97316", S: "#eab308" };
 
 // Атрибутын өнгө — профайлын багана, радар, спарклайн гурав ижил өнгө хэрэглэнэ.
-const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981" };
+// DISCIPLINE нь өөрөө мэдээлсэн тэнхлэг — алтан өнгө нь "батлагдаагүй" гэдгийг
+// нүдээр ялгуулна (бусад гурав бол аппын хэмжсэн бодит тоо).
+const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981", DISCIPLINE: "#eab308" };
 
 const SKILL_CAT = {
     language:   { color: "var(--skill-lang)", hex: "#0ea5e9", label: "Хэлний мэдлэг" },
