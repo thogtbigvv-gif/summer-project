@@ -179,6 +179,11 @@ function openSkillModal(skillId) {
     document.getElementById("modal-skill-active").textContent =
         metric ? `${metric.activeDays30}/30` : "—";
 
+    // Дээрх дөрвөн тоо хаанаас гарсныг ил гаргана. Ур чадвар "42,000 kg" гэж
+    // хэлээд зогсохгүй, ямар бичлэгүүд түүнийг үүсгэснийг зааж өгнө.
+    const evidenceEl = document.getElementById("modal-skill-evidence");
+    if (evidenceEl) evidenceEl.innerHTML = metric ? provenanceHtml(metric, 8) : "";
+
     document.getElementById("skill-modal").classList.add("active");
 }
 

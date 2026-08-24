@@ -2,11 +2,21 @@
 
 const defaultWebData = {
     // Ангилал бүр НЭГ метрикт холбогдоно. Ахиц нь тэр метрикийн сүүлийн 30 хоног
-    // vs targetValue — бодит нэгжээр. Тиер, XP гэсэн хадгалагдах тоо БАЙХГҮЙ.
+    // vs зорилт — бодит нэгжээр. Тиер, XP гэсэн хадгалагдах тоо БАЙХГҮЙ.
+    //
+    // ЗОРИЛТ БОЛОН НЭГЖИЙГ ЭНД ХАДГАЛАХГҮЙ. Тэдгээр нь status.js-ийн METRIC_DEFS-д
+    // нэг л удаа бичигдэнэ. Өмнө нь энд targetValue/unit гэсэн ХУУЛБАР сууж
+    // байсан: картын тиер тэр хуулбараас, профайлын оноо METRIC_DEFS-ээс
+    // тооцогдож, хоёр тоо ЧИМЭЭГҮЙ ЗӨРӨХ зам нээлттэй байв. Одоо метрик холбоотой
+    // ангилалын хувьд бүртгэл л ганцаараа шийднэ.
+    //
+    // Метрик холбоогүй ангилалд (хэрэглэгчийн өөрийн нэмсэн) unit/targetValue
+    // талбарыг ХЭВЭЭР дэмжинэ — тэдэнд бүртгэл гэж байхгүй.
     categories: {
-        fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume",   unit: "kg",      targetValue: 40000 },
-        learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews", unit: "cards",   targetValue: 900   },
-        habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons", unit: "lessons", targetValue: 20    }
+        fitness:  { name: "Спорт & Фитнес",   metricId: "gym.volume"     },
+        learning: { name: "Хөгжил & Сурлага", metricId: "bigu.reviews"   },
+        habits:   { name: "Зуршил & Дадал",   metricId: "bigu.lessons"   },
+        creation: { name: "Бүтээл & Код",     metricId: "github.commits" }
     },
     // Даалгавар бол зорилгын жагсаалт. rank нь зөвхөн ЧУХЛЫН ЗЭРЭГ — шагнал биш.
     quests: [
@@ -102,6 +112,38 @@ function formatDelta(changePct, curr, prev) {
     return `<span style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
 }
 
+// ===================== НОТОЛГООНЫ МӨШГӨЛТ =====================
+// "Энэ тоо хаанаас гарав?" — метрикийн ард зогсох сүүлийн бичлэгүүд.
+// status.js метрик бүрд .recent-ийг гаргалт бүрт шинээр бэлдэж өгдөг.
+//
+// Систем "42,000 kg" гэж хэлэхдээ ТЭР ТООГ ХЭН ҮҮСГЭСНИЙГ зааж чаддаг байх нь
+// "нотолгоонд суурилсан" гэдгийн бодит утга. Заахгүй бол хэрэглэгчийн хувьд
+// энэ ч бас л ялгаагүй зохиосон тоо — итгэх, эс итгэхээс өөр сонголтгүй.
+function provenanceHtml(metric, limit) {
+    const rows = (metric && Array.isArray(metric.recent)) ? metric.recent : [];
+    if (rows.length === 0) {
+        return `<div class="provenance"><div class="connected-empty">нотолгоо алга</div></div>`;
+    }
+
+    const max   = Number(limit) > 0 ? Number(limit) : 6;
+    const shown = rows.slice(0, max);
+    const unit  = metric.unit ? " " + metric.unit : "";
+    // relativeTime() нь bridge.js-д — энэ функц зөвхөн рендерийн үед дуудагддаг
+    // тул тэр үед аль хэдийн ачаалагдсан байна. Болгоомжийн үүднээс хамгаална.
+    const when  = at => (typeof relativeTime === "function" ? relativeTime(at) : null) || "—";
+
+    return `
+        <div class="provenance">
+            <div class="provenance-label">НОТОЛГОО // ЭНЭ ТОО ХААНААС ГАРАВ</div>
+            ${shown.map(row => `
+                <div class="provenance-row">
+                    <span class="provenance-when">${escapeHTML(when(row.at))}</span>
+                    <span class="provenance-detail">${escapeHTML(row.detail || "—")}</span>
+                    <span class="provenance-amount">+${Number(row.amount).toLocaleString()}${escapeHTML(unit)}</span>
+                </div>`).join("")}
+        </div>`;
+}
+
 function showToast(message, variant, color) {
     const container = document.getElementById("toast-container");
     if(!container) return;
@@ -185,6 +227,14 @@ async function loadWebData() {
                 unit:        (cat && typeof cat.unit === "string") ? cat.unit : "",
                 targetValue: Number(cat && cat.targetValue) || 0
             };
+        });
+
+        // Шинэ АНХДАГЧ ангилал (ж: CREATION-ы "Бүтээл & Код") хуучин хадгалсан
+        // датад байхгүй. Нөхөж нэмэхгүй бол метрик нь бүрэн ажиллаж байхад
+        // Tiers самбар дээр нүх үлдэж, "GitHub тоологдохоо больжээ" мэт харагдана.
+        // Ангилал устгах UI байхгүй тул энэ нөхөлт хэрэглэгчийн сонголтыг дарахгүй.
+        Object.keys(defaultCategories).forEach(key => {
+            if (!webData.categories[key]) webData.categories[key] = defaultCategories[key];
         });
 
         // Хуучин хадгалсан датад "Gym Training" ур чадвар ирэхгүй тул default-оос нөхөж нэмнэ.

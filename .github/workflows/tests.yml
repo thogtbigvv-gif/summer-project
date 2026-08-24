@@ -1,0 +1,21 @@
+name: Tests
+
+# Нотолгооноос тоо гаргах дүрэм өөрчлөгдвөл БҮХ ТҮҮХ дагаж өөрчлөгддөг —
+# алдаа нь чимээгүй бөгөөд хойно нь эргэж баригдахгүй. Тиймээс push бүрд
+# шалгана. Хамаарал байхгүй тул суулгах алхам ч байхгүй.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node tests/run.js

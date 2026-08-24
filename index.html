@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Профайлын Ω-тэй ижил тэмдэг. Гадаад файл биш — өөр нэг сүлжээний дуудлага,
+     өөр нэг 404-ийн эх үүсвэр байх шаардлагагүй. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23030712'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='20' font-weight='700' fill='%2310b981' text-anchor='middle'%3E%CE%A9%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -62,6 +65,10 @@
                         <p>Сүүлийн 30 хоногийн бодит зорилтод хүрсэн хувь</p>
                     </div>
                 </div>
+                <!-- Профайлын үндэс: энэ хүн хэдэн нотолгоотой, хэзээнээс хойш.
+                     status.overall тэдгээрийг тооцдог байсан ч хаана ч гардаггүй байв. -->
+                <div class="profile-evidence" id="profile-evidence"></div>
+
                 <!-- Оноо бүрийг status.js нотолгооноос гаргана — энд хадгалагдсан тоо байхгүй. -->
                 <div class="level-badge-zone" id="attribute-bars"></div>
             </div>
@@ -98,11 +105,11 @@
                     <div class="form-row-2">
                         <div>
                             <label for="quest-category">Ангилал:</label>
+                            <!-- Сонголтуудыг renderQuests() → renderQuestCategoryOptions()
+                                 webData.categories-ээс дүүргэнэ. Энд гараар жагсаахаа
+                                 больсон: шинэ ангилал нэмэхэд форм хоцордог байв. -->
                             <select id="quest-category">
                                 <option value="" disabled selected>Сонгох...</option>
-                                <option value="fitness">💪 Фитнес</option>
-                                <option value="learning">📚 Сурлага</option>
-                                <option value="habits">🔁 Зуршил</option>
                             </select>
                         </div>
                         <div>
@@ -125,6 +132,19 @@
                         <label class="checkbox-label">
                             <input type="checkbox" id="quest-repeatable"> Давтагдах даалгавар
                         </label>
+
+                        <!-- НОТОЛГООНД ХОЛБОГДСОН ДААЛГАВАР. Эх сурвалж сонговол
+                             биелэлтийг нь хэн ч дардаггүй: сүүлийн 30 хоногийн
+                             бодит тоо зорилтод хүрсэн эсэхээс гарна.
+                             Сонголтуудыг renderQuestMetricOptions() METRIC_DEFS-ээс барина. -->
+                        <label for="quest-metric">Нотолгооны эх сурвалж:</label>
+                        <select id="quest-metric">
+                            <option value="">— гараар тэмдэглэх —</option>
+                        </select>
+
+                        <label for="quest-target">30 хоногийн зорилт:</label>
+                        <input type="number" id="quest-target" placeholder="Жнь: 40000" min="1" step="any" autocomplete="off">
+                        <p class="form-hint">Эх сурвалж сонгосон даалгаврыг гараар биелүүлэх боломжгүй — нотолгоо шийднэ.</p>
                     </div>
 
                     <button type="button" class="submit-btn" id="submit-quest-btn">⚡ Идэвхжүүлэх</button>
@@ -164,6 +184,9 @@
                     <div class="stat-box"><label>RANK</label><span id="qm-rank-label"></span></div>
                     <div class="stat-box"><label>АНГИЛАЛ</label><span id="qm-cat" style="font-size:14px;"></span></div>
                 </div>
+                <!-- Нотолгоотой даалгаврын ахиц ба түүнийг үүсгэсэн бичлэгүүд.
+                     Гараар тэмдэглэдэг даалгаварт хоосон үлдэнэ. -->
+                <div id="qm-evidence" class="qm-evidence"></div>
                 <div id="qm-actions" style="display:flex;gap:12px;margin-top:20px;"></div>
             </div>
         </div>
@@ -226,6 +249,8 @@
                 </div>
             </div>
             <div class="heatmap-container" id="activity-heatmap"></div>
+            <!-- Өнгөний хүч юу гэсэн үг вэ. renderHeatmap() дүүргэнэ. -->
+            <div class="heatmap-legend" id="heatmap-legend"></div>
         </div>
 
         <div class="mission-panel" style="margin-top: 32px;">
@@ -237,6 +262,22 @@
             </div>
             <!-- Мөр бүрийг AnalyticsEngine.renderMetricSparklines() нотолгооноос барина. -->
             <div class="spark-list" id="metric-sparklines"></div>
+        </div>
+
+        <!-- Нотолгооны хэлхээ өөрөө эрүүл үү гэдгийг харуулах самбар. Чимээгүй
+             тасарсан эх сурвалж, танигдаагүй event төрөл, нэгжээ сэргээж
+             чадаагүй нэгтгэл — эдгээр нь бүгд статусыг ЧИМЭЭГҮЙ буруу болгодог
+             зүйлс. Өмнө нь зөвхөн console-д л амьдардаг байв. -->
+        <div class="mission-panel" style="margin-top: 32px;">
+            <div class="mission-header">
+                <div class="mission-title">
+                    <span class="pulse-dot"></span>
+                    <h2>EVIDENCE CHAIN // INTEGRITY</h2>
+                </div>
+                <div class="mission-meta" id="integrity-meta">—</div>
+            </div>
+            <div id="integrity-sources" class="integrity-list"></div>
+            <div id="integrity-warnings" class="integrity-warnings"></div>
         </div>
 
         <div class="status-top-layout" style="margin-top: 32px;">
@@ -307,6 +348,8 @@
                 <span id="modal-skill-active">—</span>
             </div>
         </div>
+        <!-- Дээрх тоонуудыг үүсгэсэн бичлэгүүд — openSkillModal() дүүргэнэ. -->
+        <div id="modal-skill-evidence"></div>
     </div>
 </div>
 

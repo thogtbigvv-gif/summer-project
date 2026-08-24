@@ -22,25 +22,46 @@ document.addEventListener("click", async (e) => {
     }
 });
 
-// Tab Navigation
+// ===================== TAB NAVIGATION =====================
+// Идэвхтэй таб нь ДЭЛГЭЦИЙН тохиргоо, нотолгоо биш — тиймээс webData-д биш,
+// localStorage-д тусад нь суулгана. Синк, RESET, экспорт зэрэгт хамаагүй.
+const ACTIVE_TAB_KEY = "summerProjectActiveTab";
+
+function activateTab(targetId, remember) {
+    const panel = targetId ? document.getElementById(targetId) : null;
+    if (!panel) return false;
+
+    document.querySelectorAll(".tab-btn").forEach(b => {
+        const on = b.dataset.tab === targetId;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    panel.classList.add("active");
+
+    if (remember) {
+        try { localStorage.setItem(ACTIVE_TAB_KEY, targetId); } catch (_) {}
+    }
+
+    // Аналитик нь зөвхөн харагдах үедээ баригддаг — идэвхжих бүрд шинэчилнэ.
+    if (targetId === "analytics-tab" && typeof AnalyticsEngine !== "undefined") {
+        AnalyticsEngine.renderDashboard();
+    }
+    return true;
+}
+
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function () {
-        const targetId = this.dataset.tab;
-        if (!targetId) return;
-        document.querySelectorAll(".tab-btn").forEach(b => {
-            b.classList.remove("active");
-            b.setAttribute("aria-selected", "false");
-        });
-        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-        this.classList.add("active");
-        this.setAttribute("aria-selected", "true");
-        document.getElementById(targetId).classList.add("active");
-        
-        if (targetId === 'analytics-tab') {
-            AnalyticsEngine.renderDashboard();
-        }
+        activateTab(this.dataset.tab, true);
     });
 });
+
+// Сэргээх. Хадгалагдсан таб байхгүй/устсан бол HTML-ийн анхдагч нь хэвээр үлдэнэ.
+function restoreActiveTab() {
+    let saved = null;
+    try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch (_) {}
+    if (saved) activateTab(saved, false);
+}
 
 // Системийг анхны төлөвт шилжүүлэх
 document.getElementById("reset-btn")?.addEventListener("click", async () => {
@@ -77,14 +98,18 @@ function renderCategories() {
         if (!cat) continue;
         const metric = (status && cat.metricId) ? status.metrics[cat.metricId] : null;
 
-        const target = Number(cat.targetValue) || 0;
-        const value  = metric ? Number(metric.last30) || 0 : 0;
+        // Зорилт болон нэгжийн ЦОРЫН ГАНЦ эх сурвалж нь метрикийн бүртгэл
+        // (status.js → METRIC_DEFS). Ангилалд хуулбар хадгалахаа больсон тул
+        // картын тиер ба профайлын оноо ХЭЗЭЭ Ч өөр зорилтоор тооцогдохгүй.
+        // Метрик холбоогүй ангилал л өөрийн targetValue/unit-даа найдна.
+        const target = metric ? Number(metric.target30) || 0 : Number(cat.targetValue) || 0;
+        const value  = metric ? Number(metric.last30)   || 0 : 0;
         const pct    = target > 0 ? Math.min((value / target) * 100, 100) : 0;
         const tier   = tierForPct(target > 0 ? (value / target) * 100 : 0);
 
         const tierColor = TIER_COLORS[tier] || "var(--tier-e)";
         const tierHex   = TIER_HEX[tier]    || "#6b7280";
-        const unit      = cat.unit || (metric ? metric.unit : "");
+        const unit      = metric ? metric.unit : (cat.unit || "");
 
         const card = document.createElement("div");
         card.className = "category-card";
@@ -109,6 +134,39 @@ function renderCategories() {
             </div>`;
         catContainer.appendChild(card);
     }
+}
+
+// ===================== ПРОФАЙЛ: НОТОЛГООНЫ ҮНДЭС =====================
+// Профайлын оноо бүр нотолгооноос гардаг. Тэгвэл ХЭДЭН нотолгоо, ХЭЗЭЭНЭЭС
+// хойш гэдэг нь тэр онооны жин — түүнгүйгээр "100%" гэдэг нь нэг өдрийн
+// нэг бичлэгээс ч гарч болно. status.overall эдгээрийг аль эрт тооцдог
+// байсан ч дэлгэц дээр хаана ч гардаггүй байв.
+
+function renderProfileEvidence() {
+    const el = document.getElementById("profile-evidence");
+    if (!el) return;
+
+    const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const overall = (status && status.overall) ? status.overall : null;
+
+    if (!overall || !(Number(overall.totalEvents) > 0)) {
+        el.innerHTML = `<div class="connected-empty">нотолгоо хараахан ирээгүй</div>`;
+        return;
+    }
+
+    const firstAt = Number(overall.firstEvidenceAt) || 0;
+    const since   = (firstAt > 0 && typeof dayKeyOf === "function") ? dayKeyOf(firstAt) : null;
+
+    el.innerHTML = `
+        <div class="profile-evidence-row">
+            <span>НИЙТ НОТОЛГОО</span><strong>${Number(overall.totalEvents).toLocaleString()}</strong>
+        </div>
+        <div class="profile-evidence-row">
+            <span>БҮРТГЭЛ ЭХЭЛСЭН</span><strong>${escapeHTML(since || "—")}</strong>
+        </div>
+        <div class="profile-evidence-row">
+            <span>ИДЭВХТЭЙ ӨДӨР</span><strong>${Number(overall.activeDays30) || 0} / 30</strong>
+        </div>`;
 }
 
 // ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================
@@ -163,6 +221,7 @@ function renderWebUI() {
         Status.invalidate();
     }
 
+    renderProfileEvidence();
     renderAttributeScores();
 
     // Бусад модулиудын render-үүдийг дуудах
@@ -194,6 +253,41 @@ function renderWebUI() {
     }
 }
 
+// ===================== ӨДӨР СОЛИГДОХ =====================
+// Таб шөнөжингөө нээлттэй байх нь энгийн зүйл. Тэр үед хоёр зүйл чимээгүй
+// худал болдог байв: "сүүлийн 30 хоног" цонх шилжсэн ч дэлгэц өчигдрийн
+// тоог барьсаар үлдэнэ, өдрийн жагсаалт ч шинэ өдөртөө шилжихгүй (тэр нь
+// зөвхөн loadWebData() дотор, өөрөөр хэлбэл хуудас ачаалах үед хийгддэг).
+//
+// Status кэш өөрөө ч өдрөө хардаг — энд бид дэлгэцийг нь дагуулж шинэчилнэ.
+let _renderedDay = todayStr();
+
+async function checkDayRollover() {
+    if (!webData) return;
+
+    const today = todayStr();
+    if (today === _renderedDay) return;
+    _renderedDay = today;
+
+    // loadWebData()-тай ЯГ ижил дүрэм: өчигдөр тэмдэглэсэн зүйл өнөөдөр цэвэрлэгдэнэ.
+    let changed = false;
+    (Array.isArray(webData.missionTasks) ? webData.missionTasks : []).forEach(task => {
+        if (task && task.completedDate && task.completedDate !== today) {
+            task.completed = false;
+            task.completedDate = null;
+            changed = true;
+        }
+    });
+    if (changed) await saveWebData();
+
+    renderWebUI();
+}
+
+setInterval(checkDayRollover, 60000);
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkDayRollover();
+});
+
 // Ачаалж эхлэх
 async function init() {
     try {
@@ -205,7 +299,9 @@ async function init() {
     // Холбогдсон бүх аппын фийдээс XP автоматаар синк хийх (алдаа гарвал дотроо барина).
     // syncAll() өөрөө хадгална. focus/storage үеийн синкийг bridge.js бүртгэсэн байгаа.
     if (typeof syncAll === "function") await syncAll();
+    _renderedDay = todayStr();
     renderWebUI();
+    restoreActiveTab();
 }
 
 // Keyboard Enter дэмжих — Quest form

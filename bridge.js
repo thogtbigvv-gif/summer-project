@@ -42,6 +42,9 @@ const BRIDGE_MAX_EVENTS = 2000;  // нэг эх сурвалжаас нэг уд
 // ЦОРЫН ГАНЦ бүртгэл — дээд давхаргын бүх тоо түүнээс ГАРГАЖ АВАГДАНА. Тиймээс бичлэгийг
 // хэзээ ч зүгээр хаяхгүй: хугацаа хэтэрсэн түүхий бичлэгийг сар/төрлөөр НЭГТГЭЭД
 // (state.rollups) үлдээнэ. rollups-ыг ХЭЗЭЭ Ч устгахгүй — тэр бол урт хугацааны түүх.
+// Нэгтгэсэн хувин нь { count, valueSum, dataSums, firstAt, lastAt } — dataSums
+// нь event.data-гийн тоон талбар бүрийн нийлбэр. Түүхий бичлэг алга болсон ч
+// БОДИТ НЭГЖ (жишээ нь өргөсөн кг) хувинд үлдэж, статус түүнийг сэргээж чадна.
 const RAW_RETENTION_DAYS = 180;   // үүнээс хуучин түүхий бичлэгийг нэгтгэнэ
 const MAX_RAW_EVIDENCE   = 5000;  // үүнээс олон түүхий бичлэг үлдвэл хуучнаас нь нэгтгэнэ
 
@@ -212,15 +215,33 @@ function rollUpEvidence(state, records) {
         const amount = isFinite(value) ? value : 0;
         const at     = Number(rec.at) || 0;
 
-        const bucket = byType[type];
+        let bucket = byType[type];
         if (!bucket || typeof bucket !== "object") {
-            byType[type] = { count: 1, valueSum: amount, firstAt: at, lastAt: at };
-            return;
+            bucket = byType[type] = { count: 0, valueSum: 0, dataSums: {}, firstAt: at, lastAt: at };
         }
+        if (!bucket.dataSums || typeof bucket.dataSums !== "object" || Array.isArray(bucket.dataSums)) {
+            bucket.dataSums = {};
+        }
+
         bucket.count    = (Number(bucket.count)    || 0) + 1;
         bucket.valueSum = (Number(bucket.valueSum) || 0) + amount;
+        sumDataFields(bucket.dataSums, rec.data);
         if (!(Number(bucket.firstAt) > 0) || at < bucket.firstAt) bucket.firstAt = at;
         if (!(Number(bucket.lastAt)  > 0) || at > bucket.lastAt)  bucket.lastAt  = at;
+    });
+}
+
+// event.data-гийн ТООН талбар бүрийг нэрээр нь хурааж нэмнэ. Энэ давхарга
+// талбарууд ЮУ ГЭСЭН УТГАТАЙГ мэдэхгүй хэвээр — зөвхөн "тоо мөн үү" гэдгийг
+// шалгана. Ингэснээр нэгтгэлт бодит нэгжийг (volumeKg, correct, ...) авч
+// үлддэг болж, 180 хоногийн дараа түүх нэгжгүй хоосон тоо болж хувирахаа болино.
+function sumDataFields(sums, data) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) return;
+    Object.keys(data).forEach(key => {
+        const value = Number(data[key]);
+        // Тоо биш талбар (ж: { repo: "summer-project" }) — нийлбэрт утгагүй, алгасна.
+        if (typeof data[key] !== "number" || !isFinite(value)) return;
+        sums[key] = (Number(sums[key]) || 0) + value;
     });
 }
 
@@ -476,9 +497,20 @@ function connectedStatusHtml(status) {
 }
 
 // Сүүлийн CONNECTED_LOG_SHOWN бичлэг, шинийг нь дээр нь.
-function connectedEvidenceHtml(evidence) {
+//
+// ТҮҮХИЙ бичлэг хоосон байх нь "идэвхгүй" гэсэн үг БИШ: 180 хоногийн дараа
+// бичлэгүүд нэгтгэгдэж хувин болдог. Өмнө нь энэ карт тэр ялгааг мэдэлгүй
+// "no activity yet" гэж бичдэг байсан — олон жилийн түүхтэй эх сурвалжийг
+// хоосон мэт харуулна гэсэн үг. Одоо нэгтгэгдсэн тоог нь шулуухан хэлнэ.
+function connectedEvidenceHtml(evidence, rolledCount) {
     const entries = Array.isArray(evidence) ? evidence : [];
-    if (entries.length === 0) return `<div class="connected-empty">no activity yet</div>`;
+    const rolled  = Number(rolledCount) || 0;
+
+    if (entries.length === 0) {
+        return rolled > 0
+            ? `<div class="connected-empty">${rolled.toLocaleString()} бичлэг нэгтгэсэн түүхэд шилжсэн</div>`
+            : `<div class="connected-empty">no activity yet</div>`;
+    }
 
     return entries.slice(-CONNECTED_LOG_SHOWN).reverse().map(entry => {
         const when   = relativeTime(entry && entry.at) || "unknown time";
@@ -486,6 +518,21 @@ function connectedEvidenceHtml(evidence) {
         const detail = (entry && (entry.detail || entry.type)) || "—";
         return `<div class="connected-log-entry">${escapeHTML(when)} · ${escapeHTML(detail)}</div>`;
     }).join("");
+}
+
+// Нотолгооны хэмжээ — түүхий болон нэгтгэсэн хоёрын НИЙЛБЭР, дээр нь сүүлийн
+// 30 хоногийнх. Статусын давхарга аль хэдийн тоолсон байдаг тул энд дахин
+// тоолохгүй: хоёр газар хоёр өөр тоо гаргах эрсдэлийг ингэж хаана.
+function connectedVolumeHtml(source) {
+    if (!source) return "";
+    const total  = Number(source.evidenceCount) || 0;
+    const last30 = Number(source.last30Count)   || 0;
+    if (total === 0) return "";
+    return `
+        <div class="connected-volume">
+            <span>${total.toLocaleString()} нотолгоо</span>
+            <span>${last30.toLocaleString()} · сүүлийн 30 хоног</span>
+        </div>`;
 }
 
 function renderConnectedApps() {
@@ -496,24 +543,35 @@ function renderConnectedApps() {
     const integrations = (webData && webData.integrations && typeof webData.integrations === "object")
         ? webData.integrations
         : {};
+    const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const sources = (status && status.sources) ? status.sources : {};
 
-    BRIDGE_SOURCES.forEach(source => {
-        const entry = integrations[source.app];
+    // Тохируулгад бичигдсэн эх сурвалж бүр, МӨН датад л байгаа нь ч. status.js
+    // яг ингэж жагсаадаг: BRIDGE_SOURCES-оос хасагдсан апп нотолгоогоо
+    // хадгалсаар байхад самбараас чимээгүй алга болох ёсгүй.
+    const apps = BRIDGE_SOURCES.map(s => s.app);
+    Object.keys(integrations).forEach(app => { if (apps.indexOf(app) === -1) apps.push(app); });
+
+    apps.forEach(app => {
+        const source = BRIDGE_SOURCES.find(s => s && s.app === app) || null;
+        const entry  = integrations[app];
+        const stats  = sources[app] || null;
+        const label  = (source && source.label) || (stats && stats.label) || app;
 
         const card = document.createElement("div");
         card.className = "category-card connected-card";
-        card.dataset.app = source.app;
+        card.dataset.app = app;
 
         // Картын өнцгийн туяа — эх сурвалжийн өөрийнх нь өнгө
         // (.category-card::before --tier-color-г ашигладаг).
-        if (source.hex) card.style.setProperty("--tier-color", source.hex);
+        if (source && source.hex) card.style.setProperty("--tier-color", source.hex);
 
         // lastSyncedAt тавигдсан гэдэг нь фийдийг нь наад зах нь нэг удаа
         // амжилттай уншсан гэсэн үг. Хэзээ ч нийтлээгүй бол — алдаа биш, чимээгүй мөр.
         if (!entry || !entry.lastSyncedAt) {
             card.innerHTML = `
                 <div class="card-head">
-                    <h3>${escapeHTML(source.label)}</h3>
+                    <h3>${escapeHTML(label)}</h3>
                 </div>
                 <div class="connected-empty">not connected yet</div>`;
             container.appendChild(card);
@@ -526,11 +584,12 @@ function renderConnectedApps() {
 
         card.innerHTML = `
             <div class="card-head">
-                <h3>${escapeHTML(source.label)}</h3>
+                <h3>${escapeHTML(label)}</h3>
                 <div class="connected-time">${escapeHTML(relativeTime(updatedAt) || "no updates yet")}</div>
             </div>
+            ${connectedVolumeHtml(stats)}
             <div class="connected-status">${connectedStatusHtml(entry.status)}</div>
-            <div class="connected-log">${connectedEvidenceHtml(entry.evidence)}</div>`;
+            <div class="connected-log">${connectedEvidenceHtml(entry.evidence, stats && stats.rolledCount)}</div>`;
 
         container.appendChild(card);
     });
