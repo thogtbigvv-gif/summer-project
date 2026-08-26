@@ -44,8 +44,19 @@ const METRIC_DEFS = {
     "bigu.reviews": { label: "Cards reviewed",   unit: "cards",   attr: "MIND", target30: 900   },
     "bigu.lessons": { label: "Lessons finished", unit: "lessons", attr: "MIND", target30: 20    },
     "github.commits": { label: "Commits", unit: "commits", attr: "CREATION", target30: 60 },
-    "self.checkins":  { label: "Өөрөө бүртгэсэн", unit: "удаа", attr: "DISCIPLINE", target30: 90 }
+    // selfReported: энэ метрикийг гадны апп биш, хэрэглэгч өөрөө тэжээдэг.
+    // Тиймээс түүнийг "нотолгооны эх сурвалж" болгон СОНГУУЛАХГҮЙ: өөрөө
+    // даралгүйгээр өсдөггүй тоо "нотлогдсон" даалгаврыг батлах ёсгүй.
+    "self.checkins":  { label: "Өөрөө бүртгэсэн", unit: "удаа", attr: "DISCIPLINE", target30: 90, selfReported: true }
 };
+
+// Гадны эх сурвалжаас тэжээгддэг метрикүүд — даалгавар, ур чадвар холбох
+// сонголтод ЗӨВХӨН эдгээр гарна. Өөрөө мэдээлдэг метрикийг тэнд оруулбал
+// "нотолгоогоор баталгаажсан" даалгаврыг өөрөө дарж биелүүлэх зам нээгдэнэ —
+// системийн гол амлалт яг тэр агшинд утгаа алдана.
+function verifiableMetricIds() {
+    return Object.keys(METRIC_DEFS).filter(id => !(METRIC_DEFS[id] && METRIC_DEFS[id].selfReported));
+}
 
 // Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0) — дэлгэц дээр нүх үлдээхгүй.
 // DISCIPLINE нь ӨӨРӨӨ МЭДЭЭЛСЭН тэнхлэг: түүнийг гадны апп батлаагүй. Тусдаа
@@ -132,6 +143,8 @@ function emptyMetric(id, dayKeys) {
         unit:     typeof def.unit  === "string" ? def.unit  : "",
         attr:     typeof def.attr  === "string" ? def.attr  : "",
         target30: num(def.target30),
+        // Дэлгэц "энэ тоог хэн хэлсэн бэ" гэдгийг ялгаж чадах ёстой.
+        selfReported: !!def.selfReported,
         daily:    {},
         series:   dayKeys.map(date => ({ date, value: 0 })),
         monthly:  [],

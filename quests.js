@@ -300,8 +300,15 @@ function renderQuestMetricOptions() {
     const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
     const keep = select.value;
 
+    // ЗӨВХӨН гадны эх сурвалжаас тэжээгддэг метрик. Өөрөө мэдээлдэг метрикийг
+    // (self.checkins) сонгуулбал өөрөө дарж "нотлогдсон" болгох зам нээгдэнэ —
+    // системийн гол амлалт яг тэр агшинд утгаа алдана.
+    const ids = (typeof verifiableMetricIds === "function")
+        ? verifiableMetricIds()
+        : Object.keys(defs);
+
     select.innerHTML = `<option value="">— гараар тэмдэглэх —</option>` +
-        Object.keys(defs).map(id => {
+        ids.map(id => {
             const def  = defs[id] || {};
             const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
             return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;
@@ -550,7 +557,84 @@ function todaysEvidenceText() {
     return `${active} / ${ids.length} метрик идэвхтэй`;
 }
 
+// Даалгаврын нотолгооны эх сурвалжийн сонголт — quest/skill-тэй ижил бүртгэл,
+// ижил хязгаар: өөрөө мэдээлдэг метрик энд гарахгүй.
+function renderMissionMetricOptions() {
+    const select = document.getElementById("mission-metric");
+    if (!select) return;
+
+    const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
+    const ids  = (typeof verifiableMetricIds === "function") ? verifiableMetricIds() : Object.keys(defs);
+    const keep = select.value;
+
+    select.innerHTML = `<option value="">— гараар тэмдэглэх —</option>` +
+        ids.map(id => {
+            const def  = defs[id] || {};
+            const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
+            return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;
+        }).join("");
+
+    if (keep && defs[keep]) select.value = keep;
+}
+
+async function addMissionTask() {
+    const nameEl   = document.getElementById("mission-name");
+    const metricEl = document.getElementById("mission-metric");
+
+    const name = nameEl ? nameEl.value.trim() : "";
+    if (!name) { showToast("Даалгаврын нэр оруулна уу.", "error"); nameEl?.focus(); return; }
+
+    if (!Array.isArray(webData.missionTasks)) webData.missionTasks = [];
+    if (webData.missionTasks.some(t => t && t.name.toLowerCase() === name.toLowerCase())) {
+        showToast("Ийм нэртэй даалгавар аль хэдийн байна.", "error");
+        return;
+    }
+
+    webData.missionTasks.push({
+        id: `m${Date.now()}`,
+        name,
+        metricId: (metricEl && metricEl.value) ? metricEl.value : null,
+        completed: false,
+        completedDate: null
+    });
+
+    await saveWebData();
+    if (typeof renderWebUI === "function") renderWebUI();
+
+    if (nameEl)   nameEl.value = "";
+    if (metricEl) metricEl.value = "";
+    showToast(`"${name}" нэмэгдлээ.`);
+}
+
+async function deleteMissionTask(taskId) {
+    const task = webData.missionTasks.find(t => t && t.id === taskId);
+    if (!task) return;
+
+    // Даалгаврыг устгах нь ТҮҮХИЙГ УСТГАХГҮЙ: өмнө нь бүртгэсэн check-in-ууд
+    // нотолгоо хэвээр үлдэнэ. Тэдгээр нь үнэхээр болсон явдал байсан.
+    if (!confirm(`"${task.name}" даалгаврыг жагсаалтаас хасах уу?\n\nӨмнөх бүртгэлүүд түүхэнд хэвээр үлдэнэ.`)) return;
+
+    webData.missionTasks = webData.missionTasks.filter(t => t && t.id !== taskId);
+    await saveWebData();
+    if (typeof renderWebUI === "function") renderWebUI();
+}
+
+document.getElementById("submit-mission-btn")?.addEventListener("click", addMissionTask);
+document.getElementById("mission-name")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("submit-mission-btn")?.click();
+});
+document.getElementById("toggle-mission-form")?.addEventListener("click", function () {
+    const form = document.getElementById("mission-form");
+    if (!form) return;
+    const open = form.style.display !== "none";
+    form.style.display = open ? "none" : "flex";
+    this.textContent = open ? "+ Даалгавар нэмэх" : "− Хаах";
+    if (!open) document.getElementById("mission-name")?.focus();
+});
+
 function renderMissionTasks() {
+    renderMissionMetricOptions();
+
     const list = document.getElementById("mission-tasks-list");
     if (!list) return;
 
@@ -584,6 +668,18 @@ function renderMissionTasks() {
             + (state.selfReported ? " self-reported" : "");
         el.dataset.taskId = t.id;
 
+        // Гараас ажиллах ёстой: энэ бол DISCIPLINE-ыг хөдөлгөдөг цорын ганц
+        // товч. Нотлогдсоныг дарах юм байхгүй тул түүнийг фокусын дарааллаас
+        // гаргаж, aria-аар нь ч хэлнэ.
+        if (state.proven) {
+            el.setAttribute("role", "img");
+            el.setAttribute("aria-label", `${t.name} — нотолгоогоор биелсэн`);
+        } else {
+            el.setAttribute("role", "button");
+            el.setAttribute("tabindex", "0");
+            el.setAttribute("aria-pressed", state.done ? "true" : "false");
+        }
+
         // Тэмдэглэгээний ард юу зогсож байгааг шулуухан хэлнэ.
         let proof = "";
         if (state.proven) {
@@ -603,7 +699,9 @@ function renderMissionTasks() {
         el.innerHTML = `
             <div class="task-box"></div>
             <div class="task-name">${escapeHTML(t.name)}</div>
-            ${proof}`;
+            ${proof}
+            <button class="delete-btn" data-id="${escapeHTML(String(t.id))}" data-type="mission"
+                    aria-label="${escapeHTML(t.name)} — жагсаалтаас хасах" title="Хасах">×</button>`;
         list.appendChild(el);
     });
 }

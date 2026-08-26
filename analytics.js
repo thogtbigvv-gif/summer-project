@@ -204,6 +204,21 @@ const AnalyticsEngine = {
         const gaps     = Array.isArray(overall.rollupGaps)    ? overall.rollupGaps    : [];
 
         const blocks = [];
+
+        // Хадгалалт дүүрсэн бол БУСДААС нь өмнө хэлнэ: тэр үед шинэ нотолгоо
+        // огт хадгалагдахгүй байгаа бөгөөд дэлгэц дээр зүгээр л "тоо буурсан"
+        // мэт харагдана. Энэ бол системийн хамгийн чимээгүй эвдрэл.
+        if (typeof storageWarning === "function" && storageWarning()) {
+            blocks.push(`
+                <div class="integrity-warning">
+                    <strong>Хадгалалт дүүрэв</strong>
+                    <p>Браузерын сан дүүрсэн тул ШИНЭ НОТОЛГОО ХАДГАЛАГДАХГҮЙ байна.
+                       Доор "НОТОЛГОО ЭКСПОРТЛОХ" дарж файл болгон авангуутаа
+                       "НОТОЛГОО ХАМТ УСТГАХ" хийж сан чөлөөлнө үү — дараа нь
+                       файлаа сэргээх боломжтой.</p>
+                </div>`);
+        }
+
         if (unmapped.length > 0) {
             blocks.push(`
                 <div class="integrity-warning">

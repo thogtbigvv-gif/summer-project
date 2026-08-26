@@ -282,6 +282,27 @@ async function loadWebData() {
     }
 }
 
+// ===================== ХАДГАЛАЛТЫН ТААЗ =====================
+// Систем нотолгоог ЗОРИУД хэзээ ч хаядаггүй (rollups мөнхөд үлдэнэ). Тэр
+// бодлого localStorage-ийн ~5MB таазтай ЗААВАЛ мөргөлдөнө: 4 эх сурвалж ×
+// 5000 түүхий бичлэг ≈ 3-4MB. Мөргөлдөх агшин нь чимээгүй байх ЁСГҮЙ —
+// setItem унана, нотолгоо алга болно, дэлгэц дээр зүгээр л тоо буурсан мэт
+// харагдана. Яг тэр төрлийн худал дохиог систем бүхэлдээ эсэргүүцдэг.
+let _storageFull = false;
+
+function isQuotaError(err) {
+    if (!err) return false;
+    // Хөтөч бүр өөрөөр нэрлэдэг; код 22/1014 нь Safari, Firefox-ынх.
+    return err.name === "QuotaExceededError"
+        || err.name === "NS_ERROR_DOM_QUOTA_REACHED"
+        || err.code === 22 || err.code === 1014;
+}
+
+// Аналитикийн бүрэн бүтэн байдлын самбар үүнийг асууж, ил анхааруулга гаргана.
+function storageWarning() {
+    return _storageFull;
+}
+
 async function saveWebData() {
     const serialized = JSON.stringify(webData);
     // Нотолгоо хуримтлагдсаар байх тул хэмжээг нь хардана. ТАСЛАХГҮЙ — зөвхөн
@@ -293,10 +314,162 @@ async function saveWebData() {
         } else {
             localStorage.setItem(STORAGE_KEY, serialized);
         }
+        _storageFull = false;
+        return true;
     } catch (err) {
         console.error("saveWebData error:", err);
-        showToast("Дата хадгалахад алдаа гарлаа.", "error");
+        if (isQuotaError(err)) {
+            _storageFull = true;
+            showToast("ХАДГАЛАЛТ ДҮҮРЭВ — шинэ нотолгоо ХАДГАЛАГДАХГҮЙ байна. Экспортлоод RESET хийнэ үү.", "error");
+        } else {
+            showToast("Дата хадгалахад алдаа гарлаа.", "error");
+        }
+        return false;
     }
+}
+
+// ===================== НОТОЛГООГ ГАРГАХ / СЭРГЭЭХ =====================
+// Нотолгоо бол системийн ЦОРЫН ГАНЦ ҮНЭН — гэтэл тэр ганц браузерын
+// localStorage дотор, ганц хуулбартай сууж байв. Сайтын дата цэвэрлэх,
+// браузер солих, тааз дүүрэх — аль нь ч бүх түүхийг үүрд устгана.
+// Үйлдвэрлэгч аппууд ердөө 50 event-ийн буфертэй тул ЭРГЭЖ ИРЭХГҮЙ.
+
+function evidenceRecordCount() {
+    const integrations = (webData && webData.integrations) ? webData.integrations : {};
+    let total = 0;
+    Object.keys(integrations).forEach(app => {
+        const state = integrations[app];
+        if (!state) return;
+        if (Array.isArray(state.evidence)) total += state.evidence.length;
+        const rollups = (state.rollups && typeof state.rollups === "object") ? state.rollups : {};
+        Object.keys(rollups).forEach(month => {
+            const byType = rollups[month];
+            if (!byType || typeof byType !== "object") return;
+            Object.keys(byType).forEach(type => {
+                total += Number(byType[type] && byType[type].count) || 0;
+            });
+        });
+    });
+    return total;
+}
+
+function exportWebData() {
+    const payload = {
+        v: 1,
+        kind: "summer-project-backup",
+        exportedAt: Date.now(),
+        records: evidenceRecordCount(),
+        data: webData
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href     = url;
+    link.download = `summer-project-${todayStr()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Blob-ыг сулласнаар санах ой чөлөөлнө; татах эхлэхийг хүлээнэ.
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 2000);
+
+    return payload.records;
+}
+
+// Түүхий бичлэгийг id-гаар НЭГТГЭНЭ — id нь тогтвортой тул давхардал үүсэхгүй.
+// Аль хэдийн нэгтгэгдэж хувин болсон үеийн бичлэгийг (prunedBefore) буцааж
+// оруулахгүй: тэр нь ЯГ ТЭР event-ийг хоёр удаа тоолох болно.
+function mergeAppEvidence(target, incoming) {
+    const seen = new Set(target.evidence.map(rec => rec && rec.id));
+    const cutoff = Number(target.prunedBefore) || 0;
+    let added = 0, skipped = 0;
+
+    (Array.isArray(incoming.evidence) ? incoming.evidence : []).forEach(rec => {
+        if (!rec || !rec.id) { skipped += 1; return; }
+        if (seen.has(rec.id))                        { skipped += 1; return; }
+        if (Number(rec.at) > 0 && Number(rec.at) < cutoff) { skipped += 1; return; }
+        target.evidence.push(rec);
+        seen.add(rec.id);
+        added += 1;
+    });
+    return { added, skipped };
+}
+
+// Хувингууд нь ижил урсгалын нэгтгэл тул НЭМЭХ нь давхар тоолно. Оронд нь
+// count нь ИЛҮҮ ИХ талыг авна: тэр тал илүү олон event харсан гэсэн үг.
+// Хоёр төхөөрөмж өөр өөр event харсан бол дутуу тоолж магадгүй — гэхдээ
+// дутуу тоолох нь давхар тоолохоос ҮРГЭЛЖ дээр: систем тоо зохиодоггүй.
+function mergeAppRollups(target, incoming) {
+    const src = (incoming.rollups && typeof incoming.rollups === "object") ? incoming.rollups : {};
+    let months = 0;
+
+    Object.keys(src).forEach(month => {
+        const byType = src[month];
+        if (!byType || typeof byType !== "object") return;
+        if (!target.rollups[month]) target.rollups[month] = {};
+
+        Object.keys(byType).forEach(type => {
+            const incomingBucket = byType[type];
+            if (!incomingBucket || typeof incomingBucket !== "object") return;
+            const current = target.rollups[month][type];
+            if (!current || (Number(incomingBucket.count) || 0) > (Number(current.count) || 0)) {
+                target.rollups[month][type] = incomingBucket;
+                months += 1;
+            }
+        });
+    });
+    return months;
+}
+
+// Сэргээлт: НОТОЛГООГ нэгтгэнэ, тохиргоог (жагсаалт, ангилал) файлынхаар
+// солино. Учир нь жагсаалтыг дахин бичих амархан, нотолгоог сэргээх аргагүй.
+function importWebData(payload) {
+    if (!payload || typeof payload !== "object") throw new Error("Файл уншигдсангүй.");
+    const incoming = (payload.kind === "summer-project-backup" && payload.data) ? payload.data : payload;
+    if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+        throw new Error("Энэ файл summer-project-ийн нөөц биш байна.");
+    }
+
+    // Танигдах талбар нэг ч байхгүй бол энэ огт өөр файл. Чимээгүй "0 шинэ
+    // нотолгоо" гэж хэлбэл хэрэглэгч буруу файл сонгосноо мэдэхгүй өнгөрнө —
+    // яг тэр төрлийн чимээгүй бүтэлгүйтлийг систем бүхэлдээ эсэргүүцдэг.
+    const KNOWN = ["integrations", "quests", "skills", "categories", "missionTasks"];
+    if (!KNOWN.some(key => incoming[key] !== undefined)) {
+        throw new Error("Энэ файл summer-project-ийн нөөц биш байна.");
+    }
+
+    const before  = evidenceRecordCount();
+    const sources = (incoming.integrations && typeof incoming.integrations === "object")
+        ? incoming.integrations : {};
+    const perApp = [];
+
+    Object.keys(sources).forEach(app => {
+        const src = sources[app];
+        if (!src || typeof src !== "object") return;
+
+        const target = getIntegrationState(app);   // bridge.js — хэлбэрийг нь баталгаажуулна
+        const { added, skipped } = mergeAppEvidence(target, src);
+        const months = mergeAppRollups(target, src);
+
+        // prunedBefore зөвхөн ӨСНӨ — эс тэгвээс нэгтгэгдсэн event дахин "шинэ" болно.
+        const incomingPruned = Number(src.prunedBefore) || 0;
+        if (incomingPruned > (Number(target.prunedBefore) || 0)) target.prunedBefore = incomingPruned;
+
+        if (!target.status && src.status) target.status = src.status;
+        if ((Number(src.updatedAt) || 0) > (Number(target.updatedAt) || 0)) target.updatedAt = Number(src.updatedAt);
+        if (!target.lastSyncedAt && src.lastSyncedAt) target.lastSyncedAt = src.lastSyncedAt;
+
+        if (added > 0 || months > 0 || skipped > 0) perApp.push({ app, added, skipped, months });
+    });
+
+    // Тохиргоо — байвал авна, байхгүй бол одоогийнхоо хэвээр.
+    ["categories", "quests", "skills", "missionTasks"].forEach(key => {
+        if (incoming[key] && (Array.isArray(incoming[key]) || typeof incoming[key] === "object")) {
+            webData[key] = incoming[key];
+        }
+    });
+
+    return { before, after: evidenceRecordCount(), perApp };
 }
 
 /* Task A-аас хойш XP нэмдэг, түвшин тавьдаг функц энэ кодын баазад БАЙХГҮЙ.
