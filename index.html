@@ -37,7 +37,26 @@
                 <div class="mission-meta" id="mission-meta-status">OBJECTIVE: ACTIVE</div>
             </div>
             <div class="mission-body">
+                <!-- Жагсаалт ба нэмэх форм НЭГ баганад. .mission-body бол flex —
+                     формыг шууд түүн дотор тавибал гуравдахь багана болж
+                     даалгаврын жагсаалтыг шахна. -->
+                <div class="mission-left">
                 <div class="mission-tasks" id="mission-tasks-list"></div>
+
+                <!-- Өдрийн даалгавар DISCIPLINE-ыг тэжээдэг болсон тул засах
+                     боломжтой байх ёстой. Өмнө нь гурван мөр кодод бичээстэй байв. -->
+                <div class="mission-add">
+                    <button type="button" class="toggle-link" id="toggle-mission-form">+ Даалгавар нэмэх</button>
+                    <div id="mission-form" class="mission-form" style="display:none;">
+                        <input type="text" id="mission-name" placeholder="Жнь: 10,000 алхам" maxlength="60" autocomplete="off">
+                        <!-- Сонголтыг renderMissionMetricOptions() бүртгэлээс барина. -->
+                        <select id="mission-metric" aria-label="Нотолгооны эх сурвалж">
+                            <option value="">— гараар тэмдэглэх —</option>
+                        </select>
+                        <button type="button" class="submit-btn secondary" id="submit-mission-btn">Нэмэх</button>
+                    </div>
+                </div>
+                </div>
                 <div class="mission-summary">
                     <div>
                         <div class="summary-block">
@@ -89,8 +108,18 @@
         </div>
         <div id="connected-container" class="web-grid"></div>
 
-        <div class="reset-row">
-            <button id="reset-btn" class="reset-link" type="button">// СИСТЕМИЙН ӨГӨГДӨЛ ЦЭВЭРЛЭХ (RESET)</button>
+        <!-- Нотолгоо бол сэргээгдэшгүй: аппууд ердөө 50 бичлэгийн буфертэй.
+             Тиймээс түүнийг гаргах зам, устгахаас өмнөх сануулга хоёулаа энд. -->
+        <div class="data-row">
+            <div class="data-actions">
+                <button id="export-btn" class="data-link" type="button">⭳ НОТОЛГОО ЭКСПОРТЛОХ</button>
+                <label class="data-link" for="import-input" role="button" tabindex="0">⭱ НӨӨЦӨӨС СЭРГЭЭХ</label>
+                <input type="file" id="import-input" accept="application/json,.json" hidden>
+            </div>
+            <div class="reset-actions">
+                <button id="reset-btn" class="reset-link" type="button">// ЖАГСААЛТ ЦЭВЭРЛЭХ (нотолгоо хэвээр)</button>
+                <button id="purge-btn" class="reset-link danger" type="button">// НОТОЛГОО ХАМТ УСТГАХ</button>
+            </div>
         </div>
     </section>
 

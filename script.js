@@ -9,6 +9,12 @@ document.addEventListener("click", async (e) => {
     if (completeBtn)   await completeQuest(Number(completeBtn.dataset.id));
     if (resetQuestBtn) await resetQuest(Number(resetQuestBtn.dataset.id));
     if (deleteBtn) {
+        // Өдрийн даалгаврын id нь МӨР ("m1"), тоо биш — Number() нь NaN болгоно.
+        // Тиймээс хөрвүүлэхээс ӨМНӨ салаална.
+        if (deleteBtn.dataset.type === "mission") {
+            await deleteMissionTask(deleteBtn.dataset.id);
+            return;
+        }
         const id = Number(deleteBtn.dataset.id);
         if (deleteBtn.dataset.type === "skill") await deleteSkill(id);
         else await deleteQuest(id);
@@ -20,6 +26,17 @@ document.addEventListener("click", async (e) => {
     if (task && !e.target.closest(".delete-btn") && !e.target.closest(".complete-btn")) {
         await toggleMissionTask(task.dataset.taskId);
     }
+});
+
+// Хулганагүйгээр ч ажиллана. Өдрийн даалгавар бол DISCIPLINE-ыг хөдөлгөдөг
+// цорын ганц удирдлага — түүнийг зөвхөн хулганаар хүрч болдог байлгах нь
+// бүхэл нэг тэнхлэгийг гарын хэрэглэгчээс нууж байгаатай адил.
+document.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const task = e.target.closest && e.target.closest('.mission-task[role="button"]');
+    if (!task) return;
+    e.preventDefault();
+    await toggleMissionTask(task.dataset.taskId);
 });
 
 // ===================== TAB NAVIGATION =====================
@@ -63,15 +80,88 @@ function restoreActiveTab() {
     if (saved) activateTab(saved, false);
 }
 
-// Системийг анхны төлөвт шилжүүлэх
+// ===================== ӨГӨГДЛИЙН УДИРДЛАГА =====================
+// Нотолгоо бол сэргээгдэшгүй. Үйлдвэрлэгч аппууд ердөө 50 event-ийн буфертэй
+// тул устгагдсан бичлэг ЭРГЭЖ ИРЭХГҮЙ. Өмнө нь RESET товч ганц confirm-ын
+// цаана бүх түүхийг үүрд устгадаг байв — систем нотолгоог "цорын ганц үнэн"
+// гэж зарлаад, түүнийгээ хамгийн хямд байдлаар хаядаг байсан гэсэн үг.
+//
+// Одоо хоёр тусдаа үйлдэл: ЖАГСААЛТ цэвэрлэх (нотолгоо хэвээр) ба
+// НОТОЛГОО ХАМТ устгах (тоогоо нэрлэсэн тусдаа баталгаажуулалттай).
+
+document.getElementById("export-btn")?.addEventListener("click", () => {
+    try {
+        const records = exportWebData();
+        showToast(`${records.toLocaleString()} нотолгоо файл болж татагдлаа.`, "info", "var(--accent)");
+    } catch (err) {
+        console.error("export error:", err);
+        showToast("Экспортлож чадсангүй.", "error");
+    }
+});
+
+document.getElementById("import-input")?.addEventListener("change", async function () {
+    const file = this.files && this.files[0];
+    this.value = "";                     // ижил файлыг дахин сонгож болохын тулд
+    if (!file) return;
+
+    let payload;
+    try {
+        payload = JSON.parse(await file.text());
+    } catch (err) {
+        console.error("import parse error:", err);
+        showToast("Файл JSON биш байна.", "error");
+        return;
+    }
+
+    try {
+        const summary = importWebData(payload);
+        await saveWebData();
+        Status.invalidate();
+        renderWebUI();
+
+        const gained = summary.after - summary.before;
+        console.log("[import]", summary);
+        showToast(gained > 0
+            ? `${gained.toLocaleString()} шинэ нотолгоо нэгтгэгдлээ (нийт ${summary.after.toLocaleString()}).`
+            : `Шинэ нотолгоо олдсонгүй — бүгд аль хэдийн байсан (${summary.after.toLocaleString()}).`,
+            "info", "var(--accent)");
+    } catch (err) {
+        console.error("import error:", err);
+        showToast(err && err.message ? err.message : "Сэргээж чадсангүй.", "error");
+    }
+});
+
+// ЖАГСААЛТ цэвэрлэх — нотолгоонд ХҮРЭХГҮЙ.
 document.getElementById("reset-btn")?.addEventListener("click", async () => {
-    if (!confirm("Бүх зүйлсийг устгаад анхны төлөвт шилжүүлэх үү?")) return;
+    if (!confirm("Даалгавар, ур чадвар, ангилал, өдрийн жагсаалтыг анхны төлөвт шилжүүлэх үү?\n\nНотолгоо ХЭВЭЭР үлдэнэ.")) return;
+
+    const evidence = webData.integrations;   // хадгалж авна
+    webData = cloneDefault();
+    webData.integrations = evidence;
+
+    await saveWebData();
+    sweepRemovedFeatureKeys();
+    Status.invalidate();
+    renderWebUI();
+    showToast("Жагсаалт шинэчлэгдлээ. Нотолгоо хэвээр.");
+});
+
+// НОТОЛГОО ХАМТ устгах — эргэж сэргээх аргагүй тул тоог нь нэрлэж асууна.
+document.getElementById("purge-btn")?.addEventListener("click", async () => {
+    const records = evidenceRecordCount();
+
+    if (records > 0 && !confirm(
+        `${records.toLocaleString()} нотолгоо УСТАНА.\n\n` +
+        "Холбогдсон аппууд ердөө сүүлийн 50 бичлэгээ хадгалдаг тул үүнийг " +
+        "ЭРГЭЖ СЭРГЭЭХ АРГАГҮЙ.\n\nҮргэлжлүүлэхийн өмнө экспортлохыг зөвлөж байна.")) return;
+    if (!confirm("Итгэлтэй байна уу? Энэ бол эргэшгүй үйлдэл.")) return;
+
     webData = cloneDefault();
     await saveWebData();
-    // RESET нь ҮНЭХЭЭР reset байх ёстой: блобын гадна үлдсэн түлхүүрүүд ч цэвэрлэгдэнэ.
     sweepRemovedFeatureKeys();
+    Status.invalidate();
     renderWebUI();
-    showToast("Амжилттай шинэчиллээ.");
+    showToast(`${records.toLocaleString()} нотолгоо устлаа.`, "error");
 });
 
 // Тиерийн үсэг нь ЗОРИЛТЫН ХУВЬ — хадгалагдсан тоо биш. Дүрэм өөрчлөгдвөл

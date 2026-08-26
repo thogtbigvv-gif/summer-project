@@ -59,8 +59,15 @@ function renderSkillMetricOptions() {
     const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
     const keep = select.value;
 
+    // ЗӨВХӨН гадны эх сурвалжаас тэжээгддэг метрик. Өөрөө мэдээлдэг метрикийг
+    // (self.checkins) сонгуулбал өөрөө дарж "нотлогдсон" болгох зам нээгдэнэ —
+    // системийн гол амлалт яг тэр агшинд утгаа алдана.
+    const ids = (typeof verifiableMetricIds === "function")
+        ? verifiableMetricIds()
+        : Object.keys(defs);
+
     select.innerHTML = `<option value="">— холбоогүй —</option>` +
-        Object.keys(defs).map(id => {
+        ids.map(id => {
             const def  = defs[id] || {};
             const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
             return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;

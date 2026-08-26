@@ -96,21 +96,78 @@ async function deleteQuest(questId) {
     closeQuestModal();
 }
 
+// ===================== ӨДРИЙН ДААЛГАВРЫН ТӨЛӨВ =====================
+// Даалгавар бүр ХОЁР замын аль нэгээр биелнэ:
+//
+//   НОТЛОГДСОН — даалгаврын metricId-д ӨНӨӨДӨР бодит нотолгоо ирсэн. Дасгал
+//   хийгээд аппаа нээмэгц энэ өөрөө ✓ болно. Дарах юм байхгүй: аппын хэлсэн
+//   нь хангалттай бөгөөд түүнийг гараар "болиулах" ч утгагүй.
+//
+//   ӨӨРӨӨ МЭДЭЭЛСЭН — метрик нь өнөөдөр юу ч аваагүй (эсвэл даалгавар ямар ч
+//   метриктэй холбоогүй, ж: ус уух). Тэгвэл дарж болно, дарахад "өөрөө
+//   мэдээлсэн" нотолгоо үүсэж self.checkins → DISCIPLINE руу орно.
+//
+// Ингэснээр товч дарах нь ҮНЭХЭЭР ямар нэг юм хөдөлгөдөг болов — гэхдээ
+// хөдөлгөж буй зүйл нь батлагдаагүй гэдэг нь дэлгэц дээр ил хэвээр.
+
+function missionTaskState(task, status, selfIds) {
+    const metricId = (task && typeof task.metricId === "string") ? task.metricId : null;
+    const metric   = (metricId && status && status.metrics) ? status.metrics[metricId] : null;
+    const today    = todayStr();
+
+    // Апп ӨНӨӨДӨР юу мэдээлэв? Тэгээс их бол даалгавар нотлогдсон.
+    const provenValue = (metric && metric.daily) ? Number(metric.daily[today]) || 0 : 0;
+    const proven      = provenValue > 0;
+
+    // Өөрөө тэмдэглэсэн эсэхийг task.completed БИШ, нотолгоо өөрөө хэлнэ.
+    // Ингэснээр хадгалагдсан тэмдэглэгээ нотолгооноос салж хоцрох аргагүй.
+    const id = (typeof selfCheckinId === "function") ? selfCheckinId(task.id, today) : null;
+    const selfReported = !proven && !!(id && selfIds && selfIds.has(id));
+
+    return { metric, proven, provenValue, selfReported, done: proven || selfReported };
+}
+
+function missionTasksWithState() {
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const ids    = (typeof selfCheckinIds === "function") ? selfCheckinIds() : new Set();
+    const tasks  = Array.isArray(webData.missionTasks) ? webData.missionTasks : [];
+    return tasks.map(task => ({ task, state: missionTaskState(task, status, ids) }));
+}
+
 async function toggleMissionTask(taskId) {
     const task = webData.missionTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Өдрийн даалгавар ч мөн адил зүгээр л жагсаалт — статуст нөлөөлөхгүй.
-    if (!task.completed) {
-        task.completed = true;
-        task.completedDate = todayStr();
-        showToast(`"${task.name}" — амжилттай ✓`, "info", "var(--accent)");
-    } else {
-        task.completed = false;
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const ids    = (typeof selfCheckinIds === "function") ? selfCheckinIds() : new Set();
+    const state  = missionTaskState(task, status, ids);
+    const today  = todayStr();
+
+    // Аппын нотолгоог гараар устгах арга байхгүй — тэр тоог бид хэлээгүй.
+    if (state.proven) {
+        const label = state.metric ? state.metric.label : "нотолгоо";
+        showToast(`"${task.name}" — ${label} өнөөдөр аль хэдийн баталсан.`, "info", "var(--accent)");
+        return;
+    }
+
+    if (state.selfReported) {
+        removeSelfCheckin(task.id, today);
+        task.completed     = false;
         task.completedDate = null;
+    } else {
+        recordSelfCheckin(task.id, task.name, today);
+        task.completed     = true;
+        task.completedDate = today;
+        showToast(`"${task.name}" — өөрөө бүртгэлээ ✓`, "info", ATTR_HEX.DISCIPLINE);
     }
 
     await saveWebData();
+
+    // Нотолгоо өөрчлөгдсөн тул гаргасан статус хуучирлаа. renderWebUI() кэшийг
+    // хаядаг ч, түүнээс өмнө ямар нэг юм уншигдвал хуучин тоо гарах эрсдэлтэй.
+    if (typeof Status !== "undefined" && Status && typeof Status.invalidate === "function") {
+        Status.invalidate();
+    }
     if (typeof renderWebUI === "function") renderWebUI();
 }
 
@@ -243,8 +300,15 @@ function renderQuestMetricOptions() {
     const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
     const keep = select.value;
 
+    // ЗӨВХӨН гадны эх сурвалжаас тэжээгддэг метрик. Өөрөө мэдээлдэг метрикийг
+    // (self.checkins) сонгуулбал өөрөө дарж "нотлогдсон" болгох зам нээгдэнэ —
+    // системийн гол амлалт яг тэр агшинд утгаа алдана.
+    const ids = (typeof verifiableMetricIds === "function")
+        ? verifiableMetricIds()
+        : Object.keys(defs);
+
     select.innerHTML = `<option value="">— гараар тэмдэглэх —</option>` +
-        Object.keys(defs).map(id => {
+        ids.map(id => {
             const def  = defs[id] || {};
             const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
             return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;
@@ -493,17 +557,100 @@ function todaysEvidenceText() {
     return `${active} / ${ids.length} метрик идэвхтэй`;
 }
 
+// Даалгаврын нотолгооны эх сурвалжийн сонголт — quest/skill-тэй ижил бүртгэл,
+// ижил хязгаар: өөрөө мэдээлдэг метрик энд гарахгүй.
+function renderMissionMetricOptions() {
+    const select = document.getElementById("mission-metric");
+    if (!select) return;
+
+    const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
+    const ids  = (typeof verifiableMetricIds === "function") ? verifiableMetricIds() : Object.keys(defs);
+    const keep = select.value;
+
+    select.innerHTML = `<option value="">— гараар тэмдэглэх —</option>` +
+        ids.map(id => {
+            const def  = defs[id] || {};
+            const text = `${def.label || id}${def.unit ? ` (${def.unit})` : ""}`;
+            return `<option value="${escapeHTML(id)}">${escapeHTML(text)}</option>`;
+        }).join("");
+
+    if (keep && defs[keep]) select.value = keep;
+}
+
+async function addMissionTask() {
+    const nameEl   = document.getElementById("mission-name");
+    const metricEl = document.getElementById("mission-metric");
+
+    const name = nameEl ? nameEl.value.trim() : "";
+    if (!name) { showToast("Даалгаврын нэр оруулна уу.", "error"); nameEl?.focus(); return; }
+
+    if (!Array.isArray(webData.missionTasks)) webData.missionTasks = [];
+    if (webData.missionTasks.some(t => t && t.name.toLowerCase() === name.toLowerCase())) {
+        showToast("Ийм нэртэй даалгавар аль хэдийн байна.", "error");
+        return;
+    }
+
+    webData.missionTasks.push({
+        id: `m${Date.now()}`,
+        name,
+        metricId: (metricEl && metricEl.value) ? metricEl.value : null,
+        completed: false,
+        completedDate: null
+    });
+
+    await saveWebData();
+    if (typeof renderWebUI === "function") renderWebUI();
+
+    if (nameEl)   nameEl.value = "";
+    if (metricEl) metricEl.value = "";
+    showToast(`"${name}" нэмэгдлээ.`);
+}
+
+async function deleteMissionTask(taskId) {
+    const task = webData.missionTasks.find(t => t && t.id === taskId);
+    if (!task) return;
+
+    // Даалгаврыг устгах нь ТҮҮХИЙГ УСТГАХГҮЙ: өмнө нь бүртгэсэн check-in-ууд
+    // нотолгоо хэвээр үлдэнэ. Тэдгээр нь үнэхээр болсон явдал байсан.
+    if (!confirm(`"${task.name}" даалгаврыг жагсаалтаас хасах уу?\n\nӨмнөх бүртгэлүүд түүхэнд хэвээр үлдэнэ.`)) return;
+
+    webData.missionTasks = webData.missionTasks.filter(t => t && t.id !== taskId);
+    await saveWebData();
+    if (typeof renderWebUI === "function") renderWebUI();
+}
+
+document.getElementById("submit-mission-btn")?.addEventListener("click", addMissionTask);
+document.getElementById("mission-name")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("submit-mission-btn")?.click();
+});
+document.getElementById("toggle-mission-form")?.addEventListener("click", function () {
+    const form = document.getElementById("mission-form");
+    if (!form) return;
+    const open = form.style.display !== "none";
+    form.style.display = open ? "none" : "flex";
+    this.textContent = open ? "+ Даалгавар нэмэх" : "− Хаах";
+    if (!open) document.getElementById("mission-name")?.focus();
+});
+
 function renderMissionTasks() {
+    renderMissionMetricOptions();
+
     const list = document.getElementById("mission-tasks-list");
     if (!list) return;
 
-    const tasks = webData.missionTasks;
-    const completedCount = tasks.filter(t => t.completed).length;
+    const rows           = missionTasksWithState();
+    const tasks          = rows.map(r => r.task);
+    const completedCount = rows.filter(r => r.state.done).length;
+    const provenCount    = rows.filter(r => r.state.proven).length;
     const pct            = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-    // Гараар тоолсон жагсаалт өөрийгөө тоолж байна — энэ нь шударга.
+    // Хэдэн нь АППААР батлагдсаныг тусад нь хэлнэ — "3/3" гэдэг нь бүгд
+    // нотлогдсон гэсэн үг үү, эсвэл бүгд өөрөө тэмдэглэсэн үү гэдгийг ялгана.
     const progEl = document.getElementById("mission-progress-text");
-    if (progEl) progEl.textContent = `${completedCount} / ${tasks.length} (${pct}%)`;
+    if (progEl) {
+        progEl.textContent = `${completedCount} / ${tasks.length} (${pct}%)`
+            + (completedCount > 0 ? ` · ${provenCount} нотлогдсон` : "");
+    }
     const evEl = document.getElementById("mission-evidence-text");
     if (evEl) evEl.textContent = todaysEvidenceText();
     const metaEl = document.getElementById("mission-meta-status");
@@ -513,13 +660,48 @@ function renderMissionTasks() {
     }
 
     list.innerHTML = "";
-    tasks.forEach(t => {
+    rows.forEach(({ task: t, state }) => {
         const el = document.createElement("div");
-        el.className = `mission-task${t.completed ? " completed" : ""}`;
+        el.className = "mission-task"
+            + (state.done ? " completed" : "")
+            + (state.proven ? " proven" : "")
+            + (state.selfReported ? " self-reported" : "");
         el.dataset.taskId = t.id;
+
+        // Гараас ажиллах ёстой: энэ бол DISCIPLINE-ыг хөдөлгөдөг цорын ганц
+        // товч. Нотлогдсоныг дарах юм байхгүй тул түүнийг фокусын дарааллаас
+        // гаргаж, aria-аар нь ч хэлнэ.
+        if (state.proven) {
+            el.setAttribute("role", "img");
+            el.setAttribute("aria-label", `${t.name} — нотолгоогоор биелсэн`);
+        } else {
+            el.setAttribute("role", "button");
+            el.setAttribute("tabindex", "0");
+            el.setAttribute("aria-pressed", state.done ? "true" : "false");
+        }
+
+        // Тэмдэглэгээний ард юу зогсож байгааг шулуухан хэлнэ.
+        let proof = "";
+        if (state.proven) {
+            const m    = state.metric;
+            const unit = (m && m.unit) ? ` ${m.unit}` : "";
+            proof = `<div class="task-proof proven" title="Холбогдсон апп өнөөдөр мэдээлсэн">
+                        ✓ НОТЛОГДСОН · ${escapeHTML(m ? m.label : "")} ${state.provenValue.toLocaleString()}${escapeHTML(unit)}
+                     </div>`;
+        } else if (state.selfReported) {
+            proof = `<div class="task-proof self" title="Апп биш, өөрөө тэмдэглэсэн">◈ ӨӨРӨӨ МЭДЭЭЛСЭН</div>`;
+        } else if (state.metric) {
+            proof = `<div class="task-proof waiting" title="${escapeHTML(state.metric.label)} өнөөдөр юу ч аваагүй">
+                        ${escapeHTML(state.metric.label)} — хүлээж байна
+                     </div>`;
+        }
+
         el.innerHTML = `
             <div class="task-box"></div>
-            <div class="task-name">${escapeHTML(t.name)}</div>`;
+            <div class="task-name">${escapeHTML(t.name)}</div>
+            ${proof}
+            <button class="delete-btn" data-id="${escapeHTML(String(t.id))}" data-type="mission"
+                    aria-label="${escapeHTML(t.name)} — жагсаалтаас хасах" title="Хасах">×</button>`;
         list.appendChild(el);
     });
 }

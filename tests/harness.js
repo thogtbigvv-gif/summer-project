@@ -81,6 +81,11 @@ const EXPORTS = [
   "renderCategories", "renderQuests", "renderSkills", "renderMissionTasks",
   "renderConnectedApps", "AnalyticsEngine", "questProgress", "SKILL_CAT",
   "questsWithProgress", "connectedEvidenceHtml", "provenanceHtml",
+  "missionTaskState", "missionTasksWithState", "toggleMissionTask",
+  "recordSelfCheckin", "removeSelfCheckin", "selfCheckinId", "selfCheckinIds",
+  "SELF_APP", "ATTR_HEX", "verifiableMetricIds",
+  "evidenceRecordCount", "importWebData", "storageWarning", "isQuotaError",
+  "addMissionTask", "deleteMissionTask",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"
 ];
 

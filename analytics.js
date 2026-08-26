@@ -149,14 +149,19 @@ const AnalyticsEngine = {
                 raw:      Number(source.rawCount)      || 0,
                 rolled:   Number(source.rolledCount)   || 0,
                 last30:   Number(source.last30Count)   || 0,
-                // Хэзээ ч мэдээлж үзээгүй эх сурвалж нь "тасарсан" биш —
-                // зүгээр л холбогдоогүй. Хоёрыг ялгана.
-                state:    updatedAt <= 0 ? "silent" : (source.stale ? "stale" : "live")
+                // ГУРВАН өөр төлөв, гурвуулаа өөр утгатай:
+                //   self   — апп биш, хэрэглэгч өөрөө бичсэн (батлагдаагүй)
+                //   silent — хэзээ ч мэдээлж үзээгүй, өөрөөр хэлбэл холбогдоогүй
+                //   stale  — өмнө нь мэдээлдэг байсан мөртлөө чимээгүй болсон
+                // Сүүлийнх нь л АСУУДАЛ. Эхний хоёрыг тэрхүү асуудалтай хольж
+                // харуулбал самбар өөрөө худал дохио өгч эхэлнэ.
+                state:    source.selfReported ? "self"
+                          : (updatedAt <= 0 ? "silent" : (source.stale ? "stale" : "live"))
             };
         }).sort((a, b) => b.updatedAt - a.updatedAt);
     },
 
-    INTEGRITY_STATE_TEXT: { live: "LIVE", stale: "ТАСАРСАН", silent: "ХОЛБОГДООГҮЙ" },
+    INTEGRITY_STATE_TEXT: { live: "LIVE", stale: "ТАСАРСАН", silent: "ХОЛБОГДООГҮЙ", self: "ӨӨРӨӨ" },
 
     renderIntegrity(status) {
         const list = document.getElementById("integrity-sources");
@@ -167,10 +172,13 @@ const AnalyticsEngine = {
         const rows = this.integrityRows(status);
 
         if (meta) {
-            const live = rows.filter(r => r.state === "live").length;
-            meta.textContent = rows.length === 0
+            // Гар бүртгэл нь "идэвхтэй эх сурвалж" биш — түүнийг тоонд оруулбал
+            // холбогдсон апп байхгүй ч самбар эрүүл мэт харагдана.
+            const external = rows.filter(r => r.state !== "self");
+            const live     = external.filter(r => r.state === "live").length;
+            meta.textContent = external.length === 0
                 ? "ЭХ СУРВАЛЖ АЛГА"
-                : `${live} / ${rows.length} ЭХ СУРВАЛЖ ИДЭВХТЭЙ`;
+                : `${live} / ${external.length} ЭХ СУРВАЛЖ ИДЭВХТЭЙ`;
         }
 
         list.innerHTML = rows.length === 0
@@ -196,6 +204,21 @@ const AnalyticsEngine = {
         const gaps     = Array.isArray(overall.rollupGaps)    ? overall.rollupGaps    : [];
 
         const blocks = [];
+
+        // Хадгалалт дүүрсэн бол БУСДААС нь өмнө хэлнэ: тэр үед шинэ нотолгоо
+        // огт хадгалагдахгүй байгаа бөгөөд дэлгэц дээр зүгээр л "тоо буурсан"
+        // мэт харагдана. Энэ бол системийн хамгийн чимээгүй эвдрэл.
+        if (typeof storageWarning === "function" && storageWarning()) {
+            blocks.push(`
+                <div class="integrity-warning">
+                    <strong>Хадгалалт дүүрэв</strong>
+                    <p>Браузерын сан дүүрсэн тул ШИНЭ НОТОЛГОО ХАДГАЛАГДАХГҮЙ байна.
+                       Доор "НОТОЛГОО ЭКСПОРТЛОХ" дарж файл болгон авангуутаа
+                       "НОТОЛГОО ХАМТ УСТГАХ" хийж сан чөлөөлнө үү — дараа нь
+                       файлаа сэргээх боломжтой.</p>
+                </div>`);
+        }
+
         if (unmapped.length > 0) {
             blocks.push(`
                 <div class="integrity-warning">

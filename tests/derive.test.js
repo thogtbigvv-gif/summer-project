@@ -88,9 +88,11 @@ await t("sources түүхий ба нэгтгэсэн тоог ЯЛГАНА", ()
 
 await t("нотолгоо огт байхгүй → бүрэн, тэг үр дүн", () => {
   const s = api({}).Status.get();
-  assert.strictEqual(Object.keys(s.metrics).length, 4);
+  // gym.volume · bigu.reviews · bigu.lessons · github.commits · self.checkins
+  assert.strictEqual(Object.keys(s.metrics).length, 5);
   assert.strictEqual(s.attributes.BODY.score, 0);
   assert.strictEqual(s.attributes.CREATION.score, 0);
+  assert.strictEqual(s.attributes.DISCIPLINE.score, 0);
   assert.strictEqual(s.overall.totalEvents, 0);
 });
 
