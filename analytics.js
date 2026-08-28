@@ -114,6 +114,13 @@ const AnalyticsEngine = {
         return Object.keys(status.metrics).map(id => status.metrics[id]).filter(Boolean);
     },
 
+    // Гадны эх сурвалж баталсан метрикүүд. Толгойн тоо (ACTIVE DAYS,
+    // CONSISTENCY, TRACKED, STREAK) ЗӨВХӨН эднээс гарна: өөрөө мэдээлсэн
+    // тоог тэдгээрт нийлүүлбэл шалгах нүд дарж л 100% болгож болно.
+    provenMetrics(status) {
+        return this.metricList(status).filter(m => !m.selfReported);
+    },
+
     hasEvidence(status) {
         return !!(status && status.overall && Number(status.overall.totalEvents) > 0);
     },
@@ -251,10 +258,13 @@ const AnalyticsEngine = {
         const container = document.getElementById('weekly-stats-container');
         if (!container) return;
 
-        const overall = (status && status.overall) ? status.overall : { activeDays30: 0 };
-        const metrics = this.metricList(status);
+        const overall = (status && status.overall) ? status.overall : {};
+        const proven  = overall.proven || { activeDays30: 0 };
+        const self    = overall.self   || { activeDays30: 0 };
+        const metrics = this.provenMetrics(status);
 
-        const activeDays  = Number(overall.activeDays30) || 0;
+        const activeDays  = Number(proven.activeDays30) || 0;
+        const selfDays    = Number(self.activeDays30)   || 0;
         const consistency = Math.round((activeDays / 30) * 100);
         const tracked     = metrics.filter(m => Number(m.last30) > 0).length;
 
@@ -264,9 +274,15 @@ const AnalyticsEngine = {
             if (streak > bestStreak) { bestStreak = streak; bestStreakLabel = m.label; }
         });
 
+        // Өөрөө мэдээлсэнийг НУУХГҮЙ — гэхдээ гол тоог нь болгохгүй. Тусдаа
+        // дэд мөрөнд, алтан өнгөөр: "энэ хэсэг нь батлагдаагүй" гэж хэлж байна.
+        const selfNote = selfDays > 0
+            ? `<span style="color:var(--tier-s);">+${selfDays} өдөр өөрөө</span>`
+            : `<span>гадны эх сурвалжаас</span>`;
+
         container.innerHTML = `
-            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong></div>
-            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong></div>
+            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong>${selfNote}</div>
+            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong><span>зөвхөн нотлогдсон</span></div>
             <div class="stat-card-pro"><span>TRACKED METRICS</span><strong>${tracked}</strong><span>${metrics.length} метрикээс</span></div>
             <div class="stat-card-pro"><span>LONGEST STREAK</span><strong>${bestStreak} өдөр</strong><span>${escapeHTML(bestStreakLabel)}</span></div>
         `;
@@ -282,10 +298,11 @@ const AnalyticsEngine = {
         // Тайлбаргүй халуун зураглал бол зүгээр л ногоон дөрвөлжингүүд. Хэмжээсийг
         // нь рендерийн үед барина — түвшний тоо өөрчлөгдвөл тайлбар дагаж засагдана.
         if (legend) {
-            legend.innerHTML = `<span class="heatmap-legend-text">Тэр өдөр хэдэн метрик хөдөлсөн бэ:</span>` +
+            legend.innerHTML = `<span class="heatmap-legend-text">Тэр өдөр хэдэн метрик НОТЛОГДСОН бэ:</span>` +
                 [0, 1, 2, 3, 4].map(level =>
                     `<span class="heat-box ${level > 0 ? `heat-lvl-${level}` : ""}"></span>` +
-                    `<small>${level}${level === 4 ? "+" : ""}</small>`).join("");
+                    `<small>${level}${level === 4 ? "+" : ""}</small>`).join("")
+                + `<span class="heat-box heat-self"></span><small>зөвхөн өөрөө</small>`;
         }
 
         if (!this.hasEvidence(status)) {
@@ -297,11 +314,19 @@ const AnalyticsEngine = {
         container.innerHTML = this.getPastDays(HEATMAP_DAYS).map(date => {
             // daily-д түлхүүр байгаа = тэр өдөр event бүртгэгдсэн (утга нь 0 ч байж болно).
             const active = metrics.filter(m => m.daily && Object.prototype.hasOwnProperty.call(m.daily, date));
-            const level  = Math.min(4, active.length);
-            const cls    = level > 0 ? `heat-lvl-${level}` : "";
+            const proven = active.filter(m => !m.selfReported);
+
+            // Өнгөний хүчийг ЗӨВХӨН батлагдсан метрик тодорхойлно. Зөвхөн
+            // өөрөө тэмдэглэсэн өдөр ногоон болбол зураглал бүхэлдээ "би
+            // ажилласан" гэж худал ярина — тийм өдөр алтан хүрээтэй гарна.
+            const level = Math.min(4, proven.length);
+            const cls   = level > 0
+                ? `heat-lvl-${level}`
+                : (active.length > 0 ? "heat-self" : "");
 
             const detail = active
-                .map(m => `${m.label} ${Number(m.daily[date]).toLocaleString()}${m.unit ? " " + m.unit : ""}`)
+                .map(m => `${m.label} ${Number(m.daily[date]).toLocaleString()}${m.unit ? " " + m.unit : ""}`
+                          + (m.selfReported ? " (өөрөө)" : ""))
                 .join(" · ");
             const title = detail ? `${date} · ${detail}` : date;
 

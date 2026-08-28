@@ -545,16 +545,20 @@ function todaysEvidenceText() {
     const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
     if (!status || !status.metrics || typeof status.metrics !== "object") return "—";
 
-    const ids   = Object.keys(status.metrics);
-    const today = todayStr();
-    const active = ids.filter(id => {
+    // ЗӨВХӨН гадны эх сурвалж баталсан метрик. Энэ мөр нь DAILY PROGRESS-ийн
+    // яг хажууд зогсдог: гараар тэмдэглэсэн жагсаалт өөрийгөө тоолж байхад
+    // энэ нь "тэгэхээр үнэхээр юу болов" гэдэгт хариулах учиртай. Өөрөө
+    // мэдээлсэн тоог энд оруулбал хоёр мөр адилхан зүйл ярих болно.
+    const ids   = Object.keys(status.metrics).filter(id => {
         const metric = status.metrics[id];
-        return metric && metric.daily && Number(metric.daily[today]) > 0;
-    }).length;
+        return metric && !metric.selfReported;
+    });
+    const today = todayStr();
+    const active = ids.filter(id => Number(status.metrics[id].daily[today]) > 0).length;
 
     // Метрик огт байхгүй ч мөн адил энэ салаанд орно — "0 / 0" гэж харуулахгүй.
     if (active === 0) return "нотолгоо ирээгүй";
-    return `${active} / ${ids.length} метрик идэвхтэй`;
+    return `${active} / ${ids.length} метрик нотлогдсон`;
 }
 
 // Даалгаврын нотолгооны эх сурвалжийн сонголт — quest/skill-тэй ижил бүртгэл,

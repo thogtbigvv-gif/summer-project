@@ -168,7 +168,12 @@ function emptyStatus(generatedAt) {
         metrics,
         attributes: buildAttributes(metrics),
         sources: {},
-        overall: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0, unmappedTypes: [], rollupGaps: [] }
+        overall: {
+            activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0,
+            proven: { activeDays30: 0, totalEvents: 0 },
+            self:   { activeDays30: 0, totalEvents: 0 },
+            unmappedTypes: [], rollupGaps: []
+        }
     };
 }
 
@@ -216,7 +221,10 @@ function deriveStatus() {
         } catch (fatal) {
             console.error("deriveStatus fallback error:", fatal);
             return { generatedAt, metrics: {}, attributes: {}, sources: {},
-                     overall: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0, unmappedTypes: [], rollupGaps: [] } };
+                     overall: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0,
+                                proven: { activeDays30: 0, totalEvents: 0 },
+                                self:   { activeDays30: 0, totalEvents: 0 },
+                                unmappedTypes: [], rollupGaps: [] } };
         }
     }
 }
@@ -257,8 +265,17 @@ function buildStatus(generatedAt) {
     const unmapped   = new Set();
     const rollupGaps = [];
     const sources    = {};
-    const overallDays = new Set();
+
+    // НЭГТГЭСЭН ТОО БҮРИЙГ ХОЁР ТАЛД НЬ ТУСАД НЬ. Атрибутын түвшинд
+    // батлагдсан/батлагдаагүйг ялгаад, дараа нь "нийт", "идэвхтэй өдөр",
+    // "цуврал" гэсэн толгойн тоонуудад хольчихвол ялгаа утгагүй болно:
+    // хэрэглэгч шалгах нүд дарж л CONSISTENCY 100% болгож чадна.
+    const overallDays = new Set();   // бүгд (нийлбэр — нийцтэй байдлын үүднээс үлдээв)
+    const provenDays  = new Set();   // гадны эх сурвалж баталсан өдрүүд
+    const selfDays    = new Set();   // зөвхөн өөрөө мэдээлсэн өдрүүд
     let totalEvents     = 0;
+    let provenEvents    = 0;
+    let selfEvents      = 0;
     let firstEvidenceAt = 0;
 
     const bridgeSources = (typeof BRIDGE_SOURCES !== "undefined" && Array.isArray(BRIDGE_SOURCES))
@@ -280,6 +297,9 @@ function buildStatus(generatedAt) {
         const state  = (entry && typeof entry === "object" && !Array.isArray(entry)) ? entry : {};
         const source = bridgeSources.find(s => s && s.app === app);
 
+        // "Хэн хэлсэн бэ" гэдэг нь эх сурвалжийн төрлөөр шийдэгдэнэ.
+        const isSelf = !!(source && source.kind === "self");
+
         const evidence = Array.isArray(state.evidence) ? state.evidence : [];
         let appEvents = 0;
         let last30Count = 0;
@@ -293,6 +313,7 @@ function buildStatus(generatedAt) {
             if (at > 0 && (firstEvidenceAt === 0 || at < firstEvidenceAt)) firstEvidenceAt = at;
             if (last30Set.has(date)) last30Count += 1;
             overallDays.add(date);
+            (isSelf ? selfDays : provenDays).add(date);
 
             const key = `${app}:${typeof rec.type === "string" ? rec.type : ""}`;
             const row = METRICS[key];
@@ -394,6 +415,7 @@ function buildStatus(generatedAt) {
                 : (!(updatedAt > 0) || (generatedAt - updatedAt) > staleMs)
         };
         totalEvents += appEvents;
+        if (isSelf) selfEvents += appEvents; else provenEvents += appEvents;
     });
 
     // ---- Метрик бүрийг дуусгах ----
@@ -460,9 +482,22 @@ function buildStatus(generatedAt) {
         attributes: buildAttributes(metrics),
         sources,
         overall: {
+            // Нийлбэр — "ямар нэг юм болсон уу" гэдэгт хариулна.
             activeDays30:    win.last30.filter(date => overallDays.has(date)).length,
             totalEvents,
             firstEvidenceAt,
+
+            // Толгойн тоонууд ЭНДЭЭС уншина. Батлагдсаныг батлагдаагүйгээс
+            // ялгаж чадахгүй нэгтгэл бол ялгаагүй л худал тоо.
+            proven: {
+                activeDays30: win.last30.filter(date => provenDays.has(date)).length,
+                totalEvents:  provenEvents
+            },
+            self: {
+                activeDays30: win.last30.filter(date => selfDays.has(date)).length,
+                totalEvents:  selfEvents
+            },
+
             // Үйлдвэрлэгч шинэ төрөл гаргавал чимээгүй алга болохгүй, ЭНД харагдана.
             unmappedTypes:   Array.from(unmapped).sort(),
             rollupGaps

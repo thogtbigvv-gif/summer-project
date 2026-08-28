@@ -247,15 +247,25 @@ function renderProfileEvidence() {
     const firstAt = Number(overall.firstEvidenceAt) || 0;
     const since   = (firstAt > 0 && typeof dayKeyOf === "function") ? dayKeyOf(firstAt) : null;
 
+    // Профайл нь БАТЛАГДСАН тоог гол болгоно. Өөрөө мэдээлсэнийг нуухгүй —
+    // тусдаа мөрөнд, алтан өнгөөр. Хоёрыг нийлүүлбэл "107 нотолгоо" гэсэн
+    // тоо нь 107 удаа шалгах нүд дарсан ч байж болох болно.
+    const proven = overall.proven || { activeDays30: 0, totalEvents: 0 };
+    const self   = overall.self   || { activeDays30: 0, totalEvents: 0 };
+
     el.innerHTML = `
         <div class="profile-evidence-row">
-            <span>НИЙТ НОТОЛГОО</span><strong>${Number(overall.totalEvents).toLocaleString()}</strong>
+            <span>НОТЛОГДСОН</span><strong>${Number(proven.totalEvents).toLocaleString()}</strong>
         </div>
+        ${Number(self.totalEvents) > 0 ? `
+        <div class="profile-evidence-row">
+            <span>ӨӨРӨӨ БҮРТГЭСЭН</span><strong style="color:${ATTR_HEX.DISCIPLINE};">${Number(self.totalEvents).toLocaleString()}</strong>
+        </div>` : ""}
         <div class="profile-evidence-row">
             <span>БҮРТГЭЛ ЭХЭЛСЭН</span><strong>${escapeHTML(since || "—")}</strong>
         </div>
         <div class="profile-evidence-row">
-            <span>ИДЭВХТЭЙ ӨДӨР</span><strong>${Number(overall.activeDays30) || 0} / 30</strong>
+            <span>НОТЛОГДСОН ӨДӨР</span><strong>${Number(proven.activeDays30) || 0} / 30</strong>
         </div>`;
 }
 

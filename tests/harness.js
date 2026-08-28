@@ -85,7 +85,7 @@ const EXPORTS = [
   "recordSelfCheckin", "removeSelfCheckin", "selfCheckinId", "selfCheckinIds",
   "SELF_APP", "ATTR_HEX", "verifiableMetricIds",
   "evidenceRecordCount", "importWebData", "storageWarning", "isQuotaError",
-  "addMissionTask", "deleteMissionTask",
+  "addMissionTask", "deleteMissionTask", "todaysEvidenceText",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"
 ];
 
