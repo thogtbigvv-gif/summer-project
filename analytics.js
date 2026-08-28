@@ -162,13 +162,33 @@ const AnalyticsEngine = {
                 //   stale  — өмнө нь мэдээлдэг байсан мөртлөө чимээгүй болсон
                 // Сүүлийнх нь л АСУУДАЛ. Эхний хоёрыг тэрхүү асуудалтай хольж
                 // харуулбал самбар өөрөө худал дохио өгч эхэлнэ.
-                state:    source.selfReported ? "self"
-                          : (updatedAt <= 0 ? "silent" : (source.stale ? "stale" : "live"))
+                feedError: source.feedError || null,
+                // ДӨРВӨН төлөв. "broken" нь бусдаас ЯЛГААТАЙ: апп ажиллаж байгаа,
+                // фийдээ бичсэн, гэтэл бид түүнийг уншиж чадахгүй байна. Үүнийг
+                // "холбогдоогүй"-тэй хольж харуулбал хэрэглэгч аппаа суулгаагүй
+                // юм байна гэж бодоод, эвдрэл сар турш үргэлжилнэ.
+                state:    source.feedError ? "broken"
+                          : (source.selfReported ? "self"
+                          : (updatedAt <= 0 ? "silent" : (source.stale ? "stale" : "live")))
             };
         }).sort((a, b) => b.updatedAt - a.updatedAt);
     },
 
-    INTEGRITY_STATE_TEXT: { live: "LIVE", stale: "ТАСАРСАН", silent: "ХОЛБОГДООГҮЙ", self: "ӨӨРӨӨ" },
+    INTEGRITY_STATE_TEXT: { live: "LIVE", stale: "ТАСАРСАН", silent: "ХОЛБОГДООГҮЙ",
+                            self: "ӨӨРӨӨ", broken: "УНШИГДАХГҮЙ" },
+
+    // Голдсон шалтгааныг хүний хэлээр. Хэрэглэгч юу засахаа мэдэх ёстой.
+    FEED_ERROR_TEXT: {
+        version: e => `фийдийн хувилбар v${e.version} — энэ талд дэмжигдээгүй байна`,
+        json:    () => `фийд JSON биш болжээ`,
+        shape:   () => `фийдийн бүтэц гэрээнд нийцэхгүй`
+    },
+
+    feedErrorText(error) {
+        if (!error) return "";
+        const fn = this.FEED_ERROR_TEXT[error.reason];
+        return fn ? fn(error) : `фийд уншигдсангүй (${error.reason})`;
+    },
 
     renderIntegrity(status) {
         const list = document.getElementById("integrity-sources");
@@ -211,6 +231,22 @@ const AnalyticsEngine = {
         const gaps     = Array.isArray(overall.rollupGaps)    ? overall.rollupGaps    : [];
 
         const blocks = [];
+
+        // Голдсон фийд — хамгийн эхэнд. Хэрэглэгч ҮНЭХЭЭР ажилласан мөртлөө
+        // тоо нь хаана ч гарахгүй байна гэсэн үг: бусад бүх анхааруулгаас
+        // илүү яаралтай.
+        const broken = rows.filter(r => r.feedError);
+        if (broken.length > 0) {
+            blocks.push(`
+                <div class="integrity-warning">
+                    <strong>Фийд уншигдахгүй байна</strong>
+                    <p>${broken.map(r =>
+                        `<b>${escapeHTML(r.label)}</b> — ${escapeHTML(this.feedErrorText(r.feedError))}`
+                    ).join("<br>")}</p>
+                    <p>Тэр апп ажиллаж, бичсээр байгаа — гэхдээ энэ тал түүнийг
+                       ойлгохгүй тул хийсэн зүйл нь статуст ОРОХГҮЙ байна.</p>
+                </div>`);
+        }
 
         // Хадгалалт дүүрсэн бол БУСДААС нь өмнө хэлнэ: тэр үед шинэ нотолгоо
         // огт хадгалагдахгүй байгаа бөгөөд дэлгэц дээр зүгээр л "тоо буурсан"

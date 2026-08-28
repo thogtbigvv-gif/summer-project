@@ -84,6 +84,7 @@ const EXPORTS = [
   "missionTaskState", "missionTasksWithState", "toggleMissionTask",
   "recordSelfCheckin", "removeSelfCheckin", "selfCheckinId", "selfCheckinIds",
   "SELF_APP", "ATTR_HEX", "verifiableMetricIds",
+  "validateBridgeFeed", "readBridgeFeed", "BRIDGE_VERSIONS",
   "evidenceRecordCount", "importWebData", "storageWarning", "isQuotaError",
   "addMissionTask", "deleteMissionTask", "todaysEvidenceText",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"

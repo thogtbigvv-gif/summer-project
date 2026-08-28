@@ -41,7 +41,9 @@ const METRICS = {
 
 const METRIC_DEFS = {
     "gym.volume":   { label: "Volume lifted",    unit: "kg",      attr: "BODY", target30: 40000 },
-    "bigu.reviews": { label: "Cards reviewed",   unit: "cards",   attr: "MIND", target30: 900   },
+    // Bigu-гийн review.session нь `value: correct` илгээдэг — өөрөөр хэлбэл ЗӨВ
+    // хариулсан картын тоо, үзсэн картын тоо биш. Шошго нь тоогоо яг нэрлэх ёстой.
+    "bigu.reviews": { label: "Cards correct",    unit: "cards",   attr: "MIND", target30: 900   },
     "bigu.lessons": { label: "Lessons finished", unit: "lessons", attr: "MIND", target30: 20    },
     "github.commits": { label: "Commits", unit: "commits", attr: "CREATION", target30: 60 },
     // selfReported: энэ метрикийг гадны апп биш, хэрэглэгч өөрөө тэжээдэг.
@@ -404,6 +406,12 @@ function buildStatus(generatedAt) {
             // хэрэглэгч дараагүй л бол чимээгүй байх нь хэвийн. Тиймээс stale гэж
             // тэмдэглэхгүй, харин өөрийнх нь төрлийг ил гаргана.
             selfReported: !!(source && source.kind === "self"),
+            // Фийд байгаа мөртлөө уншигдаагүй бол шалтгааныг нь дээш дамжуулна.
+            // Энэ нь "хэзээ ч мэдээлээгүй"-гээс ТУСДАА зүйл: апп ажиллаж байгаа,
+            // зүгээр л бид түүнийг ойлгохоо больсон.
+            feedError: (state.feedError && typeof state.feedError === "object")
+                ? state.feedError
+                : null,
             evidenceCount: evidence.length + rolledCount,
             // UI "идэвхгүй" гэж худал хэлэхгүйн тулд хоёуланг нь ил гаргана:
             // түүхий бичлэг нь нэгтгэгдээд хоосорсон ч түүх алга болоогүй.

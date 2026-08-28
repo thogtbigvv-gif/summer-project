@@ -1403,3 +1403,8 @@ html { scroll-behavior: smooth; }
     background: rgba(234, 179, 8, 0.12);
     border-color: rgba(234, 179, 8, 0.55);
 }
+
+/* Уншигдахгүй фийд — "холбогдоогүй"-гээс ялгарах ёстой. Апп ажиллаж байгаа
+   мөртлөө тоо нь алга болж байна гэдэг нь хамгийн яаралтай төлөв. */
+.integrity-row[data-state="broken"] { border-left-color: var(--tier-a); opacity: 1; }
+.integrity-row[data-state="broken"] .integrity-state { color: var(--tier-a); }

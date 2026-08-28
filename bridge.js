@@ -108,12 +108,31 @@ function bridgeData(value, id) {
     return value;
 }
 
-// Задалсан JSON-ыг гэрээнд тулгана. Хүлээгдсэнээс өөр юм ирвэл null.
-// localStorage-ийн ч, татаж авсан ч фийд ЯГ ЭНЭ шалгуураар дамжина —
-// хүргэх зам нь өөр ч гэрээ нь нэг.
+// ДЭМЖИГДЭХ ГЭРЭЭНИЙ ХУВИЛБАРУУД.
+//
+// v2 нь v1 дээр event бүрд `date` (орон нутгийн хуанлийн өдөр) талбар НЭМСЭН
+// бөгөөд өөр юу ч аваагүй: id, at, type, value, detail бүгд хэвээр. Уншигчийн
+// хувьд бүрэн нийцтэй тул шинэ талбарыг зүгээр л үл хэрэгсээд хүлээж авна.
+//
+// Энэ жагсаалт байхгүй үед юу болсныг санах нь зүйтэй: Bigu гэрээгээ v2 болгож
+// шинэчилсэн, энэ тал v1-ийг л хүлээж авдаг хэвээр байсан — сар турш хийсэн
+// давтлага чимээгүй голдож, дэлгэц дээр "ХОЛБОГДООГҮЙ" гэж л харагдаж байв.
+const BRIDGE_VERSIONS = [1, 2];
+
+// Задалсан JSON-ыг гэрээнд тулгана. localStorage-ийн ч, татаж авсан ч фийд
+// ЯГ ЭНЭ шалгуураар дамжина — хүргэх зам нь өөр ч гэрээ нь нэг.
+//
+// Буцаах утга нь голдсон бол ШАЛТГААНАА авч явна. Өмнө нь энэ функц зүгээр л
+// null буцаадаг байсан тул дуудагч "фийд байхгүй" (апп суугаагүй — алдаа биш)
+// ба "фийд байгаа мөртлөө уншигдахгүй" (ЖИНХЭНЭ эвдрэл) хоёрыг ялгаж чаддаггүй,
+// хоёуланг нь чимээгүй алгасдаг байв.
 function validateBridgeFeed(parsed) {
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-    if (parsed.v !== 1) return null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return { ok: false, reason: "shape" };
+    }
+    if (BRIDGE_VERSIONS.indexOf(parsed.v) === -1) {
+        return { ok: false, reason: "version", version: parsed.v };
+    }
 
     // Хуучнаас нь шинэ рүү эрэмбэлнэ — ингэснээр BRIDGE_MAX_EVENTS-ийн таслалт
     // ХАМГИЙН СҮҮЛИЙН event-үүдийг үлдээнэ.
@@ -127,21 +146,28 @@ function validateBridgeFeed(parsed) {
         ? parsed.status
         : null;
 
-    return { status, updatedAt: bridgeNum(parsed.updatedAt), events };
+    return { ok: true, feed: { status, updatedAt: bridgeNum(parsed.updatedAt), events } };
 }
 
 // kind: "local" — Хамгаалалттай унших + parse.
+// null = түлхүүр БАЙХГҮЙ (апп суугаагүй). Тэр нь эвдрэл биш, чимээгүй өнгөрнө.
 function readBridgeFeed(key) {
+    let raw = null;
     try {
         if (typeof localStorage === "undefined") return null;
-
-        const raw = localStorage.getItem(key);
-        if (!raw || typeof raw !== "string") return null;
-
-        return validateBridgeFeed(JSON.parse(raw));
+        raw = localStorage.getItem(key);
     } catch (err) {
         console.warn(`readBridgeFeed: "${key}" уншиж чадсангүй —`, err);
         return null;
+    }
+    if (!raw || typeof raw !== "string") return null;
+
+    // Түлхүүр БАЙНА. Эндээс цааш юу ч болсон бол тэр нь ил тайлагнагдах ёстой.
+    try {
+        return validateBridgeFeed(JSON.parse(raw));
+    } catch (err) {
+        console.warn(`readBridgeFeed: "${key}" JSON биш —`, err);
+        return { ok: false, reason: "json" };
     }
 }
 
@@ -156,11 +182,19 @@ async function fetchBridgeFeed(url) {
         // хэдэн цагаар харагдахгүй байж мэднэ.
         const res = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
         if (!res || !res.ok) {
+            // Файл байхгүй / сүлжээ унтарсан — түлхүүр байхгүйтэй адил.
             console.warn(`fetchBridgeFeed: "${url}" — HTTP ${res ? res.status : "?"}`);
             return null;
         }
 
-        return validateBridgeFeed(await res.json());
+        let parsed;
+        try {
+            parsed = await res.json();
+        } catch (err) {
+            console.warn(`fetchBridgeFeed: "${url}" JSON биш —`, err);
+            return { ok: false, reason: "json" };
+        }
+        return validateBridgeFeed(parsed);
     } catch (err) {
         console.warn(`fetchBridgeFeed: "${url}" татаж чадсангүй —`, err);
         return null;
@@ -398,12 +432,30 @@ async function syncAll() {
 
             // Татдаг эх сурвалжийг хүлээнэ. Аль нь ч алдаа шидэхгүй — үхсэн нэг
             // эх сурвалж бусдынхаа синкийг ЗОГСООХ ЁСГҮЙ.
-            const feed = source.kind === "fetch"
+            const read = source.kind === "fetch"
                 ? await fetchBridgeFeed(source.url)
                 : readBridgeFeed(source.key);
-            if (!feed) continue;   // байхгүй / гэмтсэн / v !== 1 — чимээгүй алгасна
+            if (!read) continue;   // фийд БАЙХГҮЙ — апп суугаагүй, алдаа биш
 
             const state = getIntegrationState(source.app);
+
+            // Фийд байгаа мөртлөө уншигдсангүй. Энэ бол ЖИНХЭНЭ эвдрэл: хэрэглэгч
+            // үнэхээр ажилласан мөртлөө тоо нь хаа нэгтээ алга болж байна.
+            // Чимээгүй өнгөрөөвөл "апп суугаагүй"-тэй ялгагдахаа болино.
+            if (!read.ok) {
+                state.feedError = {
+                    reason:  read.reason,
+                    version: (read.version === undefined) ? null : read.version,
+                    at:      Date.now()
+                };
+                touched = true;
+                console.warn(`[bridge] ${source.label}: фийд голдов — ${read.reason}`,
+                             read.version !== undefined ? `(v${read.version})` : "");
+                continue;
+            }
+            state.feedError = null;   // амжилттай уншигдсан — хуучин алдааг арилгана
+
+            const feed = read.feed;
 
             // status-г бүтнээр нь хадгална — фийд уншигдсан л бол шинэчилнэ.
             state.status    = feed.status;
