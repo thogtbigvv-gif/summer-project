@@ -74,11 +74,26 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 // Сэргээх. Хадгалагдсан таб байхгүй/устсан бол HTML-ийн анхдагч нь хэвээр үлдэнэ.
+//
+// Хаягийн hash нь хадгалагдсанаас ДЭЭГҮҮР: суулгасан аппын товчлол
+// (manifest.webmanifest → shortcuts) "./#quests-tab" гэж нээдэг тул хэрэглэгч
+// яг тэр табыг ЗОРИУД сонгосон байна. Сүүлд үзсэн таб нь тэр сонголтыг
+// дарж болохгүй.
 function restoreActiveTab() {
+    const fromHash = (location.hash || "").replace(/^#/, "");
+    if (fromHash && activateTab(fromHash, true)) return;
+
     let saved = null;
     try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch (_) {}
     if (saved) activateTab(saved, false);
 }
+
+// Аль хэдийн нээлттэй апп дээр товчлол дарахад хуудас дахин ачаалагдахгүй,
+// зөвхөн hash солигдоно. Түүнийг сонсохгүй бол товчлол чимээгүй үхнэ.
+window.addEventListener("hashchange", () => {
+    const target = (location.hash || "").replace(/^#/, "");
+    if (target) activateTab(target, true);
+});
 
 // ===================== ӨГӨГДЛИЙН УДИРДЛАГА =====================
 // Нотолгоо бол сэргээгдэшгүй. Үйлдвэрлэгч аппууд ердөө 50 event-ийн буфертэй
