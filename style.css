@@ -1397,6 +1397,249 @@ html { scroll-behavior: smooth; }
     outline-offset: 2px;
 }
 
+/* ===================== ХОЛБОЛТЫН УДИРДЛАГА =====================
+   Холбоо бол "тохируулаад мартах" зүйл биш. Чимээгүй тасарсан эх сурвалж
+   бол ЧИМЭЭГҮЙ ХУДАЛ СТАТУС — тиймээс төлөв нь картын толгойд, засах товч
+   нь түүний хажууд байна. */
+
+.connect-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.connect-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.connect-summary {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.4px;
+}
+.connect-summary.has-problem { color: var(--danger); }
+
+/* ---- Шинэ эх сурвалжийн форм ---- */
+.source-form {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.source-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+.source-form label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+.source-form input[type="text"],
+.source-form select {
+    width: 100%;
+    padding: 11px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 13px;
+}
+.source-form input[type="color"] {
+    width: 46px; height: 38px;
+    background: none;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 3px;
+    cursor: pointer;
+}
+.source-form-actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+.source-form-actions .submit-btn { width: auto; margin-top: 0; padding: 11px 22px; }
+.source-form-result:empty { display: none; }
+.source-form-result {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border-left: 3px solid var(--accent);
+    background: rgba(16, 185, 129, 0.07);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+.source-form-result.bad { border-left-color: var(--danger); background: rgba(239, 68, 68, 0.07); }
+.source-form-types { margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.source-form-types code { color: var(--accent); }
+.source-form-note { margin-top: 6px; font-size: 11.5px; color: var(--text-muted); }
+
+/* ---- Картын төлөв ---- */
+.conn-pill {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.7px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.conn-live    { color: var(--accent); background: var(--accent-soft); }
+.conn-stale   { color: var(--tier-s); background: rgba(234, 179, 8, 0.1); }
+.conn-wait    { color: var(--text-muted); background: rgba(255, 255, 255, 0.03); }
+.conn-bad     { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+.conn-self    { color: var(--tier-s); background: rgba(234, 179, 8, 0.08); }
+.conn-off,
+.conn-unknown { color: var(--text-muted); background: none; }
+
+.conn-locator {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    opacity: 0.75;
+    margin-top: 8px;
+    word-break: break-all;
+}
+.conn-check { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+.conn-check-bad { color: var(--danger); opacity: 0.9; }
+
+/* Тасарсан эх сурвалжийг бүдгэрүүлэхээ болилоо: яг тэр карт л ХАМГИЙН
+   ЧУХАЛ мэдээллийг агуулж байна. Зөвхөн log хэсэг нь бүдгэрнэ. */
+.connected-card.stale { opacity: 1; }
+.connected-card.stale .connected-log,
+.connected-card.stale .connected-status { opacity: 0.55; }
+
+.conn-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--glass-border);
+}
+.conn-actions .data-link,
+.conn-actions .reset-link { font-size: 10.5px; padding: 7px 11px; }
+
+/* ---- Төрөл → метрик ---- */
+.conn-map {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px dashed rgba(234, 179, 8, 0.35);
+    border-radius: 10px;
+    background: rgba(234, 179, 8, 0.05);
+}
+.conn-map-title {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    color: var(--tier-s);
+    margin-bottom: 10px;
+}
+.conn-map-row + .conn-map-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); }
+.conn-map-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.conn-map-head code { font-family: var(--font-mono); color: var(--text-main); word-break: break-all; }
+.conn-map-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.conn-map-controls select {
+    flex: 1 1 130px;
+    min-width: 0;
+    padding: 9px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 12px;
+}
+.conn-map-controls .submit-btn { flex: 0 0 auto; width: auto; margin-top: 0; padding: 9px 16px; font-size: 11px; }
+.conn-map-new { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+/* display-тэй класс нь hidden атрибутын анхдагчийг ДАРНА. Үүнгүйгээр
+   "шинэ метрик" талбарууд байнга нээлттэй суух бөгөөд карт бүр хоёр
+   дахин урт болно. */
+.conn-map-new[hidden] { display: none; }
+.conn-map-new input, .conn-map-new select {
+    flex: 1 1 110px;
+    min-width: 0;
+    padding: 9px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 12px;
+}
+.conn-map-more { margin-top: 10px; font-size: 11px; color: var(--text-muted); }
+
+/* ===================== СТАТУСЫН ДЭЛГЭРЭНГҮЙ =====================
+   Ангилал ба атрибутын карт нь дарагдана — "энэ тоо хаанаас гарав" гэдэг
+   асуулт картын дотор биш, түүний ард байна. */
+
+.is-openable { cursor: pointer; }
+.is-openable:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.attr-score-row.is-openable { border-radius: 8px; padding: 4px; margin: -4px; transition: background 0.2s ease; }
+.attr-score-row.is-openable:hover { background: rgba(255, 255, 255, 0.03); }
+
+.sd-section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    margin: 20px 0 8px;
+}
+.sd-source {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--accent);
+    margin-bottom: 6px;
+}
+.sd-source span:last-child { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; text-align: right; }
+.sd-source-bad { border-left-color: var(--danger); }
+.sd-source-bad span:last-child { color: var(--danger); }
+
+.sd-spark { margin-top: 18px; }
+.sd-spark-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.sd-metric-row { margin-bottom: 18px; }
+.sd-metric-row .progress-bg { margin: 6px 0 8px; }
+.sd-metric-row small { color: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px; }
+.sd-formula {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+.sd-formula.sd-warn { color: var(--tier-s); background: rgba(234, 179, 8, 0.07); }
+
+/* Цонх нь дэлгэцээс УРТ байж болно (зургаан хайрцаг + график + нотолгоо).
+   Хэт урт үед скролл байхгүй бол доод хэсэг нь ХҮРЭХ АРГАГҮЙ болно —
+   утсан дээр нотолгооны жагсаалт яг тэнд байдаг. */
+.modal-overlay { padding: 16px; overflow-y: auto; }
+.modal-content { max-height: calc(100vh - 32px); overflow-y: auto; }
+
+/* Зургаан хайрцгийг нэг баганаар өрвөл цонх хэт урт болно. */
+#status-detail-modal .modal-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 700px) {
+    .connect-title { align-items: flex-start; }
+    .connect-actions { width: 100%; justify-content: space-between; }
+    .conn-map-controls .submit-btn { flex: 1 1 100%; }
+}
+
 /* ===================== PWA // УТСАН ДЭЭРХ АПП =====================
    Дэлгэцэнд нэмсэн апп нь хөтчийн хаягийн мөргүй ажилладаг: тэр мөр эзэлж
    байсан аюулгүй зайг (notch, статусын самбар, доод зурвас) энэ хуудас
@@ -1509,6 +1752,8 @@ body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
     .web-form input, .web-form select,
     .mission-form input, .mission-form select,
     .form-row-2 select,
+    .source-form input[type="text"], .source-form select,
+    .conn-map-controls select, .conn-map-new input, .conn-map-new select,
     .quest-sort-select, .analytics-sort-select { font-size: 16px; }
 }
 
