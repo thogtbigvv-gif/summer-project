@@ -69,7 +69,18 @@ function activateTab(targetId, remember) {
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function () {
-        activateTab(this.dataset.tab, true);
+        const changed = this.dataset.tab !== document.querySelector(".tab-content.active")?.id;
+        if (!activateTab(this.dataset.tab, true)) return;
+
+        // Утсан дээр таб бүр урт гүйлгэлттэй бөгөөд навигаци нь доод ирмэгт
+        // байдаг. Гүйлгэлтийн байрлалыг хэвээр үлдээвэл "Аналитик" дарсан
+        // хүн уг табын ДУНДААС нээгддэг — өөрөө гараар дээшээ гүйлгэх
+        // шаардлагатай болно. Таб солих гэдэг нь "өөр зүйл рүү шилжих"
+        // гэсэн үг тул эхнээс нь эхэлнэ.
+        //
+        // Зөвхөн ҮНЭХЭЭР солигдсон үед: аль хэдийн нээлттэй табаа дахин
+        // дарахад байрлал үсрэх нь алдаа мэт мэдрэгдэнэ.
+        if (changed) window.scrollTo({ top: 0, behavior: "smooth" });
     });
 });
 
@@ -260,8 +271,15 @@ function renderCategories() {
 // ===================== ПРОФАЙЛ: НОТОЛГООНЫ ҮНДЭС =====================
 // Профайлын оноо бүр нотолгооноос гардаг. Тэгвэл ХЭДЭН нотолгоо, ХЭЗЭЭНЭЭС
 // хойш гэдэг нь тэр онооны жин — түүнгүйгээр "100%" гэдэг нь нэг өдрийн
-// нэг бичлэгээс ч гарч болно. status.overall эдгээрийг аль эрт тооцдог
-// байсан ч дэлгэц дээр хаана ч гардаггүй байв.
+// нэг бичлэгээс ч гарч болно.
+//
+// Тэр жин нь БАТЛАГДСАН байх ёстой. Урьд нь энэ гурван мөр өөрөө дарсан
+// check-in-ыг аппын нотолгоотой нэг саванд хийж тоолдог байв: ганц ч апп
+// холбоогүй хүн өдөр бүр нүд даран "ИДЭВХТЭЙ ӨДӨР 30/30" гэсэн тоог
+// хардаг байсан. Өөрөө өөрийгөө баталсан жин бол жин биш.
+//
+// Одоо толгойн гурван мөр гадны аппаас л гарна, өөрөө мэдээлсэн нь доор
+// ӨӨРИЙНХӨӨ нэрээр гарна — нуугдахгүй, хольцгүй.
 
 function renderProfileEvidence() {
     const el = document.getElementById("profile-evidence");
@@ -269,9 +287,34 @@ function renderProfileEvidence() {
 
     const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
     const overall = (status && status.overall) ? status.overall : null;
+    const self    = (overall && overall.self) ? overall.self : { totalEvents: 0, activeDays30: 0 };
 
-    if (!overall || !(Number(overall.totalEvents) > 0)) {
+    const verified   = Number(overall && overall.totalEvents) || 0;
+    const selfEvents = Number(self.totalEvents) || 0;
+
+    if (!overall || !(verified > 0) && !(selfEvents > 0)) {
         el.innerHTML = `<div class="connected-empty">нотолгоо хараахан ирээгүй</div>`;
+        return;
+    }
+
+    // Өөрөө мэдээлсэн нь ХЭЗЭЭ Ч толгойн тоог нөхөхгүй. Аппын нотолгоо байхгүй
+    // бол тэр гурван мөр ТЭГ гэж хэлнэ — check-in хэдэн ч байсан хамаагүй.
+    const selfRow = selfEvents > 0
+        ? `<div class="profile-evidence-row profile-evidence-self">
+               <span>ӨӨРӨӨ МЭДЭЭЛСЭН</span>
+               <strong>${selfEvents.toLocaleString()} бичлэг<small>${Number(self.activeDays30) || 0}/30 хоног</small></strong>
+           </div>`
+        : "";
+
+    if (!(verified > 0)) {
+        el.innerHTML = `
+            <div class="profile-evidence-row profile-evidence-none">
+                <span>БАТЛАГДСАН НОТОЛГОО</span><strong>0</strong>
+            </div>
+            ${selfRow}
+            <div class="profile-evidence-note">
+                Дээрх оноог ямар ч апп батлаагүй байна — эх сурвалж холбоно уу.
+            </div>`;
         return;
     }
 
@@ -280,14 +323,15 @@ function renderProfileEvidence() {
 
     el.innerHTML = `
         <div class="profile-evidence-row">
-            <span>НИЙТ НОТОЛГОО</span><strong>${Number(overall.totalEvents).toLocaleString()}</strong>
+            <span>БАТЛАГДСАН НОТОЛГОО</span><strong>${verified.toLocaleString()}</strong>
         </div>
         <div class="profile-evidence-row">
             <span>БҮРТГЭЛ ЭХЭЛСЭН</span><strong>${escapeHTML(since || "—")}</strong>
         </div>
         <div class="profile-evidence-row">
             <span>ИДЭВХТЭЙ ӨДӨР</span><strong>${Number(overall.activeDays30) || 0} / 30</strong>
-        </div>`;
+        </div>
+        ${selfRow}`;
 }
 
 // ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================
@@ -362,17 +406,22 @@ function metricSourceHtml(metricId, status) {
         const label = (stats && stats.label) || app;
         const when  = (stats && typeof relativeTime === "function") ? relativeTime(stats.updatedAt) : null;
 
-        let note = "", bad = false;
-        if (check && check.code !== "ok" && check.code !== "self") {
-            note = typeof bridgeCheckText === "function" ? bridgeCheckText(check.code, check.detail) : "уншигдахгүй байна";
-            bad  = true;
+        // Холбогдсон картын нэгэн адил: "хараахан бичээгүй байна" бол эвдрэл
+        // БИШ. Улаанаар бичвэл хэрэглэгч засах юмгүй зүйлийг засах гэж хайна.
+        const code    = check && check.code;
+        const waiting = code === "missing" || code === "no-storage";
+
+        let note = "", tone = "";
+        if (check && code !== "ok" && code !== "self") {
+            note = typeof bridgeCheckText === "function" ? bridgeCheckText(code, check.detail) : "уншигдахгүй байна";
+            tone = waiting ? " sd-source-wait" : " sd-source-bad";
         } else if (stats && stats.stale) {
             note = "чимээгүй байна";
-            bad  = true;
+            tone = " sd-source-bad";
         }
 
         return `
-            <div class="sd-source${bad ? " sd-source-bad" : ""}">
+            <div class="sd-source${tone}">
                 <span>${escapeHTML(label)}</span>
                 <span>${escapeHTML(note || when || "—")}</span>
             </div>`;

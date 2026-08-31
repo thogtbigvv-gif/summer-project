@@ -12,6 +12,12 @@
 // яг энэ шинж чанар үхнэ — тиймээс хадгалахгүй. Кэш зөвхөн санах ойд, хаягдах ёстой.
 //
 // Нотолгоо огт байхгүй бол БҮРЭН, БҮХ НЬ ТЭГ үр дүн гарна. Хэзээ ч алдаа шидэхгүй.
+//
+// БАТЛАГДСАН ба ӨӨРӨӨ МЭДЭЭЛСЭН нь ЭНД ч НИЙЛЭХГҮЙ. Метрик бүр хэн хэлснээ
+// `selfReported`-оор зөөдөг; нэгтгэсэн тоо (`overall`) нь батлагдсаныг толгойд,
+// өөрөө мэдээлсэнийг `overall.self` дотор ТУСДАА гаргана. Хоёулаа нийлдэг ганц
+// талбар бол `overall.anyEvents` бөгөөд тэр нь хэмжилт биш, "дэлгэц хоосон юу"
+// гэдгийг шийдэх туг.
 
 // ===================== МЕТРИКИЙН БҮРТГЭЛ =====================
 // Event-ийн төрлийг ТАЙЛБАРЛАДАГ ЦОРЫН ГАНЦ газар. Шинэ эх сурвалж нэмэх =
@@ -278,7 +284,19 @@ function emptyStatus(generatedAt) {
         metrics,
         attributes: buildAttributes(metrics),
         sources: {},
-        overall: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0, unmappedTypes: [], rollupGaps: [] }
+        overall: emptyOverall()
+    };
+}
+
+// Гаргалтын `overall` хэсгийн ХООСОН ЯС. Гурван газар (хоосон статус, сүүлчийн
+// найдваргүй нөөц, тестийн хүлээлт) яг ижил хэлбэр хэрэгтэй — нэг л газарт
+// бичих нь тэдгээрийн аль нэг нь чимээгүй хоцрохоос сэргийлнэ.
+function emptyOverall() {
+    return {
+        activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0,
+        self: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0 },
+        anyEvents: 0,
+        unmappedTypes: [], unmapped: [], rollupGaps: []
     };
 }
 
@@ -326,8 +344,7 @@ function deriveStatus() {
             return emptyStatus(generatedAt);
         } catch (fatal) {
             console.error("deriveStatus fallback error:", fatal);
-            return { generatedAt, metrics: {}, attributes: {}, sources: {},
-                     overall: { activeDays30: 0, totalEvents: 0, firstEvidenceAt: 0, unmappedTypes: [], rollupGaps: [] } };
+            return { generatedAt, metrics: {}, attributes: {}, sources: {}, overall: emptyOverall() };
         }
     }
 }
@@ -365,12 +382,38 @@ function buildStatus(generatedAt) {
     }
     Object.keys(metrics).forEach(metricFor);
 
-    const unmapped   = new Set();
-    const rollupGaps = [];
-    const sources    = {};
-    const overallDays = new Set();
-    let totalEvents     = 0;
-    let firstEvidenceAt = 0;
+    const unmapped     = new Set();
+    // Танигдаагүй төрлийг НЭРЛЭХ нь дутуу байв: 3 бичлэг гээгдэх ба 3000 бичлэг
+    // гээгдэх хоёр нь тэс өөр асуудал мөртлөө нэрнээс нь ялгагдахгүй. Тиймээс
+    // хэмжээг нь ч хамт цуглуулна — хэдэн бичлэг, хэзээ сүүлд ирсэн.
+    const unmappedInfo = {};
+    const rollupGaps   = [];
+    const sources      = {};
+
+    // ---- БАТЛАГДСАН ба ӨӨРӨӨ МЭДЭЭЛСЭН нь НИЙЛЭХГҮЙ ----
+    // Дүрэм 3 нь метрик, атрибутын түвшинд аль эрт хэрэгжсэн: өөрөө дарсан
+    // check-in зөвхөн DISCIPLINE-д ордог. Гэтэл НЭГТГЭСЭН тоо — "нийт нотолгоо",
+    // "30 хоногийн идэвхтэй өдөр" — хоёуланг нь нэг саванд хийсээр байв. Үр дүнд
+    // нь ганц ч апп мэдээлээгүй атлаа өдөр бүр нүд дарсан хүн "ИДЭВХТЭЙ ӨДӨР
+    // 30/30", "CONSISTENCY 100%" гэсэн тоо хардаг байв. Тэр бол өөрийгөө дарж
+    // хуурах зам системд ЯГ НЭГ л газар байна гэсэн амлалтыг зөрчсөн хэрэг.
+    // Тиймээс ХОЁР тусдаа хуримтлуулагч: толгойн тоо батлагдсанаас л гарна,
+    // өөрөө мэдээлсэн нь алга болохгүй, тусдаа нэрээрээ ил гарна.
+    const verifiedDays  = new Set();
+    const selfDays      = new Set();
+    let verifiedEvents  = 0;
+    let selfEvents      = 0;
+    let firstVerifiedAt = 0;
+    let firstSelfAt     = 0;
+
+    // Танигдаагүй төрлийг нэрээр нь БОЛОН хэмжээгээр нь бүртгэнэ.
+    function noteUnmapped(app, type, count, at) {
+        const key = `${app}:${type}`;
+        unmapped.add(key);
+        const row = unmappedInfo[key] || (unmappedInfo[key] = { key, app, type, count: 0, lastAt: 0 });
+        row.count += num(count);
+        if (num(at) > row.lastAt) row.lastAt = num(at);
+    }
 
     // Хэрэглэгчийн нэмсэн эх сурвалжийг ч оруулна: listBridgeSources() нь
     // суурь ба нэмэгдсэнийг НЭГ жагсаалт болгож өгдөг цорын ганц газар.
@@ -394,6 +437,12 @@ function buildStatus(generatedAt) {
         const entry  = integrations[app];
         const state  = (entry && typeof entry === "object" && !Array.isArray(entry)) ? entry : {};
         const source = bridgeSources.find(s => s && s.app === app);
+        // "Өөрөө мэдээлсэн" эх сурвалж: гадны апп биш, хэрэглэгч өөрөө бичсэн.
+        // Тохируулга нь ямар нэг шалтгаанаар олдохгүй байлаа ч нэрээр нь таньна —
+        // эс тэгвээс алдагдсан тохируулга нь батлагдаагүй тоог батлагдсаны
+        // баганад ЧИМЭЭГҮЙ оруулж, яг таг сэргийлэх гэж буй зүйл болно.
+        const isSelf = !!(source && source.kind === "self")
+                       || (typeof SELF_APP === "string" && app === SELF_APP);
 
         const evidence = Array.isArray(state.evidence) ? state.evidence : [];
         let appEvents = 0;
@@ -405,14 +454,19 @@ function buildStatus(generatedAt) {
             appEvents += 1;
             const at   = num(rec.at);
             const date = dayKeyOf(at);
-            if (at > 0 && (firstEvidenceAt === 0 || at < firstEvidenceAt)) firstEvidenceAt = at;
+            if (isSelf) {
+                if (at > 0 && (firstSelfAt === 0 || at < firstSelfAt)) firstSelfAt = at;
+                selfDays.add(date);
+            } else {
+                if (at > 0 && (firstVerifiedAt === 0 || at < firstVerifiedAt)) firstVerifiedAt = at;
+                verifiedDays.add(date);
+            }
             if (last30Set.has(date)) last30Count += 1;
-            overallDays.add(date);
 
             const type = typeof rec.type === "string" ? rec.type : "";
             const key  = `${app}:${type}`;
             const row  = metricRuleFor(app, type);
-            if (!row || !row.metric) { unmapped.add(key); return; }
+            if (!row || !row.metric) { noteUnmapped(app, type, 1, at); return; }
 
             const metric = metricFor(row.metric);
             let amount = 0;
@@ -453,11 +507,17 @@ function buildStatus(generatedAt) {
                 appEvents   += count;
 
                 const firstAt = num(bucket.firstAt);
-                if (firstAt > 0 && (firstEvidenceAt === 0 || firstAt < firstEvidenceAt)) firstEvidenceAt = firstAt;
+                if (firstAt > 0) {
+                    if (isSelf) {
+                        if (firstSelfAt === 0 || firstAt < firstSelfAt) firstSelfAt = firstAt;
+                    } else if (firstVerifiedAt === 0 || firstAt < firstVerifiedAt) {
+                        firstVerifiedAt = firstAt;
+                    }
+                }
 
                 const key = `${app}:${type}`;
                 const row = metricRuleFor(app, type);
-                if (!row || !row.metric) { unmapped.add(key); return; }
+                if (!row || !row.metric) { noteUnmapped(app, type, count, num(bucket.lastAt)); return; }
 
                 const metric = metricFor(row.metric);
                 const lastAt = num(bucket.lastAt);
@@ -498,18 +558,18 @@ function buildStatus(generatedAt) {
             // Өөрөө мэдээлсэн эх сурвалж нь "чимээгүй тасарсан үйлдвэрлэгч" биш —
             // хэрэглэгч дараагүй л бол чимээгүй байх нь хэвийн. Тиймээс stale гэж
             // тэмдэглэхгүй, харин өөрийнх нь төрлийг ил гаргана.
-            selfReported: !!(source && source.kind === "self"),
+            selfReported: isSelf,
             evidenceCount: evidence.length + rolledCount,
             // UI "идэвхгүй" гэж худал хэлэхгүйн тулд хоёуланг нь ил гаргана:
             // түүхий бичлэг нь нэгтгэгдээд хоосорсон ч түүх алга болоогүй.
             rawCount:    evidence.length,
             rolledCount,
             last30Count,
-            stale: (source && source.kind === "self")
+            stale: isSelf
                 ? false
                 : (!(updatedAt > 0) || (generatedAt - updatedAt) > staleMs)
         };
-        totalEvents += appEvents;
+        if (isSelf) selfEvents += appEvents; else verifiedEvents += appEvents;
     });
 
     // ---- Метрик бүрийг дуусгах ----
@@ -576,11 +636,36 @@ function buildStatus(generatedAt) {
         attributes: buildAttributes(metrics),
         sources,
         overall: {
-            activeDays30:    win.last30.filter(date => overallDays.has(date)).length,
-            totalEvents,
-            firstEvidenceAt,
+            // ---- Толгойн тоо: ЗӨВХӨН гадны апп батлав ----
+            // "Нийт нотолгоо", "идэвхтэй өдөр" гэдэг нь профайлын оноог үүрч
+            // байгаа ЖИН. Тэр жинг өөрөө дарж үүсгэж болдог байвал оноо нь
+            // өөрийгөө батална. Тиймээс энд өөрөө мэдээлсэн нь ОРОХГҮЙ.
+            activeDays30:    win.last30.filter(date => verifiedDays.has(date)).length,
+            totalEvents:     verifiedEvents,
+            firstEvidenceAt: firstVerifiedAt,
+
+            // ---- Өөрөө мэдээлсэн: нуухгүй, зүгээр л ТУСДАА ----
+            // Салгах нь "тоолохгүй" гэсэн үг биш. Check-in бол болсон явдал,
+            // зөвхөн БАТАЛГААНЫ жин нь өөр. Дэлгэц түүнийг өөрийнх нь нэрээр
+            // харуулна (`ӨӨРӨӨ`), нэг ч тоонд нь нийлүүлэхгүй.
+            self: {
+                activeDays30:    win.last30.filter(date => selfDays.has(date)).length,
+                totalEvents:     selfEvents,
+                firstEvidenceAt: firstSelfAt
+            },
+
+            // Хоёулаа нийлдэг ЦОРЫН ГАНЦ газар: "ямар нэг бичлэг байна уу".
+            // Энэ бол ХЭМЖИЛТ биш, дэлгэц хоосон эсэхийг шийдэх туг — эс тэгвээс
+            // зөвхөн check-in хийсэн хүнд дашбоард "нотолгоо алга" гэж хэлнэ.
+            anyEvents:       verifiedEvents + selfEvents,
+
             // Үйлдвэрлэгч шинэ төрөл гаргавал чимээгүй алга болохгүй, ЭНД харагдана.
+            // `unmappedTypes` — нэрс (хуучин гэрээ). `unmapped` — хэмжээтэйгээ:
+            // хэдэн бичлэг статуст ОРООГҮЙ, тэдгээр нь хэзээ сүүлд ирсэн.
             unmappedTypes:   Array.from(unmapped).sort(),
+            unmapped:        Object.keys(unmappedInfo)
+                                 .map(key => unmappedInfo[key])
+                                 .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key)),
             rollupGaps
         }
     };

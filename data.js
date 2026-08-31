@@ -72,11 +72,15 @@ const TIER_HEX    = { E: "#6b7280", D: "#0ea5e9", C: "#10b981", B: "#8b5cf6", A:
 // Атрибутын өнгө — профайлын багана, радар, спарклайн гурав ижил өнгө хэрэглэнэ.
 // DISCIPLINE нь өөрөө мэдээлсэн тэнхлэг — алтан өнгө нь "батлагдаагүй" гэдгийг
 // нүдээр ялгуулна (бусад гурав бол аппын хэмжсэн бодит тоо).
-const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981", DISCIPLINE: "#eab308" };
+// Атрибутын ТАНИХ өнгө — style.css-ийн --attr-* токенуудтай тохирно. SVG-д
+// (радар, спарклайн) шууд hex хэрэгтэй тул энд давхардаж бичигдэнэ.
+// BODY нь #ef4444 БИШ: тэр бол --danger, "эвдэрсэн" гэсэн утгатай цорын ганц
+// улаан. Хамгийн сайн явж буй атрибут эвдэрсэн зүйлтэй ижил өнгөөр асах ёсгүй.
+const ATTR_HEX = { BODY: "#fb7185", MIND: "#8b5cf6", CREATION: "#10b981", DISCIPLINE: "#eab308" };
 
 const SKILL_CAT = {
     language:   { color: "var(--skill-lang)", hex: "#0ea5e9", label: "Хэлний мэдлэг" },
-    physical:   { color: "var(--skill-phys)", hex: "#ef4444", label: "Бие бялдар"    },
+    physical:   { color: "var(--skill-phys)", hex: "#fb7185", label: "Бие бялдар"    },
     mental:     { color: "var(--skill-ment)", hex: "#8b5cf6", label: "Оюуны чадвар" },
     technology: { color: "var(--skill-tech)", hex: "#10b981", label: "Технологи"     }
 };
@@ -119,17 +123,19 @@ function escapeHTML(str) {
 // Хувийн өөрчлөлтийн тэмдэглэгээ. status.js null буцаана гэдэг нь ӨМНӨХ цонх
 // ХООСОН байсан гэсэн үг — тэгвэл одоо утга байвал "шинэ", үгүй бол "—".
 // 100% гэж ХЭЗЭЭ Ч зохиохгүй (analytics.js-ийн хуучин алдаа).
+// `delta` класс нь ЗӨВХӨН харагдацынх: тоо дахин тооцогдох бүрд намуухан
+// гулсан гарч ирнэ. Утга нь өөрчлөгдөхгүй.
 function formatDelta(changePct, curr, prev) {
     if (changePct === null || changePct === undefined) {
         return Number(curr) > 0 && !(Number(prev) > 0)
-            ? `<span style="color:var(--accent);">шинэ</span>`
-            : `<span style="color:var(--text-muted);">—</span>`;
+            ? `<span class="delta" style="color:var(--accent);">шинэ</span>`
+            : `<span class="delta" style="color:var(--text-muted);">—</span>`;
     }
     const n = Number(changePct);
-    if (!isFinite(n)) return `<span style="color:var(--text-muted);">—</span>`;
+    if (!isFinite(n)) return `<span class="delta" style="color:var(--text-muted);">—</span>`;
     const color = n > 0 ? "#10b981" : n < 0 ? "#ef4444" : "var(--text-muted)";
     const arrow = n > 0 ? "↑" : n < 0 ? "↓" : "→";
-    return `<span style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
+    return `<span class="delta" style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
 }
 
 // ===================== НОТОЛГООНЫ МӨШГӨЛТ =====================
@@ -190,6 +196,10 @@ async function loadWebData() {
             } catch (_) {}
         }
         if (!raw) raw = localStorage.getItem(STORAGE_KEY);
+        // Хадгалалтын дарамтыг ЭХНИЙ хадгалалтыг хүлээхгүйгээр мэднэ: сая
+        // уншсан хэмжээ нь одоо санд байгаа хэмжээ мөн. Эс тэгвээс апп нээгээд
+        // юу ч өөрчлөөгүй хүнд самбар "0%" гэж худал тайван байдал үзүүлнэ.
+        _storageBytes = raw ? String(raw).length : 0;
         webData = raw ? JSON.parse(raw) : cloneDefault();
 
         if (!webData.skills)      webData.skills      = cloneDefault().skills;
@@ -300,6 +310,34 @@ async function loadWebData() {
 // харагдана. Яг тэр төрлийн худал дохиог систем бүхэлдээ эсэргүүцдэг.
 let _storageFull = false;
 
+// ---- ДҮҮРСЭН ГЭЖ ХЭЛЭХ НЬ ОРОЙТСОН БАЙДАГ ----
+// `_storageFull` нь setItem УНАСНЫ ДАРАА л асдаг. Гэтэл яг тэр унасан бичлэг
+// бол алдагдсан бичлэг: үйлдвэрлэгч апп ердөө сүүлийн 50 event-ээ хадгалдаг
+// тул хэдхэн өдрийн дараа эргэж ирэхгүй. Өөрөөр хэлбэл систем "чимээгүй
+// алдахгүй" гэсэн амлалтаа биелүүлж байгаа ч НЭГ БИЧЛЭГ ХОЖИМДСОН.
+//
+// Тиймээс дүүрэхээс ӨМНӨ хэмжээг нь хардаг: сүүлд хадгалсан хэмжээ, ердийн
+// таазтай харьцуулсан хувь. Энэ нь ХЭМЖИЛТ болохоос таамаг биш — бид яг
+// хэдэн тэмдэгт бичсэнээ мэднэ. Тааз нь хөтөч бүрд өөр тул "ойролцоо"
+// гэдгийг нэрэндээ хэлж, зөвхөн АНХААРУУЛГА болгон хэрэглэнэ.
+const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024;   // localStorage-ийн ердийн тааз
+const STORAGE_WARN_PCT    = 75;                // эндээс дээш бол ил хэлнэ
+
+let _storageBytes = 0;
+
+// { bytes, limit, pct, level } — level: "ok" | "high" | "full".
+// "full" нь бодит унасан бичлэгээс л гарна, "high" нь урьдчилсан сануулга.
+function storagePressure() {
+    const bytes = Number(_storageBytes) || 0;
+    const pct   = Math.min(100, Math.round((bytes / STORAGE_LIMIT_BYTES) * 100));
+    return {
+        bytes,
+        limit: STORAGE_LIMIT_BYTES,
+        pct,
+        level: _storageFull ? "full" : (pct >= STORAGE_WARN_PCT ? "high" : "ok")
+    };
+}
+
 function isQuotaError(err) {
     if (!err) return false;
     // Хөтөч бүр өөрөөр нэрлэдэг; код 22/1014 нь Safari, Firefox-ынх.
@@ -317,7 +355,9 @@ async function saveWebData() {
     const serialized = JSON.stringify(webData);
     // Нотолгоо хуримтлагдсаар байх тул хэмжээг нь хардана. ТАСЛАХГҮЙ — зөвхөн
     // сануулна: нотолгоог хаях нь дээд давхаргын түүхийг устгахтай адил.
-    if (serialized.length > 4000000) console.warn("[storage] webData is", serialized.length, "bytes");
+    // Хэмжээ нь консол дээр биш, Integrity самбар дээр гарна — консолыг хэн
+    // ч нээхгүй, харин самбарыг нээнэ.
+    _storageBytes = serialized.length;
     try {
         if (window.storage && typeof window.storage.set === "function") {
             await window.storage.set(STORAGE_KEY, serialized, false);

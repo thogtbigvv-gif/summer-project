@@ -1,4 +1,19 @@
-/* ===================== DESIGN TOKENS ===================== */
+/* ===================== DESIGN TOKENS =====================
+   ӨНГӨНИЙ ХОЁР ТЭНХЛЭГ. Эдгээрийг ХОЛИХГҮЙ — холивол өнгө утгаа алдана.
+
+   1) ТӨЛӨВИЙН өнгө — "юу болж байна вэ". Улаан нь ЗӨВХӨН эвдэрсэн зүйлийг
+      хэлнэ: тасарсан эх сурвалж, дүүрсэн хадгалалт, устгах товч. Шар нь
+      батлагдаагүй / өөрөө мэдээлсэнийг. Ногоон нь эрүүл, идэвхтэйг.
+
+   2) ӨӨРИЙН ӨНГӨ — "энэ юу вэ". Атрибут, ур чадварын ангилал, тиер бүр
+      өөрийн гэсэн өнгөтэй. Эдгээр нь сайн ч муу ч биш, зүгээр л ТАНИХ өнгө.
+
+   Урьд нь BODY атрибут ба "бие бялдар" ангилал яг --danger-тэй ИЖИЛ улаан
+   (#ef4444) байсан. Үр дүнд нь хамгийн сайн явж буй атрибут — BODY 100% —
+   бүрэн бүтэн байдлын самбарын "ТАСАРСАН" гэсэнтэй ЯГ ижил өнгөөр асдаг
+   байв. Дэлгэц дээр өнгө нь "чи давсан" ба "энэ эвдэрсэн" хоёрыг ялгахаа
+   больсон гэсэн үг. Тиймээс биеийн өнгө сэрүүн ягаан-улаан руу зөрж,
+   дохионы улааныг ГАНЦААРАА үлдээв. */
 :root {
     --bg: #030712;
     --bg-gradient: radial-gradient(circle at 15% 15%, #111827 0%, #030712 100%);
@@ -7,11 +22,23 @@
     --card-bg-hover: rgba(255, 255, 255, 0.03);
     --text-main: #f9fafb;
     --text-muted: #9ca3af;
+    --text-dim: #6b7280;
     --border: rgba(255, 255, 255, 0.08);
+
+    /* ---- ТӨЛӨВ ---- */
     --accent: #10b981;
     --accent-soft: rgba(16, 185, 129, 0.1);
-    --danger: #ef4444;
+    --danger: #ef4444;              /* ЗӨВХӨН эвдэрсэн зүйлд */
+    --warn: #eab308;                /* батлагдаагүй / өөрөө мэдээлсэн */
+
+    /* ---- ӨӨРИЙН ӨНГӨ ---- */
+    --attr-body:       #fb7185;
+    --attr-mind:       #8b5cf6;
+    --attr-creation:   #10b981;
+    --attr-discipline: #eab308;
+
     --radius: 16px;
+    --radius-sm: 10px;
     --tier-e: #6b7280;
     --tier-d: #0ea5e9;
     --tier-c: #10b981;
@@ -19,9 +46,21 @@
     --tier-a: #f97316;
     --tier-s: #eab308;
     --skill-lang: #0ea5e9;
-    --skill-phys: #ef4444;
+    --skill-phys: #fb7185;
     --skill-ment: #8b5cf6;
     --skill-tech: #10b981;
+
+    /* Картын өргөлт — сүүдэр бүрийг тус тусад нь бичихээ болив. */
+    --shadow-card:  0 4px 20px rgba(0, 0, 0, 0.22);
+    --shadow-lift:  0 14px 34px rgba(0, 0, 0, 0.4);
+
+    /* Хөдөлгөөний муруй. --ease-out нь хурдан эхэлж намуухан зогсоно
+       ("аль хэдийн болчихсон" мэдрэмж); --ease-spring нь бага зэрэг хэтэрч
+       буцна (дарсны хариу). Хоёулаа энд — эс тэгвээс файл даяар өөр өөр
+       cubic-bezier тарж, юу ч нэг зан үйлтэй байхаа болино. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
     --font-display: 'Unbounded', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -113,15 +152,22 @@ body::before {
     box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
     position: relative;
 }
-.tab-btn.active::after {
+/* Доогуур зураас нь ЗӨВХӨН идэвхтэй товчинд байсан тул таб солиход шууд
+   ГАРЧ ИРДЭГ байв. Бүх товчинд өгөөд өргөнийг нь 0 → 1 болгоход зураас нь
+   голоос ХОЁР ТИЙШ нээгдэж, аль таб руу шилжсэн нь хөдөлгөөнөөр уншигдана. */
+.tab-btn::after {
     content: "";
     position: absolute;
-    bottom: 0; left: 50%; transform: translateX(-50%);
+    bottom: 0; left: 50%;
+    transform: translateX(-50%) scaleX(0);
     width: 60%; height: 2px;
     background: var(--accent);
     border-radius: 2px 2px 0 0;
     box-shadow: 0 0 8px var(--accent);
+    opacity: 0;
+    transition: transform 0.3s var(--ease-out), opacity 0.2s ease;
 }
+.tab-btn.active::after { transform: translateX(-50%) scaleX(1); opacity: 1; }
 
 /* ===================== LAYOUT ===================== */
 .web-container {
@@ -159,6 +205,9 @@ body::before {
     flex-direction: column;
     justify-content: space-between;
     position: relative;
+    /* Доод талд усан тэмдэгт (::after) зай үлдээнэ — эс тэгвээс атрибутын
+       хайрцгийн ирмэг дээр давхцаж, бүдэг бичээс нь гэмтэл мэт харагдана. */
+    padding-bottom: 38px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.05);
 }
 
@@ -186,6 +235,18 @@ body::before {
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
     animation: pulseGlow 3s infinite alternate;
     flex-shrink: 0;
+}
+
+/* Тэмдэг нь нүүр дэлгэцийн дүрстэй ижил зам. currentColor-оор будагдана —
+   хүрээний өнгө өөрчлөгдвөл тэмдэг нь өөрөө дагана. */
+.avatar-frame svg {
+    /* Тэмдэг нь viewBox-ийнхаа 63%-ийг эзэлдэг тул svg-г 80% болгоход
+       тойрог доторх бодит хэмжээ нь ~36px болно — өмнөх үсэгтэй ойролцоо
+       боловч жигд, хэмжигдсэн. */
+    width: 80%;
+    height: 80%;
+    overflow: visible;
+    display: block;
 }
 
 @keyframes pulseGlow {
@@ -220,8 +281,27 @@ body::before {
 
 .web-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 20px;
+}
+
+/* Холбогдсон аппын карт нь тиерийн картаас ӨӨР зүйл: дотор нь лог, төлөв,
+   метрик холбох хэлбэр — өөрөөр хэлбэл өндөр нь эх сурвалж бүрд өөр. Хоёр
+   зүйлийг НЭГ хэмжээсээр өрж болохгүй.
+     - min-width жижиг: 4 эх сурвалж 4 багана болж, ганцаардсан мөр үлдэхгүй.
+     - align-items: start: хамгийн урт карт бусдыг сунгахаа болино. Урьд нь
+       Gym-ийн карт Bigu-гийнхийг дагаж хоёр дахин уртсаад, доод талд нь
+       хагас дэлгэц хоосон зай үлдээдэг байв. */
+#connected-container {
+    grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    align-items: start;
+}
+
+/* Дөрвөн товч тоо — эдгээр нь НЭГ мөр байх ёстой. Тэдгээрийн агуулга нь
+   богино (тоо + нэг мөр тайлбар) тул тиерийн карттай ижил өргөнийг
+   шаардахгүй; 320px-ээр өрвөл дөрөв дэх нь дангаараа доор унана. */
+#weekly-stats-container {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
 /* ===================== CATEGORY CARD ===================== */
@@ -324,10 +404,28 @@ body::before {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12), 0 0 15px rgba(16, 185, 129, 0.05);
 }
 
+/* Урьд нь энэ товч ЦАГААН дүүргэлттэй байв. Хар шилэн орчинд цагаан
+   тэгш өнцөгт нь хуудсан дээрх ХАМГИЙН тод объект болж, "даалгавар нэмэх"
+   гэдэг хоёрдогч үйлдэл нь бүх статусын тооноос илүү анхаарал татдаг байв.
+   Одоо системийн ногооноор: тод хэвээр, гэхдээ өөрийн жингээрээ. */
 .submit-btn {
-    width: 100%; margin-top: 20px; padding: 14px; background: var(--text-main); color: var(--bg); border: none; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; font-family: var(--font-body); text-transform: uppercase; letter-spacing: 0.5px;
+    width: 100%; margin-top: 20px; padding: 13px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--radius-sm);
+    font-weight: 700; font-size: 13px; cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    font-family: var(--font-body); text-transform: uppercase; letter-spacing: 0.5px;
 }
-.submit-btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
+.submit-btn:hover {
+    background: var(--accent);
+    color: #04120c;
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(16, 185, 129, 0.25);
+}
+.submit-btn:active { transform: translateY(0); }
 .submit-btn.secondary { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); }
 .submit-btn.secondary:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: var(--accent); box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
 
@@ -527,12 +625,20 @@ body::before {
 .summary-status { font-family: var(--font-mono); font-size: 12px; color: var(--tier-d); font-style: italic; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 12px; }
 
 /* ===================== RADAR CHART ===================== */
-.radar-container { width: 100%; display: flex; align-items: center; justify-content: center; padding: 10px; }
-.radar-svg { width: 100%; max-width: 300px; aspect-ratio: 1; overflow: visible; filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.1)); }
+.radar-container { width: 100%; display: flex; align-items: center; justify-content: center; padding: 8px 10px 4px; }
+/* 300px нь ~700px өргөнтэй картын голд жижигхэн ромб үлдээж, картын гуравны
+   хоёр нь хоосон байв. Радар бол энэ картын ЦОРЫН ГАНЦ агуулга. */
+.radar-svg { width: 100%; max-width: 370px; aspect-ratio: 1; overflow: visible; filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.1)); }
 .radar-grid { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
 .radar-axis { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; stroke-dasharray: 4 4; }
 .radar-label { font-family: var(--font-mono); font-size: 12px; fill: var(--text-muted); font-weight: 700; text-anchor: middle; dominant-baseline: middle; letter-spacing: 1px; }
 .radar-label.highlight { fill: #fff; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+.radar-value {
+    font-family: var(--font-display);
+    font-size: 13px;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
 .radar-polygon {
     fill: rgba(16, 185, 129, 0.2);
     stroke: var(--accent);
@@ -555,8 +661,18 @@ body::before {
 .stat-card-pro:hover { transform: translateY(-2px); }
 .stat-card-pro span { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-card-pro strong { font-family: var(--font-display); font-size: 26px; color: #fff; }
-.heatmap-container { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; min-height: 24px; }
-.heat-box { width: 20px; height: 20px; border-radius: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.03); transition: transform 0.2s; position: relative; cursor: default; }
+/* 20px дөрвөлжингүүд өргөн картын зүүн гуравны нэгд шахагдаж, баруун тал нь
+   хоосон үлддэг байв. Grid болгоход 30 хоног картын БҮТЭН өргөнийг эзэлж,
+   өдрүүд хоорондоо жигд зайтай болно. */
+.heatmap-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    grid-auto-flow: column;
+    gap: 6px;
+    margin-top: 18px;
+    min-height: 26px;
+}
+.heat-box { aspect-ratio: 1; max-height: 30px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.03); transition: transform 0.2s; position: relative; cursor: default; }
 .heat-box:hover { transform: scale(1.2); z-index: 10; border-color: var(--accent); }
 .heat-box::after { content: attr(title); position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 4px 8px; font-size: 10px; font-family: var(--font-mono); border-radius: 4px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 20; border: 1px solid var(--glass-border); }
 .heat-box:hover::after { opacity: 1; }
@@ -570,14 +686,18 @@ body::before {
 .insight-item.warning { border-left-color: var(--danger); }
 
 /* Метрикийн спарклайн — analytics.js гараар SVG барина */
-.spark-list { display: flex; flex-direction: column; gap: 18px; margin-top: 16px; }
-.spark-row { display: flex; flex-direction: column; gap: 6px; }
+.spark-list { display: flex; flex-direction: column; gap: 22px; margin-top: 18px; }
+.spark-row { display: flex; flex-direction: column; gap: 8px; }
 .spark-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .spark-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .spark-value { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-size: 11px; }
 .spark-value strong { font-family: var(--font-display); font-size: 18px; }
 .spark-value small { color: var(--text-muted); }
-.spark-svg { width: 100%; height: 40px; display: block; }
+.spark-svg { width: 100%; height: 46px; display: block; }
+.spark-svg.is-empty { height: 22px; }
+/* Хоосон цувралын мөр бүхэлдээ бүдэгхэн: тоо нь ч, шугам нь ч "энд юу ч
+   болоогүй" гэж нэг л зүйл хэлнэ. */
+.spark-row:has(.spark-svg.is-empty) .spark-label { opacity: 0.55; }
 
 .analytics-sort-select {
     background: rgba(0,0,0,0.3);
@@ -841,9 +961,26 @@ body::before {
     .modal-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
 }
 
+@media (max-width: 700px) {
+    /* 30 хоногийг нэг эгнээнд өрөхөд утсан дээр нүд бүр ~10px болж, өнгөний
+       ялгаа нь харагдахаа болино. Гурван эгнээ болгоход хэмжээ нь эргэж
+       ирнэ — тоолох ч амархан. */
+    .heatmap-container {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(10, 1fr);
+    }
+    .heat-box { max-height: 34px; }
+
+    /* Гарчиг ба эрэмбэлэх сонголт нэг мөрөнд багтахаа больж, бие бие рүүгээ
+       шахагддаг байв. */
+    .card-head { flex-wrap: wrap; gap: 12px; }
+    .analytics-sort-select { flex: 1 1 100%; }
+}
+
 @media (max-width: 480px) {
     .logo-area h1 { font-size: 11px; }
     .web-grid { grid-template-columns: 1fr; }
+    #connected-container { grid-template-columns: 1fr; }
     .mission-title h2 { font-size: 13px; letter-spacing: 1px; }
     .status-top-layout { gap: 16px; }
     .quest-layout { gap: 20px; }
@@ -935,6 +1072,17 @@ html { scroll-behavior: smooth; }
     transition: opacity 0.25s;
 }
 .skill-card:hover::before { opacity: 1; }
+
+/* Устгах товч нь картын ХАМГИЙН СҮҮЛД бичигдсэн элемент боловч толгойн
+   баруун буланд харагдах ёстой. Урсгалд нь орхивол статистикийн доор,
+   зүүн талд, юунд ч хамаарахгүй мэт хөвнө — яг тэр байдалтай байв. */
+.skill-card > .delete-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+}
+.skill-card-header { padding-right: 34px; }
 
 .skill-card-header {
     display: flex;
@@ -1147,10 +1295,14 @@ html { scroll-behavior: smooth; }
 
 .integrity-row {
     display: grid;
-    grid-template-columns: 1.2fr 110px 1fr 1.4fr 100px;
-    gap: 16px;
+    /* Уян хатан багана нэг л байх ёстой — НЭР. Урьд нь нэр ба тооны багана
+       хоёулаа сунадаг байсан тул дунд нь хоосон зурвас үүсч, "just now" ба
+       "36 нотолгоо" хоёр өөр өөр хол зогсдог байв. Одоо нэр зүүн талд, бүх
+       тоо баруун талд НЯГТ бүлэг болж, мөр хооронд харьцуулагдана. */
+    grid-template-columns: minmax(0, 1fr) 92px 104px 132px 84px;
+    gap: 18px;
     align-items: center;
-    padding: 14px 16px;
+    padding: 13px 16px;
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.2);
     border-left: 3px solid var(--text-muted);
@@ -1162,6 +1314,10 @@ html { scroll-behavior: smooth; }
 .integrity-row[data-state="live"]   { border-left-color: var(--accent); }
 .integrity-row[data-state="stale"]  { border-left-color: var(--danger); }
 .integrity-row[data-state="silent"] { border-left-color: var(--text-muted); opacity: 0.55; }
+/* Гар бүртгэл нь эвдэрсэн ч биш, холбогдоогүй ч биш — ГУРАВ ДАХЬ зүйл.
+   Тусдаа өнгө нь "энэ мөрийг аппын нотолгоотой битгий адилтга" гэж хэлнэ. */
+.integrity-row[data-state="self"]   { border-left-color: var(--tier-s); }
+.integrity-row[data-state="self"] .integrity-state { color: var(--tier-s); }
 
 .integrity-name {
     font-family: var(--font-display);
@@ -1173,8 +1329,11 @@ html { scroll-behavior: smooth; }
 .integrity-row[data-state="live"]  .integrity-state { color: var(--accent); }
 .integrity-row[data-state="stale"] .integrity-state { color: var(--danger); }
 
+/* Тоон баганууд баруун тийшээ эгнэнэ — эс тэгвээс "36 нотолгоо" ба
+   "5 нотолгоо" хоёр өөр багана эхэлж, нүд харьцуулж чадахгүй. */
 .integrity-count,
-.integrity-30 { color: var(--text-main); }
+.integrity-30 { color: var(--text-main); text-align: right; }
+.integrity-when { text-align: right; }
 
 .integrity-count small,
 .integrity-30 small {
@@ -1208,6 +1367,37 @@ html { scroll-behavior: smooth; }
     line-height: 1.7;
     color: var(--text-muted);
 }
+
+/* УРЬДЧИЛСАН сануулга. Улаан нь "аль хэдийн эвдэрсэн" гэсэн утгатай тул
+   хараахан эвдрээгүй, гэхдээ эвдрэх гэж буй зүйлийг шар өнгөөр ялгана. */
+.integrity-warning-soft {
+    background: rgba(234, 179, 8, 0.06);
+    border-left-color: var(--tier-s);
+}
+
+/* Танигдаагүй төрлүүд — нэр, хэмжээ, сүүлд ирсэн хугацаа НЭГ мөрөнд.
+   Хэмжээгүй нэр нь "яаралтай юу" гэдгийг хэлж чаддаггүй. */
+.integrity-unmapped {
+    list-style: none;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.integrity-unmapped li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.integrity-unmapped code { color: var(--text-main); }
+.integrity-unmapped span { color: var(--tier-s); white-space: nowrap; }
+.integrity-unmapped small { font-size: 10px; opacity: 0.7; white-space: nowrap; }
 
 /* Холбогдсон картын нотолгооны хэмжээ — нэгтгэгдсэн түүх ч тоологдоно. */
 .connected-volume {
@@ -1261,6 +1451,33 @@ html { scroll-behavior: smooth; }
     color: var(--text-main);
 }
 
+/* Өөрөө мэдээлсэн мөр нь батлагдсан мөрүүдтэй ижил харагдах ЁСГҮЙ — тэдгээрийг
+   нүдээр ялгахгүй бол салгасан утга нь дэлгэц дээр дахин хольцолдоно. */
+.profile-evidence-self {
+    color: var(--tier-s);
+    border-top: 1px dashed var(--glass-border);
+    padding-top: 8px;
+}
+
+.profile-evidence-self strong { color: var(--tier-s); }
+
+.profile-evidence-self strong small {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    opacity: 0.75;
+    margin-left: 8px;
+}
+
+/* Батлагдсан нотолгоо ТЭГ. Тоог бүдгэрүүлэхгүй — эсрэгээрээ ил гаргана. */
+.profile-evidence-none strong { color: var(--danger); }
+
+.profile-evidence-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--text-muted);
+}
+
 /* Халуун зураглалын хэмжээс */
 .heatmap-legend {
     display: flex;
@@ -1273,7 +1490,7 @@ html { scroll-behavior: smooth; }
 }
 
 .heatmap-legend-text { margin-right: 6px; }
-.heatmap-legend .heat-box { width: 12px; height: 12px; border-radius: 3px; }
+.heatmap-legend .heat-box { width: 12px; height: 12px; max-height: none; aspect-ratio: auto; border-radius: 3px; }
 .heatmap-legend .heat-box:hover { transform: none; border-color: rgba(255,255,255,0.03); }
 .heatmap-legend .heat-box::after { content: none; }
 .heatmap-legend small { margin-right: 8px; }
@@ -1503,8 +1720,10 @@ html { scroll-behavior: smooth; }
     margin-top: 8px;
     word-break: break-all;
 }
-.conn-check { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
-.conn-check-bad { color: var(--danger); opacity: 0.9; }
+.conn-check { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.55; }
+/* Улаан нь ЗӨВХӨН эвдэрсэнд. "Хараахан бичээгүй байна" бол эвдрэл биш. */
+.conn-check-bad  { color: var(--danger); opacity: 0.9; }
+.conn-check-wait { color: var(--text-dim); }
 
 /* Тасарсан эх сурвалжийг бүдгэрүүлэхээ болилоо: яг тэр карт л ХАМГИЙН
    ЧУХАЛ мэдээллийг агуулж байна. Зөвхөн log хэсэг нь бүдгэрнэ. */
@@ -1548,10 +1767,23 @@ html { scroll-behavior: smooth; }
     margin-bottom: 8px;
 }
 .conn-map-head code { font-family: var(--font-mono); color: var(--text-main); word-break: break-all; }
-.conn-map-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-.conn-map-controls select {
-    flex: 1 1 130px;
-    min-width: 0;
+/* Карт нь нарийн (≈230px) тул гурван удирдлагыг нэг мөрөнд шахах гэж
+   оролдоход "бичлэг тоолох (2…" гэж тасарч, юу сонгосон нь уншигдахаа
+   больдог байв. Хоёр мөр болгоход тасралт алга: метрик дээрээ бүтэн
+   өргөнөөр, дүрэм ба товч доогуураа. */
+/* Гурван удирдлагыг нэг мөрөнд шахах гэж оролдоход "бичлэг тоолох (2…" гэж
+   тасарч, юу сонгосон нь уншигдахаа больдог байв. Карт нь нарийн (≈250px)
+   тул мөр бүрд НЭГ л зүйл: юуны метрик, ямар дүрмээр, тэгээд холбо. */
+.conn-map-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+    gap: 8px;
+}
+.conn-map-controls select { min-width: 0; width: 100%; }
+.conn-map-controls select,
+.conn-map-new input,
+.conn-map-new select {
     padding: 9px 10px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--glass-border);
@@ -1560,22 +1792,13 @@ html { scroll-behavior: smooth; }
     font-family: var(--font-body);
     font-size: 12px;
 }
-.conn-map-controls .submit-btn { flex: 0 0 auto; width: auto; margin-top: 0; padding: 9px 16px; font-size: 11px; }
+.conn-map-controls .submit-btn { justify-self: end; width: auto; margin-top: 0; padding: 8px 18px; font-size: 11px; }
 .conn-map-new { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 /* display-тэй класс нь hidden атрибутын анхдагчийг ДАРНА. Үүнгүйгээр
    "шинэ метрик" талбарууд байнга нээлттэй суух бөгөөд карт бүр хоёр
    дахин урт болно. */
 .conn-map-new[hidden] { display: none; }
-.conn-map-new input, .conn-map-new select {
-    flex: 1 1 110px;
-    min-width: 0;
-    padding: 9px 10px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    color: var(--text-main);
-    font-size: 12px;
-}
+.conn-map-new input, .conn-map-new select { flex: 1 1 110px; min-width: 0; }
 .conn-map-more { margin-top: 10px; font-size: 11px; color: var(--text-muted); }
 
 /* ===================== СТАТУСЫН ДЭЛГЭРЭНГҮЙ =====================
@@ -1608,6 +1831,9 @@ html { scroll-behavior: smooth; }
 .sd-source span:last-child { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; text-align: right; }
 .sd-source-bad { border-left-color: var(--danger); }
 .sd-source-bad span:last-child { color: var(--danger); }
+/* Хараахан эхлээгүй нь эвдэрсэн биш — засах юмгүй зүйл рүү хүнийг явуулахгүй. */
+.sd-source-wait { border-left-color: var(--text-dim); }
+.sd-source-wait span:last-child { color: var(--text-dim); }
 
 .sd-spark { margin-top: 18px; }
 .sd-spark-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
@@ -1637,7 +1863,7 @@ html { scroll-behavior: smooth; }
 @media (max-width: 700px) {
     .connect-title { align-items: flex-start; }
     .connect-actions { width: 100%; justify-content: space-between; }
-    .conn-map-controls .submit-btn { flex: 1 1 100%; }
+    .conn-map-controls .submit-btn { justify-self: stretch; width: 100%; }
 }
 
 /* ===================== PWA // УТСАН ДЭЭРХ АПП =====================
@@ -1763,4 +1989,560 @@ body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
     /* Гадагш заасан холбоос байхгүй тул хуудсыг чирч "сэргээх" боломж ч
        байхгүй: overscroll-ийн уян хатан үсрэлт зөвхөн харагдацыг эвдэнэ. */
     body { overscroll-behavior-y: contain; }
+}
+
+/* ===================== МИКРО-ЭФФЕКТҮҮД =====================
+   ДҮРЭМ: хөдөлгөөн бүр ЮМ ХЭЛНЭ. Чимэглэл биш.
+
+   Энэ систем "тоо бүр нотолгооноос ЭНЭ АГШИНД дахин тооцогдсон" гэж
+   зарладаг. Гэтэл дэлгэц дээр тоонууд зүгээр л зогсож байдаг тул тэр
+   амлалт мэдрэгддэггүй. Багана өсөж гарах, нүд ээлжлэн асах нь яг тэр
+   дахин тооцоолол болж байгааг харуулна.
+
+   Гурван төрөл, өөр өөр үүрэгтэй:
+     1. ХАРИУ — хулгана, гар, дарахад ЗААВАЛ хариу өгнө (үргэлж аюулгүй).
+     2. ГАРЧ ИРЭЛТ — тоо шинээр тооцогдоход дагалдана (сэргээгдэх бүрд).
+     3. АНХААРУУЛГА — эвдэрсэн зүйл нүд рүү орно, БУСАД нь тайван байна.
+
+   Хэмжүүр: 0.15–0.7s. Үүнээс удаан бол хүлээлт болно. */
+
+/* ---- 1. ХАРИУ: дарах ---- */
+/* Товч дарахад ЮУ Ч болохгүй бол дарагдсан эсэхээ мэдэхгүй. Хамгийн жижиг
+   боловч хамгийн байнга мэдрэгдэх эффект нь энэ. */
+.submit-btn:active,
+.complete-btn:active,
+.reset-quest-btn:active,
+.qfilter-btn:active,
+.tab-btn:active,
+.data-link:active { transform: translateY(1px) scale(0.985); }
+
+.delete-btn:active,
+.close-modal:active { transform: scale(0.9); }
+
+/* ---- 1. ХАРИУ: гарын товчлуур ----
+   Хулганаар хүрэхэд тод болдог мөртлөө Tab-аар очиход юу ч болдоггүй бол
+   гар ашигладаг хүн хаана байгаагаа мэдэхгүй. */
+.tab-btn:focus-visible,
+.submit-btn:focus-visible,
+.qfilter-btn:focus-visible,
+.complete-btn:focus-visible,
+.delete-btn:focus-visible,
+.reset-quest-btn:focus-visible,
+.mission-task:focus-visible,
+.category-card:focus-visible,
+.skill-card:focus-visible,
+.data-link:focus-visible,
+.toggle-link:focus-visible,
+.reset-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+/* ---- 1. ХАРИУ: устгах ----
+   Устгах бол буцаагдахгүй үйлдэл. Хүрэхэд томорч, улаан болох нь "энэ товч
+   бусдаас өөр" гэдгийг дарахаас ӨМНӨ хэлнэ.
+   ЭРГҮҮЛЭХГҮЙ: × тэмдэг 90°-аар эргэхэд + болж хувирдаг — өөрөөр хэлбэл
+   "устгах" нь "нэмэх" шиг харагдана. Утга нь эсрэгээрээ эргэх эффект бол
+   эффект биш, алдаа. */
+.delete-btn {
+    transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease,
+                transform 0.2s var(--ease-spring), border-color 0.2s ease;
+}
+.delete-btn:hover { transform: scale(1.14); }
+
+/* ---- 1. ХАРИУ: дахин унших ----
+   ↻ бол өөрөө эргэлддэг зүйлийн зураг. Хүрэхэд эргэх нь юу болохыг ЗУРГААР
+   хэлнэ — бичвэр уншихаас хурдан. Эргэдэг нь зөвхөн тэмдэг: товч бүхэлдээ
+   эргэвэл бичвэр нь толин тусгал болно. */
+.data-link { transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, transform 0.15s ease; }
+.spin-glyph {
+    display: inline-block;
+    font-style: normal;
+    transition: transform 0.45s var(--ease-out);
+}
+.data-link:hover .spin-glyph { transform: rotate(-360deg); }
+
+/* ---- 1. ХАРИУ: мөр рүү хүрэх ----
+   Урт жагсаалтад нүд аль мөрөн дээр байгаагаа алддаг. Зүүн ирмэгийн бяцхан
+   шилжилт нь "энэ мөр" гэж хэлнэ. */
+.integrity-row {
+    transition: background 0.2s ease, transform 0.2s var(--ease-out), border-left-width 0.2s ease;
+}
+.integrity-row:hover {
+    background: rgba(255, 255, 255, 0.028);
+    transform: translateX(3px);
+}
+
+.provenance-row,
+.profile-evidence-row { transition: color 0.2s ease, transform 0.2s var(--ease-out); }
+.provenance-row:hover { transform: translateX(2px); color: var(--text-main); }
+
+.tactical-table tbody tr { transition: background 0.18s ease; }
+.tactical-table tbody tr:hover td { background: rgba(16, 185, 129, 0.045); }
+
+/* ---- 1. ХАРИУ: спарклайны мөр ----
+   Мөрөнд хүрэхэд тэр метрикийн багана бүхэлдээ тодорна — 5 метрик зэрэг
+   зурагдаж байгаа тул аль нь аль болохыг ялгах хэрэгтэй. */
+.spark-row .spark-svg { transition: opacity 0.2s ease; }
+.spark-row:hover .spark-bar { fill-opacity: 1; }
+.spark-row:hover .spark-value strong { text-shadow: 0 0 12px currentColor; }
+.spark-value strong { transition: text-shadow 0.25s ease; }
+
+/* ---- 1. ХАРИУ: холбоос ба шошго ---- */
+.toggle-link { transition: color 0.2s ease, letter-spacing 0.2s ease; }
+.toggle-link:hover { letter-spacing: 0.3px; }
+
+.conn-pill { transition: box-shadow 0.25s ease, transform 0.2s var(--ease-out); }
+.connected-card:hover .conn-pill { transform: translateY(-1px); box-shadow: 0 0 14px -2px currentColor; }
+
+/* ---- 2. ГАРЧ ИРЭЛТ: явцын шугам ----
+   Шугам нь зүүнээс баруун тийш нээгдэнэ. clip-path ашиглаж байгаа нь
+   санамсаргүй биш: scaleX бол гэрлийн туяаг (box-shadow) нь хамт
+   хавчуулж, сунасан толбо үлдээнэ. */
+@keyframes barReveal {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+.progress-bar { animation: barReveal 0.65s var(--ease-out) both; }
+
+/* ---- 2. ГАРЧ ИРЭЛТ: спарклайны багана ----
+   Өдрүүд зүүнээс баруун тийш дараалан босно — цаг хугацааны дараалал нь
+   хөдөлгөөндөө ч давтагдана. 90 багана × 6ms ≈ 0.54s. */
+@keyframes barRise {
+    from { transform: scaleY(0); opacity: 0; }
+    to   { transform: scaleY(1); opacity: 1; }
+}
+.spark-bar {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: barRise 0.4s var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 6ms);
+    transition: fill-opacity 0.2s ease;
+}
+
+/* ---- 2. ГАРЧ ИРЭЛТ: халуун зураглал ----
+   30 хоног ээлжлэн асна. 12ms × 30 ≈ 0.36s — нүд дагаж амжих хурд. */
+@keyframes heatPop {
+    from { transform: scale(0.4); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+.heatmap-container .heat-box {
+    animation: heatPop 0.32s var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 12ms);
+}
+/* Тайлбар дахь дөрвөлжингүүд нь өдөр биш, хэмжүүр — тэд гарч ирэхгүй. */
+.heatmap-legend .heat-box { animation: none; }
+
+/* ---- 2. ГАРЧ ИРЭЛТ: тэмдэглэсэн даалгавар ----
+   Дарсан агшинд тэмдэг нь бага зэрэг үсэрч гарна. Энэ бол хэрэглэгчийн
+   ЦОРЫН ГАНЦ шууд оролт — хариу нь мэдрэгдэх ёстой. */
+@keyframes checkPop {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.mission-task.completed .task-box::after { animation: checkPop 0.28s var(--ease-spring) both; }
+.mission-task:active { transform: translateX(2px) scale(0.995); }
+.task-box { transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.25s ease; }
+.mission-task:hover .task-box { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08); }
+
+/* ---- 3. АНХААРУУЛГА: амьд эх сурвалж ----
+   ИДЭВХТЭЙ гэдэг нь одоо ажиллаж байгаа гэсэн үг. Намуухан цохилт нь
+   "энэ мөр амьд" гэдгийг хөдөлгөөнөөр хэлнэ — бичвэр уншихгүйгээр. */
+@keyframes livePulse {
+    from { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+    to   { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+.integrity-row[data-state="live"] .integrity-state::before,
+.conn-live::before {
+    content: "";
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 6px;
+    vertical-align: 1px;
+    animation: livePulse 2s ease-out infinite;
+}
+
+/* ---- 3. АНХААРУУЛГА: тасарсан эх сурвалж ----
+   Эвдэрсэн зүйл нүд рүү орох ЁСТОЙ — "чимээгүй алдахгүй" гэдэг нь зөвхөн
+   бичвэрийн амлалт биш. Гэхдээ анивчихгүй: анивчих нь яаралтай биш,
+   ЗӨВХӨН ядаргаатай. Ирмэгийн намуухан амьсгал хангалттай. */
+@keyframes breakBreathe {
+    from { border-left-color: var(--danger); }
+    to   { border-left-color: rgba(239, 68, 68, 0.4); }
+}
+.integrity-row[data-state="stale"] { animation: breakBreathe 2.4s ease-in-out infinite alternate; }
+
+/* Хадгалалт дүүрэх гэж байгаа сануулга ч мөн адил — гэхдээ бүр намуухан:
+   энэ нь хараахан эвдрээгүй, зөвхөн эвдрэх гэж байгаа. */
+@keyframes softBreathe {
+    from { opacity: 1; }
+    to   { opacity: 0.82; }
+}
+.integrity-warning-soft { animation: softBreathe 3s ease-in-out infinite alternate; }
+
+/* ---- 3. АНХААРУУЛГА: цуврал ----
+   Гал нь цуврал ҮРГЭЛЖИЛЖ байгааг хэлнэ. Тогтмол дүрс биш, амьд зүйл. */
+@keyframes flameFlicker {
+    0%, 100% { transform: scale(1)    rotate(0deg);   filter: brightness(1); }
+    30%      { transform: scale(1.12) rotate(-4deg);  filter: brightness(1.2); }
+    65%      { transform: scale(0.96) rotate(3deg);   filter: brightness(0.95); }
+}
+.skill-streak { display: inline-block; }
+.skill-card:hover .skill-streak { animation: flameFlicker 1.1s ease-in-out infinite; }
+
+/* ---- Картын өргөлт: нэг л зан үйл ----
+   Урьд нь карт бүр өөр өөр хурдтай, өөр өөр өндөрт өргөгддөг байв. */
+.category-card,
+.connected-card,
+.stat-card-pro {
+    transition: transform 0.25s var(--ease-out), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.stat-card-pro:hover { transform: translateY(-3px); }
+.stat-card-pro strong { transition: text-shadow 0.25s ease; }
+.stat-card-pro:hover strong { text-shadow: 0 0 18px rgba(255, 255, 255, 0.25); }
+
+/* ---- 2. ГАРЧ ИРЭЛТ: өөрчлөлтийн заалт ----
+   ↑ +237% гэдэг нь "энэ тоо ӨӨРЧЛӨГДСӨН" гэсэн үг. Тэр өөрөө хөдөлгөөнгүй
+   зогсох нь эсрэг зурвас өгнө. Явцын шугамын араас бага зэрэг хожимдож
+   гарч ирснээр "шугам сунав → тэгээд ийм хэмжээгээр өөрчлөгдөв" гэсэн
+   дараалал үүснэ. */
+@keyframes deltaIn {
+    from { opacity: 0; transform: translateX(-5px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.delta {
+    display: inline-block;
+    animation: deltaIn 0.35s var(--ease-out) both;
+    animation-delay: 0.18s;
+}
+
+/* ---- 3. АНХААРУУЛГА: чимээгүй болсон эх сурвалжийн шошго ----
+   Картын шошго ба бүрэн бүтэн байдлын мөр НЭГ л зүйлийг хэлж байгаа тул
+   нэг л байдлаар амьсгална. */
+.conn-stale { animation: softBreathe 2.6s ease-in-out infinite alternate; }
+
+/* ---- Мэдэгдэл: гарч ирэлт нь мэдэгдэхүйц байх ёстой ----
+   Зөвхөн хажуу тийш гулсах нь нүдний булангаас алдагдана. Доороос дээш,
+   бага зэрэг хэтэрч буцах нь "шинэ зүйл ирлээ" гэдгийг барина. */
+.toast { transform: translateX(24px) translateY(8px) scale(0.97); }
+.toast.show { transform: translateX(0) translateY(0) scale(1); }
+.toast { transition: opacity 0.28s ease, transform 0.34s var(--ease-spring); }
+
+/* ---- Цонх: хүндтэй нээгдэнэ ---- */
+.modal-content { transition: transform 0.32s var(--ease-out), opacity 0.25s ease; }
+.modal-overlay:not(.active) .modal-content { transform: translateY(16px) scale(0.985); }
+
+/* ---- Толгойн карт: дээд ирмэг асна ----
+   Эдгээр 4 карт аль хэдийн ногоон дээд ирмэгтэй. Тэр ирмэг дээр өөр гэрэл
+   гүйлгэх гэсэн оролдлого нь ногооныг ногоон дээр тавьсан хэрэг — юу ч
+   харагдахгүй. Байгаа ирмэгийг нь АСААХ нь ажиллана. */
+.stat-card-pro { position: relative; }
+.stat-card-pro:hover {
+    border-top-color: var(--accent);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3), 0 -2px 16px -4px var(--accent);
+}
+
+/* ---- Гүйлгэх зурвас ----
+   Хар апп дээр хөтчийн анхдагч зурвас нь цайвар зураас болж гарч ирдэг —
+   бүх зүйл болгоомжтой харанхуй байхад ганцаараа гэрэлтэнэ. */
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.14) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+    transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.45); background-clip: content-box; }
+
+/* ---- Сонгосон бичвэр ---- */
+::selection { background: rgba(16, 185, 129, 0.3); color: #fff; }
+
+/* ---- ХӨДӨЛГӨӨН ХЭРЭГГҮЙ ГЭСЭН ХҮНД ХӨДӨЛГӨӨН БАЙХГҮЙ ----
+   Энэ бол сонголт биш, шаардлага. Вестибуляр эмгэгтэй хүнд гарч ирэх
+   хөдөлгөөн нь дур булаам биш, БИЕ ФИЗИОЛОГИЙН хариу үүсгэдэг. Хэрэглэгч
+   системийн тохиргоондоо аль хэдийн хэлсэн байгаа — сонсох нь бидний ажил.
+   Хариу (өнгө, тод болох) үлдэнэ; ЗӨВХӨН хөдөлгөөн зогсоно. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .delete-btn:hover,
+    .data-link:hover .spin-glyph,
+    .integrity-row:hover,
+    .provenance-row:hover,
+    .stat-card-pro:hover,
+    .skill-card:hover,
+    .delta,
+    .mission-task:hover { transform: none; }
+}
+
+/* ===================== УТАС: ЭНЭ БОЛ ГОЛ ДЭЛГЭЦ =====================
+   Апп нь суулгагдах вэб апп — нүүр дэлгэцээс хаягийн мөргүй нээгддэг.
+   Өөрөөр хэлбэл олон хүний хувьд УТАС бол жижигрүүлсэн хувилбар биш,
+   ЦОРЫН ГАНЦ хувилбар. Тиймээс энэ хэсэг нь "багтаах" биш, утсанд
+   ЗОРИУЛЖ өөрөөр өрөх тухай.
+
+   Гурван зарчим:
+     1. Эрхий хуруу хүрч чадах ёстой — 44px-ээс жижиг зорилт байхгүй.
+     2. Уншигдах ёстой — 10px-ээс жижиг үсэг байхгүй.
+     3. Гол зүйл нь ойрхон байх ёстой — навигаци нь дээгүүрээ биш,
+        эрхий хурууны доор. */
+
+@media (max-width: 700px) {
+
+    /* ---- НАВИГАЦИ ДООШОО ----
+       Урьд нь 4 таб толгойд сунаж багтахгүй тул 3+1 болж мултарч, товч
+       бүр ердөө 28px өндөртэй байв — эрхий хурууны талбай 44px гэдгийн
+       гуравны хоёр нь ч биш. Дээр нь 844px дэлгэцийн 250px-ийг толгой
+       идэж, агуулгад гуравны хоёр л үлддэг байсан.
+
+       Доод самбар нь энэ хоёуланг зэрэг шийднэ: 4 таб тэнцүү дөрвөн
+       багана, эрхий хуруу байгалиасаа очдог газарт. */
+    .tab-navigation {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 900;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+        border: none;
+        border-top: 1px solid var(--glass-border);
+        border-radius: 0;
+        /* БҮРЭН БҮРХЭГ. Хагас тунгалаг байх нь дор нь гүйж буй бичвэрийг
+           шошгонуудын ард гаргаж, самбар бүхэлдээ бохирдоно. Доод самбар нь
+           агуулгын нэг хэсэг биш — тэр бол агуулгын ХИЛ. */
+        background: #060b16;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .tab-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 50px;
+        padding: 6px 2px;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0;
+        line-height: 1.2;
+        text-align: center;
+        border-radius: 10px;
+    }
+    /* Дүрс нь нэрээ уншихаас ӨМНӨ таних боломж өгнө — доод самбар дээр
+       нүд зөвхөн хэлбэр хардаг. */
+    .tab-btn::before {
+        content: attr(data-icon);
+        font-size: 17px;
+        line-height: 1;
+    }
+    /* Дүүргэсэн товч нь доод самбарт хэт хүнд. Өнгө + дээд зураас хангалттай. */
+    .tab-btn.active { background: transparent; box-shadow: none; color: var(--accent); }
+    .tab-btn:hover  { background: transparent; }
+    /* Заагч нь доошоо биш ДЭЭШЭЭ: самбар өөрөө доод ирмэг дээр байгаа тул
+       доод зураас нь дэлгэцийн ирмэгтэй нийлээд алга болно. */
+    .tab-btn::after { top: 0; bottom: auto; width: 28px; border-radius: 0 0 2px 2px; }
+
+    /* Доод самбар агуулгыг халхлахгүй. */
+    body { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+    #toast-container { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+    /* ---- ТОЛГОЙ: ЗӨВХӨН НЭР ----
+       Навигаци доошоо явсны дараа толгойд ердөө нэр л үлдэнэ. Түүнийг
+       өндөр байлгах шалтгаан алга.
+
+       backdrop-filter-ийг ЗААВАЛ авна. Тэр шинж чанар нь өөрийн дотор
+       байгаа position:fixed элементэд ШИНЭ тулгуур хайрцаг үүсгэдэг —
+       өөрөөр хэлбэл доод самбарын "bottom: 0" гэдэг нь дэлгэцийн доод
+       ирмэг биш, ТОЛГОЙН доод ирмэг гэсэн утгатай болж, самбар нь
+       дэлгэцийн ДЭЭД талд наалдана. Утсан дээр толгой нь нимгэн зурвас
+       тул бүрхэг дэвсгэр нь шилэн эффектийг бүрэн орлоно (мөн утасны
+       GPU-д хямд). */
+    .web-header {
+        /* Наалддаггүй боллоо. Наалдах толгойн ганц үүрэг нь навигацийг
+           гар дор байлгах явдал байсан — тэр нь одоо доод самбарт шилжсэн.
+           Зөвхөн аппын нэрийг гүйлгэх туршид дэлгэцэнд наах нь 60px-ийг
+           дэмий эзэлж, дээрээс нь агуулгыг халхална. */
+        position: static;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        padding-bottom: 10px;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(3, 7, 18, 0.94);
+    }
+    .logo-area h1 { font-size: 12px; }
+
+    /* ---- ӨДРИЙН ДААЛГАВАР: НЭР БА НОТОЛГОО НЭГ МӨРӨНД БАГТАХГҮЙ ----
+       Урьд нь нэр нь гурван мөр болж эвхэгдэж, "Volume lifted 3,200 kg"
+       гэсэн нотолгоо нь баруун ирмэгээр ТАСАРДАГ байв — өөрөөр хэлбэл
+       "юу нотолсон" гэдэг нь утсан дээр огт уншигдахгүй. Grid болгож,
+       нотолгоог нэрийнх нь ДООР бүтнээр нь тавина. */
+    .mission-task {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "box name del" "box proof del";
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 4px;
+        padding: 12px 14px;
+        min-height: 56px;
+    }
+    .mission-task .task-box   { grid-area: box; }
+    .mission-task .task-name  { grid-area: name; }
+    .mission-task .task-proof { grid-area: proof; text-align: left; white-space: normal; }
+    .mission-task .delete-btn { grid-area: del; }
+    /* Нотолгоогүй даалгавар нэг мөр болж хураагдана. */
+    .mission-task:not(:has(.task-proof)) { grid-template-areas: "box name del"; }
+
+    /* ---- ЖАГСААЛТ ЭХЭНДЭЭ, ФОРМ АРД НЬ ----
+       Ширээн дээр "шинэ нэмэх" форм зүүн баганад зэрэгцээ сууна — хоёулаа
+       нэг зэрэг харагдана. Утсан дээр багана гэж байхгүй тул форм нь
+       агуулгын ӨМНӨ бүтэн дэлгэц эзэлж, жагсаалт руугаа хүрэхийн тулд
+       нэмэхгүй байгаа форм даган гүйлгэх шаардлагатай болдог байв.
+
+       Хүн энэ табыг гол төлөв БАЙГАА зүйлээ харах гэж нээдэг, шинэ зүйл
+       нэмэх гэж биш. Тиймээс жагсаалт эхэндээ. */
+    /* Ур чадварын таб ч ижил бүтэц ашигладаг тул хоёулаа энэ дүрмээр явна. */
+    .quest-layout { display: flex; flex-direction: column; }
+    .quest-sidebar { order: 2; }
+    .quest-main { order: 1; }
+
+    /* ---- ДААЛГАВРЫН КАРТ ----
+       Нэр, ангилал, товч гурвуулаа НЭГ мөрөнд багтахаа больж, "E-Rank"
+       гэсэн шошго картын ирмэгээр тасардаг байв. */
+    .quest-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: "rank info" "act act";
+        gap: 12px;
+        align-items: start;
+        padding: 14px 16px;
+    }
+    .quest-rank-badge   { grid-area: rank; }
+    .quest-info         { grid-area: info; min-width: 0; }
+    .quest-info small   { display: block; line-height: 1.6; }
+    .quest-card-actions {
+        grid-area: act;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding-top: 4px;
+        border-top: 1px solid var(--glass-border);
+    }
+    .quest-card-actions .complete-btn,
+    .quest-card-actions .done-badge { width: 100%; text-align: center; min-height: 42px; }
+
+    /* ---- ТОЛГОЙН 4 ТОО: 2×2 ----
+       Нэг баганаар өрөхөд карт бүр ~230px өндөр болж, ганц тоонд бүтэн
+       дэлгэцийн дөрөвний нэг зарцуулагдана. Дөрвүүлээ нэг харцанд багтах
+       нь тэдний ГОЛ УТГА — харьцуулагдах ёстой. */
+    #weekly-stats-container { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card-pro { padding: 14px 16px; gap: 4px; }
+    .stat-card-pro strong { font-size: 21px; }
+
+    /* ---- ХҮРЭХ ЗОРИЛТ 44px ----
+       Хулганы үзүүр 1px, эрхий хурууны талбай ~44px. Ижил товч хоёр
+       төхөөрөмж дээр ижил хэмжээтэй байх ёсгүй. */
+    .delete-btn { width: 34px; height: 34px; }
+    .close-modal {
+        width: 44px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0; top: 10px; right: 10px;
+    }
+    .qfilter-btn, .complete-btn, .reset-quest-btn, .data-link, .toggle-link { min-height: 40px; }
+    .conn-map-controls .submit-btn { min-height: 42px; }
+
+    /* ---- ХАМГИЙН ЖИЖИГ ҮСГҮҮД ----
+       9px нь дэлгэцийн зурагт эвтэйхэн харагддаг ч гарт барьсан утсан
+       дээр уншигдахаа болино. Толгойн шошго, нэгж, тайлбар — эдгээр нь
+       чимэглэл биш, ТООНЫ УТГЫГ хэлдэг тул уншигдах ёстой. */
+    .conn-pill { font-size: 10.5px; padding: 5px 9px; }
+    .conn-locator { font-size: 11px; }
+    .integrity-count small, .integrity-30 small { font-size: 10px; }
+    .qs-stat small { font-size: 10px; }
+    /* <small> нь хэмжээгүй үлдвэл хөтөч эцгийнхээ 5/6 (0.833×) болгодог —
+       11px-ийн доор 9.2px гарч ирнэ. Нэгжийн нэр нь "65,770" гэдэг тоог
+       УТГАТАЙ болгодог хэсэг тул уншигдахгүй болж болохгүй. */
+    .spark-value small, .heatmap-legend small,
+    .stat-box span small, .skill-headline span { font-size: 10.5px; }
+    .stat-card-pro span { font-size: 10px; }
+
+    /* Эрэмбэлэх сонголт нь бусад товчидтой ижил өндөртэй байх ёстой. */
+    .analytics-sort-select, .quest-sort-select { min-height: 42px; }
+
+    /* ---- ХОЛБОГДСОН КАРТЫН ЛОГ ----
+       GitHub-ийн карт 10 гаруй мөр лог асгаж, утсан дээр бүхэл дэлгэц
+       эзэлдэг байв. Лог бол ЛАВЛАГАА — түүнийг гүйлгэдэг хайрцагт хийвэл
+       карт өөрөө богино хэвээр үлдэнэ. */
+    .connected-log, .connected-status { max-height: 176px; overflow-y: auto; }
+
+    /* ---- ДООД ҮЙЛДЛҮҮД ----
+       Экспорт / сэргээх / цэвэрлэх нь баруун ирмэгт шахагдсан жижиг
+       холбоос байв. Утсан дээр эдгээр нь бүтэн өргөнтэй мөр байх ёстой —
+       ялангуяа устгах нь БУЦААГДАХГҮЙ. */
+    .data-row { flex-direction: column; align-items: stretch; gap: 20px; }
+    .data-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .data-actions .data-link { justify-content: center; text-align: center; }
+    .reset-actions { flex-direction: column; align-items: stretch; gap: 4px; }
+    .reset-link { padding: 12px 8px; text-align: center; }
+
+    /* ---- ЦОНХ: ДООШООС ГАРАХ ХУУДАС ----
+       Голд хөвж буй жижиг цонх нь утсан дээр хаах товч нь дээд буланд
+       үлдэж, эрхий хуруу хүрэхгүй. Доороос гарах хуудас нь дэлгэцийн
+       өргөнийг бүтнээр ашиглана. */
+    .modal-overlay { align-items: flex-end; }
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        max-height: 88vh;
+        border-radius: var(--radius) var(--radius) 0 0;
+        border-bottom: none;
+        padding: 24px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    /* Доошоос гарах хуудас нь 88vh-ээр хязгаарлагдсан тул урт агуулга нь
+       ЗААВАЛ гүйлгэгддэг байх ёстой — эс тэгвээс "нотолгоо // энэ тоо
+       хаанаас гарав" гэсэн жагсаалт доод ирмэгээр таслагдаж, цонхны гол
+       агуулга нь харагдахгүй болно. */
+    .modal-content { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal-overlay:not(.active) .modal-content { transform: translateY(40px) scale(1); }
+    .modal-header { gap: 14px; margin-bottom: 18px; padding-bottom: 18px; }
+
+    /* Эх сурвалжийн мөр: нэр ба тайлбар нь нэг мөрөнд эсрэг ирмэг рүү
+       тавигдвал тайлбар нь гурван мөр болж хугарна. Дараалуулна. */
+    .sd-source { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .sd-source span:last-child { text-align: left; }
+
+    /* Мөшгөлтийн мөр гурван баганаараа утсанд БАГТАНА (74 + нэр + дүн).
+       Дүнг тусдаа мөрөнд гаргах нь жагсаалтыг хоёр дахин уртасгана. */
+    .provenance-row { grid-template-columns: 74px minmax(0, 1fr) auto; gap: 8px; font-size: 10.5px; }
+    .provenance-amount { grid-column: auto; text-align: right; }
+    .modal-icon { width: 52px; height: 52px; font-size: 28px; }
+    .modal-title h2 { font-size: 17px; }
+
+    /* ---- РАДАР ----
+       Тэнхлэгийн шошго дэлгэцийн ирмэг рүү гарч тасардаг байв. */
+    .radar-svg { max-width: 280px; }
+    .radar-label { font-size: 11px; }
+    .radar-value { font-size: 12px; }
+}
+
+/* Маш нарийн дэлгэц (iPhone SE ба түүнээс доош) */
+@media (max-width: 380px) {
+    /* "STATUS DASHBOARD" нь чимэглэл — нэр өөрөө хангалттай. */
+    .logo-area h1 span { display: none; }
+    .tab-btn { font-size: 10px; letter-spacing: -0.2px; }
+    .tab-btn::before { font-size: 16px; }
+    .data-actions { grid-template-columns: 1fr; }
 }

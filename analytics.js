@@ -36,10 +36,14 @@ function renderAttributesRadar() {
         const endY = center + radius * Math.sin(a);
         svg += `<line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="radar-axis"/>`;
 
-        const lx = center + (radius + 28) * Math.cos(a);
-        const ly = center + (radius + 28) * Math.sin(a);
+        // Тэнхлэгийн нэр, доор нь ТООГООР. Урьд нь энэ карт ганц ч тоо
+        // агуулдаггүй байсан тул хэлбэрээс нь "хэр их вэ" гэдгийг таамаглах
+        // л үлддэг байв — хажуугийн профайл дээр яг тэр тоо бичээстэй байхад.
+        const lx = center + (radius + 30) * Math.cos(a);
+        const ly = center + (radius + 30) * Math.sin(a);
         const hi = stat.value >= 70 ? "highlight" : "";
-        svg += `<text x="${lx}" y="${ly}" class="radar-label ${hi}">${stat.name}</text>`;
+        svg += `<text x="${lx}" y="${ly - 7}" class="radar-label ${hi}">${stat.name}</text>`;
+        svg += `<text x="${lx}" y="${ly + 9}" class="radar-value" fill="${stat.hex}">${stat.value}%</text>`;
 
         const safeV   = Math.max(0, Math.min(100, stat.value));
         const vr      = radius * (safeV / 100);
@@ -57,8 +61,18 @@ function renderAttributesRadar() {
 // ===================== СПАРКЛАЙН =====================
 // Радартай ижил арга: SVG-г гараар барина, номын сан байхгүй.
 
-const SPARK_W = 240, SPARK_H = 40, SPARK_PAD = 3;
+const SPARK_W = 240, SPARK_H = 46, SPARK_PAD = 3;
 
+// ХЭЛБЭР НЬ ӨГӨГДЛӨӨ ДАГАНА.
+//
+// Энэ цуврал бол ӨДӨР ТУТМЫН салангид хэмжилт: тэр өдөр 4,200 kg өргөв, эсвэл
+// огт өргөөгүй. Түүнийг тасралтгүй ШУГАМААР зурах нь хоёр өдрийн хооронд
+// байхгүй шилжилтийг зурж байгаа хэрэг — дасгал хийгээгүй өдөр "хагас" утга
+// байгаа мэт харагдана. Өдөр алгасдаг хуваарь дээр тэр нь бүтэн 90 хоногийг
+// хурц шүдтэй хөрөө болгож, нүд түүнийг өгөгдөл биш ЧИМЭЭ гэж уншина.
+//
+// Багана нь тэр хуурмагийг арилгана: өдөр бүр өөрийн гэсэн өндөртэй, хоосон
+// өдөр хоосон. Ижил өгөгдөл, зохиомол шилжилтгүй.
 function metricSparklineSvg(series, hex) {
     const points = (Array.isArray(series) ? series : []).map(p => Number(p && p.value) || 0);
     const n = points.length;
@@ -68,17 +82,43 @@ function metricSparklineSvg(series, hex) {
     const usable = SPARK_H - SPARK_PAD * 2;
     const baseY  = SPARK_H - SPARK_PAD;
 
-    // Бүх утга 0 бол max нь 0 — тэгвэл ХАВТГАЙ шугам зурна (эвдэрсэн зам биш).
-    const xAt = i => (n === 1 ? SPARK_W / 2 : (i / (n - 1)) * SPARK_W);
-    const yAt = v => (max > 0 ? baseY - (v / max) * usable : baseY);
+    // ХООСОН ЦУВРАЛ. Урьд нь бүх утга 0 байхад ч бүрэн тод шулуун зурагддаг
+    // байсан — тэр нь "тогтвортой явж байна" гэж уншигдана. Бодит байдал нь
+    // "юу ч болоогүй". Хэлбэр нь өөрөө "энд өгөгдөл алга" гэж хэлэх ёстой.
+    if (max <= 0) {
+        return `<svg class="spark-svg is-empty" viewBox="0 0 ${SPARK_W} ${SPARK_H}" preserveAspectRatio="none"
+                     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}"
+                  stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3 5"
+                  vector-effect="non-scaling-stroke"/>
+        </svg>`;
+    }
 
-    const path = points.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+    // Багана бүрийн үүр. Зай нь үүрний 22% — өдрүүд салангид гэдэг нь
+    // харагдах хэмжээний зай, гэхдээ 90 багана шигүү зурагдах хэмжээний.
+    const slot = SPARK_W / n;
+    const gap  = Math.min(slot * 0.22, 0.9);
+    const barW = Math.max(slot - gap, 0.35);
+
+    const bars = points.map((v, i) => {
+        const x = (i * slot + gap / 2).toFixed(2);
+        if (v <= 0) {
+            // Хоосон өдрийг ЧИМЭЭГҮЙ алгасахгүй: суурь дээр нь маш бүдэг
+            // толбо үлдээнэ. Тэгснээр "энд өдөр байсан, юу ч болоогүй" ба
+            // "энд өгөгдөл байхгүй" хоёр ялгагдана.
+            return `<rect x="${x}" y="${(baseY - 0.6).toFixed(2)}" width="${barW.toFixed(2)}" height="0.6"
+                          fill="${hex}" fill-opacity="0.14"/>`;
+        }
+        const h = Math.max((v / max) * usable, 1.2);
+        return `<rect class="spark-bar" style="--i:${i}" x="${x}" y="${(baseY - h).toFixed(2)}"
+                      width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${hex}" fill-opacity="0.8"/>`;
+    }).join("");
 
     return `<svg class="spark-svg" viewBox="0 0 ${SPARK_W} ${SPARK_H}" preserveAspectRatio="none"
                  xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}" stroke-opacity="0.18" stroke-width="1"/>
-        <polyline points="${path}" fill="none" stroke="${hex}" stroke-width="1.6"
-                  stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}" stroke-opacity="0.22" stroke-width="1"
+              vector-effect="non-scaling-stroke"/>
+        ${bars}
     </svg>`;
 }
 
@@ -114,8 +154,16 @@ const AnalyticsEngine = {
         return Object.keys(status.metrics).map(id => status.metrics[id]).filter(Boolean);
     },
 
+    // "Дэлгэц харуулах юмтай юу" гэдэг АСУУЛТ. `overall.totalEvents` нь одоо
+    // ЗӨВХӨН батлагдсаныг тоолдог тул түүгээр шийдвэл өдөр бүр check-in хийдэг
+    // хүнд дашбоард "нотолгоо алга" гэж хэлнэ. Тиймээс энд `anyEvents` —
+    // хоёулаа нийлдэг ганц талбар, бөгөөд тэр нь хэмжилт биш зөвхөн туг.
     hasEvidence(status) {
-        return !!(status && status.overall && Number(status.overall.totalEvents) > 0);
+        const overall = (status && status.overall) ? status.overall : null;
+        if (!overall) return false;
+        const any = Number(overall.anyEvents);
+        if (isFinite(any) && any > 0) return true;
+        return Number(overall.totalEvents) > 0;
     },
 
     renderDashboard() {
@@ -208,7 +256,16 @@ const AnalyticsEngine = {
         // Хадгалалт дүүрсэн бол БУСДААС нь өмнө хэлнэ: тэр үед шинэ нотолгоо
         // огт хадгалагдахгүй байгаа бөгөөд дэлгэц дээр зүгээр л "тоо буурсан"
         // мэт харагдана. Энэ бол системийн хамгийн чимээгүй эвдрэл.
-        if (typeof storageWarning === "function" && storageWarning()) {
+        //
+        // ГЭХДЭЭ "дүүрэв" гэж хэлэх агшин нь аль хэдийн ХОЖИМДСОН байдаг: тэр
+        // үед унасан бичлэг аль хэдийн алдагдсан, үйлдвэрлэгч апп ердөө 50
+        // event-ийн буфертэй тул эргэж ирэхгүй. Тиймээс дарамтыг УРЬДЧИЛАН
+        // хэлнэ — хүн өөрөө экспортлох цаг гарган авах ёстой.
+        const pressure = (typeof storagePressure === "function")
+            ? storagePressure()
+            : { level: (typeof storageWarning === "function" && storageWarning()) ? "full" : "ok", pct: 0 };
+
+        if (pressure.level === "full") {
             blocks.push(`
                 <div class="integrity-warning">
                     <strong>Хадгалалт дүүрэв</strong>
@@ -217,14 +274,40 @@ const AnalyticsEngine = {
                        "НОТОЛГОО ХАМТ УСТГАХ" хийж сан чөлөөлнө үү — дараа нь
                        файлаа сэргээх боломжтой.</p>
                 </div>`);
+        } else if (pressure.level === "high") {
+            blocks.push(`
+                <div class="integrity-warning integrity-warning-soft">
+                    <strong>Хадгалалт ${Number(pressure.pct) || 0}% дүүрсэн</strong>
+                    <p>Сан дүүрэх агшинд ШИНЭ НОТОЛГОО чимээгүй алдагдана — үйлдвэрлэгч
+                       аппууд сүүлийн 50 event-ээ л хадгалдаг тул тэр бичлэгүүд
+                       ЭРГЭЖ ИРЭХГҮЙ. Одоо "НОТОЛГОО ЭКСПОРТЛОХ" дарж файл болгон
+                       аваарай — дүүрсний дараа хийвэл оройтсон байна.</p>
+                </div>`);
         }
 
         if (unmapped.length > 0) {
+            // Нэр нь дангаараа хэмжээг нуудаг: `gym:sauna.session` гэдэг 3 бичлэг
+            // ч байж болно, 3000 ч байж болно. Хэдэн бичлэг статуст ОРООГҮЙ,
+            // хэзээ сүүлд ирснийг нь хамт хэлнэ — тэр хоёр л "яаралтай юу"
+            // гэдгийг шийднэ.
+            const rows = Array.isArray(overall.unmapped) ? overall.unmapped : [];
+            const lost = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+            const detail = rows.length > 0
+                ? rows.map(row => `
+                    <li>
+                        <code>${escapeHTML(row.key || "")}</code>
+                        <span>${(Number(row.count) || 0).toLocaleString()} бичлэг</span>
+                        <small>${escapeHTML(
+                            (typeof relativeTime === "function" ? relativeTime(row.lastAt) : null) || "—")}</small>
+                    </li>`).join("")
+                : unmapped.map(key => `<li><code>${escapeHTML(key)}</code></li>`).join("");
+
             blocks.push(`
                 <div class="integrity-warning">
-                    <strong>Танигдаагүй event төрөл</strong>
-                    <p>Эдгээрийг ямар метрик болгохыг status.js-ийн METRICS бүртгэл мэдэхгүй тул
-                       статуст ОГТ ороогүй: ${escapeHTML(unmapped.join(", "))}</p>
+                    <strong>Танигдаагүй event төрөл${lost > 0 ? ` — ${lost.toLocaleString()} бичлэг статуст ороогүй` : ""}</strong>
+                    <p>Эдгээрийг ямар метрик болгохыг status.js-ийн METRICS бүртгэл мэдэхгүй.
+                       Нотолгоо нь ХАДГАЛАГДСАН — метрикт холбомогц бүх түүх нь буцаж тоологдоно.</p>
+                    <ul class="integrity-unmapped">${detail}</ul>
                 </div>`);
         }
         if (gaps.length > 0) {
@@ -247,28 +330,55 @@ const AnalyticsEngine = {
     },
 
     // ---- 1. Дээд мөрийн 4 карт ----
+    // ACTIVE DAYS ба CONSISTENCY нь ЗӨВХӨН гадны аппын нотолгооноос гарна.
+    // Урьд нь өөрөө дарсан check-in ч энд тоологддог байсан: ганц ч апп
+    // холбоогүй хүн CONSISTENCY 100% харах боломжтой байв — өөрөө өөртөө
+    // өгсөн үнэлгээ. Одоо check-in нь тусдаа мөрөнд, өөрийн нэрээр гарна.
     renderWeeklyStats(status) {
         const container = document.getElementById('weekly-stats-container');
         if (!container) return;
 
         const overall = (status && status.overall) ? status.overall : { activeDays30: 0 };
+        const self    = (overall && overall.self) ? overall.self : { activeDays30: 0, totalEvents: 0 };
         const metrics = this.metricList(status);
+
+        // ДӨРВҮҮЛЭЭ нэг утгатай байх ёстой. Хоёр карт нь батлагдсанаас, хоёр
+        // нь хольсноос гардаг бол мөр бүхэлдээ уншигдахаа болино: хажуу хажууд
+        // байгаа тоонууд ижил хэмжүүртэй гэж хүн үзнэ. Тиймээс дөрвүүлээ
+        // гадны аппын нотолгооноос л гарна, өөрөө мэдээлсэн нь доор тайлбар
+        // болж явна.
+        const verified = metrics.filter(m => !m.selfReported);
 
         const activeDays  = Number(overall.activeDays30) || 0;
         const consistency = Math.round((activeDays / 30) * 100);
-        const tracked     = metrics.filter(m => Number(m.last30) > 0).length;
+        const tracked     = verified.filter(m => Number(m.last30) > 0).length;
+        const selfDays    = Number(self.activeDays30) || 0;
 
-        let bestStreak = 0, bestStreakLabel = "—";
-        metrics.forEach(m => {
-            const streak = Number(m.streakDays) || 0;
-            if (streak > bestStreak) { bestStreak = streak; bestStreakLabel = m.label; }
-        });
+        const bestOf = list => list.reduce((best, m) =>
+            (Number(m.streakDays) || 0) > (Number(best && best.streakDays) || 0) ? m : best, null);
+
+        const bestVerified = bestOf(verified);
+        const bestSelf     = bestOf(metrics.filter(m => m.selfReported));
+        const bestStreak   = Number(bestVerified && bestVerified.streakDays) || 0;
+
+        // Батлагдсан нь тэг атлаа check-in байгаа бол картыг "0%" гээд орхивол
+        // хэрэглэгч өөрийгөө буруутгана. Тоо тэг байгаа ШАЛТГААНЫГ хэлнэ.
+        const consistencyNote = activeDays === 0 && selfDays > 0
+            ? `<span>апп батлаагүй · ${selfDays}/30 өөрөө</span>`
+            : (selfDays > 0 ? `<span>+ ${selfDays}/30 өөрөө</span>` : "");
+
+        const selfStreak = Number(bestSelf && bestSelf.streakDays) || 0;
+        const streakNote = bestStreak > 0
+            ? `<span>${escapeHTML(bestVerified.label)}</span>`
+            : (selfStreak > 0
+                ? `<span>апп батлаагүй · ${selfStreak} хоног өөрөө</span>`
+                : `<span>—</span>`);
 
         container.innerHTML = `
-            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong></div>
-            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong></div>
-            <div class="stat-card-pro"><span>TRACKED METRICS</span><strong>${tracked}</strong><span>${metrics.length} метрикээс</span></div>
-            <div class="stat-card-pro"><span>LONGEST STREAK</span><strong>${bestStreak} өдөр</strong><span>${escapeHTML(bestStreakLabel)}</span></div>
+            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong><span>батлагдсан</span></div>
+            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong>${consistencyNote}</div>
+            <div class="stat-card-pro"><span>TRACKED METRICS</span><strong>${tracked}</strong><span>${verified.length} батлагдах метрикээс</span></div>
+            <div class="stat-card-pro"><span>LONGEST STREAK</span><strong>${bestStreak} өдөр</strong>${streakNote}</div>
         `;
     },
 
@@ -294,7 +404,7 @@ const AnalyticsEngine = {
         }
 
         const metrics = this.metricList(status);
-        container.innerHTML = this.getPastDays(HEATMAP_DAYS).map(date => {
+        container.innerHTML = this.getPastDays(HEATMAP_DAYS).map((date, i) => {
             // daily-д түлхүүр байгаа = тэр өдөр event бүртгэгдсэн (утга нь 0 ч байж болно).
             const active = metrics.filter(m => m.daily && Object.prototype.hasOwnProperty.call(m.daily, date));
             const level  = Math.min(4, active.length);
@@ -305,7 +415,9 @@ const AnalyticsEngine = {
                 .join(" · ");
             const title = detail ? `${date} · ${detail}` : date;
 
-            return `<div class="heat-box ${cls}" title="${escapeHTML(title)}"></div>`;
+            // --i нь зөвхөн ХАРАГДАЦЫН дараалал: нүднүүд зүүнээс баруун тийш
+            // ээлжлэн гарч ирнэ. Ямар ч тоонд нөлөөлөхгүй.
+            return `<div class="heat-box ${cls}" style="--i:${i}" title="${escapeHTML(title)}"></div>`;
         }).join("");
     },
 
@@ -395,6 +507,29 @@ const AnalyticsEngine = {
         if (!status) return insights;
 
         const metrics = this.metricList(status);
+        const overall = (status.overall && typeof status.overall === "object") ? status.overall : {};
+        const self    = (overall.self && typeof overall.self === "object") ? overall.self : {};
+
+        // Бүх дүгнэлтээс ӨМНӨ нэг асуулт: доорх тоонуудыг ХЭН батлав?
+        // Зөвхөн өөрөө дарсан check-in дээр зогсож байгаа бол дэлгэц дээрх
+        // "тууштай байдал" нь хэмжилт биш, өөрийн үнэлгээ. Түүнийг хэлэхгүй
+        // өнгөрөх нь системийн гол амлалтыг чимээгүй хоосон болгоно.
+        if (!(Number(overall.totalEvents) > 0) && Number(self.totalEvents) > 0) {
+            insights.push({
+                type: "warning",
+                text: `Ямар ч апп нотолгоо илгээгээгүй — доорх тоо бүхэлдээ ${Number(self.totalEvents).toLocaleString()} өөрийн бүртгэлээс гарч байна.`
+            });
+        }
+
+        // Хадгалалт дүүрэхэд шинэ нотолгоо АЛДАГДАНА. Дүүрсний дараа хэлэх нь
+        // оройтсон тул дүгнэлт дотор ч урьдчилан гарна.
+        const pressure = (typeof storagePressure === "function") ? storagePressure() : null;
+        if (pressure && pressure.level === "high") {
+            insights.push({
+                type: "warning",
+                text: `Хадгалалт ${pressure.pct}% дүүрсэн — дүүрэхээс өмнө нотолгоогоо экспортлоорой.`
+            });
+        }
 
         // Буурсан метрик — 30 хоногийн өөрчлөлт -25%-иас доош
         metrics.forEach(m => {
@@ -437,19 +572,24 @@ const AnalyticsEngine = {
         });
 
         // Танигдаагүй event төрөл — үйлдвэрлэгч гэрээгээ өөрчилсний дохио
-        const unmapped = (status.overall && Array.isArray(status.overall.unmappedTypes))
-            ? status.overall.unmappedTypes
-            : [];
+        const unmapped = Array.isArray(overall.unmappedTypes) ? overall.unmappedTypes : [];
         if (unmapped.length > 0) {
-            insights.push({ type: "warning", text: `Танигдаагүй event төрөл: ${unmapped.join(", ")}` });
+            // Хэдэн бичлэг статуст ороогүйг хэлэхгүй бол "нэг төрөл танигдсангүй"
+            // гэдэг нь мартагдана — тэр төрөл цаана нь мянган бичлэг байж болно.
+            const rows = Array.isArray(overall.unmapped) ? overall.unmapped : [];
+            const lost = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+            insights.push({
+                type: "warning",
+                text: lost > 0
+                    ? `Танигдаагүй event төрөл (${unmapped.join(", ")}) — ${lost.toLocaleString()} бичлэг статуст ороогүй.`
+                    : `Танигдаагүй event төрөл: ${unmapped.join(", ")}`
+            });
         }
 
         // Нэгжээ сэргээж чадаагүй нэгтгэл. status.js эдгээрийг ЗОРИУД бүртгэдэг
         // ("чимээгүй алга болохгүй" гэж) — гэтэл өмнө нь тэр жагсаалтыг хаана ч
         // харуулдаггүй байсан тул амлалт нь биелдэггүй байв.
-        const gaps = (status.overall && Array.isArray(status.overall.rollupGaps))
-            ? status.overall.rollupGaps
-            : [];
+        const gaps = Array.isArray(overall.rollupGaps) ? overall.rollupGaps : [];
         if (gaps.length > 0) {
             const events  = gaps.reduce((sum, gap) => sum + (Number(gap.count) || 0), 0);
             const metrics = Array.from(new Set(gaps.map(gap => gap.metric))).join(", ");

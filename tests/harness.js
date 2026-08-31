@@ -61,7 +61,12 @@ function makeCtx(opts = {}) {
     Object, Array, Set, Map, Promise, Error, RegExp,
     isFinite, isNaN, parseInt, parseFloat, encodeURIComponent, decodeURIComponent,
     setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
-    requestAnimationFrame: fn => fn(), confirm: () => true, alert: () => {}
+    requestAnimationFrame: fn => fn(), confirm: () => true, alert: () => {},
+    // script.js нь таб сэргээхдээ location.hash уншина. Хөтчийн энэ хэсэггүйгээр
+    // файлыг ачаалахад init() нь тестийн ДАРАА унаж, тест ногдсон мөртлөө
+    // ажиллуулагч процесс тэр чигтээ унана — өөрөөр хэлбэл алдаа нь хэн ч
+    // хараагүй газраас гарна.
+    location: { hash: "", href: "http://localhost/", protocol: "http:", origin: "http://localhost" }
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
@@ -85,8 +90,10 @@ const EXPORTS = [
   "recordSelfCheckin", "removeSelfCheckin", "selfCheckinId", "selfCheckinIds",
   "SELF_APP", "ATTR_HEX", "verifiableMetricIds",
   "evidenceRecordCount", "importWebData", "storageWarning", "isQuotaError",
+  "storagePressure", "STORAGE_LIMIT_BYTES", "STORAGE_WARN_PCT",
   "addMissionTask", "deleteMissionTask",
   "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI",
+  "renderProfileEvidence",
   // Холболтын давхарга: эх сурвалжийн бүртгэл, оношилгоо, төрөл → метрик.
   "listBridgeSources", "userBridgeSources", "findBridgeSource", "probeBridgeSource",
   "readBridgeFeed", "validateBridgeFeed", "bridgeCheckText", "getBridgeCheck",
