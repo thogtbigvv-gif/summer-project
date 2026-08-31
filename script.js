@@ -74,11 +74,26 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 // Сэргээх. Хадгалагдсан таб байхгүй/устсан бол HTML-ийн анхдагч нь хэвээр үлдэнэ.
+//
+// Хаягийн hash нь хадгалагдсанаас ДЭЭГҮҮР: суулгасан аппын товчлол
+// (manifest.webmanifest → shortcuts) "./#quests-tab" гэж нээдэг тул хэрэглэгч
+// яг тэр табыг ЗОРИУД сонгосон байна. Сүүлд үзсэн таб нь тэр сонголтыг
+// дарж болохгүй.
 function restoreActiveTab() {
+    const fromHash = (location.hash || "").replace(/^#/, "");
+    if (fromHash && activateTab(fromHash, true)) return;
+
     let saved = null;
     try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch (_) {}
     if (saved) activateTab(saved, false);
 }
+
+// Аль хэдийн нээлттэй апп дээр товчлол дарахад хуудас дахин ачаалагдахгүй,
+// зөвхөн hash солигдоно. Түүнийг сонсохгүй бол товчлол чимээгүй үхнэ.
+window.addEventListener("hashchange", () => {
+    const target = (location.hash || "").replace(/^#/, "");
+    if (target) activateTab(target, true);
+});
 
 // ===================== ӨГӨГДЛИЙН УДИРДЛАГА =====================
 // Нотолгоо бол сэргээгдэшгүй. Үйлдвэрлэгч аппууд ердөө 50 event-ийн буфертэй
@@ -135,9 +150,20 @@ document.getElementById("import-input")?.addEventListener("change", async functi
 document.getElementById("reset-btn")?.addEventListener("click", async () => {
     if (!confirm("Даалгавар, ур чадвар, ангилал, өдрийн жагсаалтыг анхны төлөвт шилжүүлэх үү?\n\nНотолгоо ХЭВЭЭР үлдэнэ.")) return;
 
-    const evidence = webData.integrations;   // хадгалж авна
+    // Нотолгоо БОЛОН түүнийг тоо болгодог тайлбарыг хоёуланг нь хадгална.
+    //
+    // Зөвхөн integrations-ыг үлдээвэл: холбосон эх сурвалж, түүний метрик,
+    // "энэ төрөл ийм утгатай" гэсэн тайлбар бүгд алга болно. Нотолгоо нь
+    // байрандаа хэвээр атлаа ТООНУУД нь тэглэгдэнэ — "Нотолгоо ХЭВЭЭР
+    // үлдэнэ" гэсэн амлалт техникийн хувьд үнэн, практикт худал болно.
+    const keep = {
+        integrations: webData.integrations,
+        sources:      webData.sources,
+        metrics:      webData.metrics,
+        metricMap:    webData.metricMap
+    };
     webData = cloneDefault();
-    webData.integrations = evidence;
+    Object.keys(keep).forEach(k => { if (keep[k] !== undefined) webData[k] = keep[k]; });
 
     await saveWebData();
     sweepRemovedFeatureKeys();
@@ -202,9 +228,14 @@ function renderCategories() {
         const unit      = metric ? metric.unit : (cat.unit || "");
 
         const card = document.createElement("div");
-        card.className = "category-card";
+        // Карт бүр "энэ тоо хаанаас гарав" гэдэгт хариулах ёстой. Дарж
+        // болдгийг нь role/tabindex-ээр зарлана — хулганагүй ч нээгдэнэ.
+        card.className = "category-card is-openable";
         card.style.setProperty("--tier-color", tierColor);
         card.dataset.tier = tier;
+        card.dataset.category = key;
+        card.setAttribute("role", "button");
+        card.setAttribute("tabindex", "0");
         card.innerHTML = `
             <div class="card-head">
                 <h3>${escapeHTML(cat.name)}</h3>
@@ -291,7 +322,7 @@ function renderAttributeScores() {
         });
 
         return `
-            <div class="attr-score-row">
+            <div class="attr-score-row is-openable" data-attribute="${escapeHTML(name)}" role="button" tabindex="0">
                 <div class="xp-row">
                     <span>${escapeHTML(name)}</span>
                     <span><strong style="color:${hex};">${score}%</strong> ${formatDelta(attr.change30Pct, last30, prev30)}</span>
@@ -302,6 +333,186 @@ function renderAttributeScores() {
             </div>`;
     }).join("");
 }
+
+// ===================== СТАТУСЫН ДЭЛГЭРЭНГҮЙ =====================
+// Ур чадварын карт аль эрт нотолгоогоо харуулдаг байсан бол Статус табын
+// картууд ердөө тоо харуулаад дуусдаг байв: "63%" гэсэн тоо хаанаас гарав,
+// хэн хэлэв, хэзээнээс хойш чимээгүй байна вэ гэдэг хаана ч байхгүй.
+//
+// Энэ цонх тэр гурван асуултад хариулна. Ямар ч тоо ЭНД шинээр тооцогдохгүй —
+// бүгд Status.get()-ээс ирнэ.
+
+function statusModal() { return document.getElementById("status-detail-modal"); }
+
+function closeStatusModal() { statusModal()?.classList.remove("active"); }
+
+// Метрикийг тэжээж буй эх сурвалжийн ЭРҮҮЛ МЭНД. "Тоо зогссон" гэдэг
+// ихэвчлэн "апп чимээгүй болсон" гэсэн үг — хоёрыг нь тусад нь харуулах нь
+// хэрэглэгчийг таамаглуулж байгаа хэрэг.
+function metricSourceHtml(metricId, status) {
+    const apps = (typeof metricSourceApps === "function") ? metricSourceApps(metricId) : [];
+    if (apps.length === 0) {
+        return `<div class="sd-source sd-source-bad">Энэ метрикт ямар ч эх сурвалж холбогдоогүй — тоо хэзээ ч өсөхгүй.</div>`;
+    }
+
+    const sources = (status && status.sources) ? status.sources : {};
+    return apps.map(app => {
+        const stats = sources[app] || null;
+        const check = (typeof getBridgeCheck === "function") ? getBridgeCheck(app) : null;
+        const label = (stats && stats.label) || app;
+        const when  = (stats && typeof relativeTime === "function") ? relativeTime(stats.updatedAt) : null;
+
+        let note = "", bad = false;
+        if (check && check.code !== "ok" && check.code !== "self") {
+            note = typeof bridgeCheckText === "function" ? bridgeCheckText(check.code, check.detail) : "уншигдахгүй байна";
+            bad  = true;
+        } else if (stats && stats.stale) {
+            note = "чимээгүй байна";
+            bad  = true;
+        }
+
+        return `
+            <div class="sd-source${bad ? " sd-source-bad" : ""}">
+                <span>${escapeHTML(label)}</span>
+                <span>${escapeHTML(note || when || "—")}</span>
+            </div>`;
+    }).join("");
+}
+
+function statBox(label, value) {
+    return `<div class="stat-box"><label>${escapeHTML(label)}</label><span>${value}</span></div>`;
+}
+
+function metricDetailHtml(metric, status, hex) {
+    const unit = metric.unit ? " " + escapeHTML(metric.unit) : "";
+    const target = Number(metric.target30) || 0;
+
+    const spark = (typeof metricSparklineSvg === "function")
+        ? metricSparklineSvg((metric.series || []).slice(-30), hex)
+        : "";
+
+    return `
+        <div class="modal-stats">
+            ${statBox("СҮҮЛИЙН 30 ХОНОГ", `${Number(metric.last30).toLocaleString()}<small>${unit}</small>`)}
+            ${statBox("ЗОРИЛТ", target > 0
+                ? `${target.toLocaleString()}<small>${unit}</small> · ${Number(metric.pct30).toFixed(0)}%`
+                : "—")}
+            ${statBox("ӨӨРЧЛӨЛТ", formatDelta(metric.change30Pct, metric.last30, metric.prev30))}
+            ${statBox("ЦУВРАЛ", `${Number(metric.streakDays) || 0} хоног`)}
+            ${statBox("ИДЭВХТЭЙ ӨДӨР", `${Number(metric.activeDays30) || 0} / 30`)}
+            ${statBox("ХАМГИЙН САЙН ӨДӨР", metric.best
+                ? `${Number(metric.best.value).toLocaleString()}<small>${unit}</small><br><small>${escapeHTML(metric.best.date)}</small>`
+                : "—")}
+        </div>
+        ${spark ? `<div class="sd-spark">${spark}<div class="sd-spark-label">сүүлийн 30 хоног</div></div>` : ""}
+        <div class="sd-section-label">ЭХ СУРВАЛЖ</div>
+        ${metricSourceHtml(metric.id, status)}
+        ${provenanceHtml(metric, 8)}`;
+}
+
+function openCategoryModal(key) {
+    const cat = webData && webData.categories ? webData.categories[key] : null;
+    if (!cat) return;
+
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const metric = (status && cat.metricId) ? status.metrics[cat.metricId] : null;
+    const hex    = metric ? (ATTR_HEX[metric.attr] || "#10b981") : "#6b7280";
+
+    document.getElementById("sd-icon").textContent    = "◈";
+    document.getElementById("sd-icon").style.color    = hex;
+    document.getElementById("sd-icon").style.borderColor = hex + "44";
+    document.getElementById("sd-title").textContent    = cat.name || key;
+    document.getElementById("sd-subtitle").textContent = metric
+        ? `${metric.label}${metric.unit ? " · " + metric.unit : ""}`
+        : "нотолгооны эх сурвалж холбоогүй";
+
+    document.getElementById("sd-body").innerHTML = metric
+        ? metricDetailHtml(metric, status, hex)
+        : `<div class="connected-empty">Энэ ангилал метрикт холбогдоогүй байна — ахиц нь хэмжигдэхгүй.</div>`;
+
+    statusModal()?.classList.add("active");
+}
+
+function openAttributeModal(name) {
+    const status = (typeof Status !== "undefined" && Status) ? Status.get() : null;
+    const attr   = (status && status.attributes) ? status.attributes[name] : null;
+    if (!attr) return;
+
+    const hex = ATTR_HEX[name] || "#10b981";
+    const ids = Array.isArray(attr.metrics) ? attr.metrics : [];
+
+    document.getElementById("sd-icon").textContent    = "◈";
+    document.getElementById("sd-icon").style.color    = hex;
+    document.getElementById("sd-icon").style.borderColor = hex + "44";
+    document.getElementById("sd-title").textContent    = name;
+    document.getElementById("sd-subtitle").textContent = `${ids.length} метрик · оноо ${Number(attr.score) || 0}%`;
+
+    // Оноо хэрхэн гарсныг ЗАДЛАЖ харуулна: метрик бүрийн зорилтын хувь, тэдний
+    // дундаж нь оноо. Ингэснээр "яагаад 40% байна вэ" гэдэг тайлагдана.
+    const rows = ids.map(id => {
+        const m = (status.metrics || {})[id];
+        if (!m) return "";
+        const pct = Math.max(0, Math.min(100, Number(m.pct30) || 0));
+        const unit = m.unit ? " " + escapeHTML(m.unit) : "";
+        return `
+            <div class="sd-metric-row">
+                <div class="xp-row">
+                    <span>${escapeHTML(m.label)}</span>
+                    <span><strong style="color:${hex};">${pct.toFixed(0)}%</strong>
+                          <small>${Number(m.last30).toLocaleString()}${unit} / ${Number(m.target30).toLocaleString()}${unit}</small></span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-bar" style="width:${pct}%;background:${hex};"></div>
+                </div>
+                ${metricSourceHtml(id, status)}
+            </div>`;
+    }).join("");
+
+    document.getElementById("sd-body").innerHTML = `
+        <div class="sd-formula">Оноо = метрик бүрийн 30 хоногийн зорилтод хүрсэн хувийн дундаж.</div>
+        ${name === "DISCIPLINE"
+            ? `<div class="sd-formula sd-warn">Энэ тэнхлэгийг гадны апп БАТАЛГААЖУУЛААГҮЙ — өөрөө тэмдэглэсэн бүртгэлээс гарна.</div>`
+            : ""}
+        ${rows || `<div class="connected-empty">энэ атрибутад метрик холбогдоогүй</div>`}`;
+
+    statusModal()?.classList.add("active");
+}
+
+// Дарах ба гарын товчлол — хоёулаа. Карт нь role="button" гэж зарласан
+// тул Enter/Space ажиллах ЁСТОЙ: эс тэгвээс зарласнаа зөрчиж байгаа хэрэг.
+document.addEventListener("click", (e) => {
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest("#status-detail-modal .modal-content")) return;
+
+    const cat = e.target.closest(".category-card[data-category]");
+    if (cat) { openCategoryModal(cat.dataset.category); return; }
+
+    const attr = e.target.closest(".attr-score-row[data-attribute]");
+    if (attr) { openAttributeModal(attr.dataset.attribute); return; }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (!e.target || !e.target.closest) return;
+
+    const cat = e.target.closest(".category-card[data-category]");
+    if (cat) { e.preventDefault(); openCategoryModal(cat.dataset.category); return; }
+
+    const attr = e.target.closest(".attr-score-row[data-attribute]");
+    if (attr) { e.preventDefault(); openAttributeModal(attr.dataset.attribute); }
+});
+
+document.getElementById("close-status-modal-btn")?.addEventListener("click", closeStatusModal);
+statusModal()?.addEventListener("click", (e) => {
+    if (e.target === statusModal()) closeStatusModal();
+});
+
+// Escape нь НЭЭЛТТЭЙ БҮХ цонхыг хаана. Гурван цонх тус тусдаа хаах товчтой
+// байсан ч гарнаас хаах ганц ч зам байгаагүй.
+document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".modal-overlay.active").forEach(m => m.classList.remove("active"));
+});
 
 // Үндсэн UI-г Render хийх мастер функц
 function renderWebUI() {

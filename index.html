@@ -2,7 +2,21 @@
 <html lang="mn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<!-- ===== PWA: утсан дээр суулгах ===== -->
+<!-- Хаягийн мөр ба системийн самбар нь аппын дэвсгэртэй нийлнэ. -->
+<meta name="theme-color" content="#030712">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- iOS нь manifest-ийг зөвхөн хэсэгчлэн уншдаг: нэр, icon, статусын
+     самбарын өнгийг ЭДГЭЭР шошгоноос авна. Тэднийг хасвал iPhone дээр
+     дэлгэцэнд нэмсэн апп цагаан дэвсгэртэй, хоосон icon-той гарна. -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ω Command">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Summer Project — Tactical Command Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +38,8 @@
         <button class="tab-btn" data-tab="skills-tab" type="button" role="tab" aria-selected="false">Ур чадвар</button>
         <button class="tab-btn" data-tab="analytics-tab" type="button" role="tab" aria-selected="false">Аналитик</button>
     </nav>
+    <!-- Хөтөч суулгах боломжтой гэж хэлэх хүртэл нуугдмал. pwa.js нээнэ. -->
+    <button type="button" id="install-btn" class="install-btn" hidden>⤓ Утсанд суулгах</button>
 </header>
 
 <main class="web-container">
@@ -103,9 +119,48 @@
         </div>
         <div id="categories-container" class="web-grid"></div>
 
-        <div class="section-title" style="margin-top: 40px;">
+        <div class="section-title connect-title" style="margin-top: 40px;">
             <h2>Холбогдсон Аппууд (Connected)</h2>
+            <!-- Холболт бол "тохируулаад мартах" зүйл биш: чимээгүй тасарсныг
+                 нь энд хэлж, засах товч нь мөн энд байх ёстой. -->
+            <div class="connect-actions">
+                <span class="connect-summary" id="connect-summary"></span>
+                <button type="button" class="data-link" id="sync-all-btn">↻ Бүгдийг унших</button>
+                <button type="button" class="toggle-link" id="toggle-source-form">+ Эх сурвалж холбох</button>
+            </div>
         </div>
+
+        <!-- Шинэ эх сурвалж. Гэрээ нь кодод бичигдсэнтэй ЯГ ИЖИЛ:
+             { v:1, updatedAt, status, events:[{id,at,type,value,detail,data}] } -->
+        <div id="source-form" class="source-form" style="display:none;">
+            <div class="source-form-grid">
+                <div>
+                    <label for="source-label">Нэр:</label>
+                    <input type="text" id="source-label" placeholder="Жнь: Гүйлтийн апп" maxlength="40" autocomplete="off">
+                </div>
+                <div>
+                    <label for="source-kind">Хаанаас:</label>
+                    <select id="source-kind">
+                        <option value="local">localStorage түлхүүр (ижил домэйн дээрх апп)</option>
+                        <option value="fetch">JSON файлын хаяг</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="source-locator">Түлхүүр / хаяг:</label>
+                    <input type="text" id="source-locator" placeholder="myapp:bridge" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="source-hex-field">
+                    <label for="source-hex">Өнгө:</label>
+                    <input type="color" id="source-hex" value="#64748b">
+                </div>
+            </div>
+            <div class="source-form-actions">
+                <button type="button" class="data-link" id="source-test-btn">Шалгах</button>
+                <button type="button" class="submit-btn secondary" id="source-add-btn">Холбох</button>
+            </div>
+            <div id="source-form-result" class="source-form-result"></div>
+        </div>
+
         <div id="connected-container" class="web-grid"></div>
 
         <!-- Нотолгоо бол сэргээгдэшгүй: аппууд ердөө 50 бичлэгийн буфертэй.
@@ -382,6 +437,23 @@
     </div>
 </div>
 
+<!-- Ангилал / атрибутын дэлгэрэнгүй. Карт бүр "энэ тоо хаанаас гарав"
+     гэсэн асуултад хариулах ёстой — ур чадварын карт аль эрт хариулдаг
+     байсан ч Статус табын картууд дардаггүй байв. -->
+<div id="status-detail-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sd-title">
+    <div class="modal-content">
+        <button class="close-modal" id="close-status-modal-btn" aria-label="Хаах">&times;</button>
+        <div class="modal-header">
+            <div class="modal-icon" id="sd-icon">◈</div>
+            <div class="modal-title">
+                <h2 id="sd-title">—</h2>
+                <p id="sd-subtitle">—</p>
+            </div>
+        </div>
+        <div id="sd-body"></div>
+    </div>
+</div>
+
 <div id="toast-container" aria-live="polite"></div>
 
 <script src="data.js" defer></script>
@@ -391,6 +463,8 @@
 <script src="status.js" defer></script>
 <script src="analytics.js" defer></script>
 <script src="script.js" defer></script>
+<!-- Хамгийн сүүлд: showToast() зэрэг аппын функцууд аль хэдийн тодорхойлогдсон байна. -->
+<script src="pwa.js" defer></script>
 
 </body>
 </html>

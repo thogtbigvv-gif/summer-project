@@ -297,7 +297,12 @@ function renderQuestMetricOptions() {
     const select = document.getElementById("quest-metric");
     if (!select) return;
 
-    const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
+    // metricDefs() — суурь бүртгэл ДЭЭР хэрэглэгчийн үүсгэсэн метрикүүд.
+    // METRIC_DEFS-ийг шууд уншвал өөрийн холбосон эх сурвалжаа энэ жагсаалтаас
+    // олохгүй: тоо нь гарч байхад сонгох боломжгүй болно.
+    const defs = (typeof metricDefs === "function")
+        ? metricDefs()
+        : ((typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {});
     const keep = select.value;
 
     // ЗӨВХӨН гадны эх сурвалжаас тэжээгддэг метрик. Өөрөө мэдээлдэг метрикийг
@@ -563,7 +568,12 @@ function renderMissionMetricOptions() {
     const select = document.getElementById("mission-metric");
     if (!select) return;
 
-    const defs = (typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {};
+    // metricDefs() — суурь бүртгэл ДЭЭР хэрэглэгчийн үүсгэсэн метрикүүд.
+    // METRIC_DEFS-ийг шууд уншвал өөрийн холбосон эх сурвалжаа энэ жагсаалтаас
+    // олохгүй: тоо нь гарч байхад сонгох боломжгүй болно.
+    const defs = (typeof metricDefs === "function")
+        ? metricDefs()
+        : ((typeof METRIC_DEFS !== "undefined" && METRIC_DEFS) ? METRIC_DEFS : {});
     const ids  = (typeof verifiableMetricIds === "function") ? verifiableMetricIds() : Object.keys(defs);
     const keep = select.value;
 

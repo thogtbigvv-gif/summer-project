@@ -50,12 +50,122 @@ const METRIC_DEFS = {
     "self.checkins":  { label: "Өөрөө бүртгэсэн", unit: "удаа", attr: "DISCIPLINE", target30: 90, selfReported: true }
 };
 
+// ===================== ХЭРЭГЛЭГЧИЙН БҮРТГЭЛ =====================
+// Дээрх хоёр хүснэгт бол КОДОД бичигдсэн суурь. Хэрэглэгч шинэ эх сурвалж
+// холбоход түүний event төрлүүд ЭНД БАЙХГҮЙ — өөрөөр хэлбэл нотолгоо нь
+// хадгалагдана ч ямар ч тоо гаргахгүй. Тэр бол хагас холболт.
+//
+// Тиймээс хоёр зүйлийг датанаас нэмж уншина:
+//   webData.metrics    — хэрэглэгчийн үүсгэсэн метрик ({id,label,unit,attr,target30})
+//   webData.metricMap  — "app:type" → { metric, rule, key } гэсэн ТАЙЛБАР
+//
+// Энэ нь "гаргалт хадгалалтыг ялгана" дүрмийг зөрчихгүй: датад ТОХИРГОО
+// сууж байгаа болохоос ГАРГАСАН ТОО биш. Дүрэм өөрчлөгдвөл бүх түүх дагаж
+// дахин тооцогдоно — яг код доторх бүртгэлтэй адилхан.
+//
+// amount функцийг хэрэглэгч БИЧИХГҮЙ (код бол код). Оронд нь гурван дүрмээс
+// сонгоно; гурвуулаа нэгтгэсэн хувингаас ч сэргээгддэг:
+//   "count"  — бичлэг бүр 1        (хувин: count)
+//   "value"  — event.value         (хувин: valueSum)
+//   "data"   — event.data[key]     (хувин: dataSums[key])
+const USER_METRIC_RULES = ["count", "value", "data"];
+
+function readWebDataList(key) {
+    if (typeof webData === "undefined" || !webData) return [];
+    return Array.isArray(webData[key]) ? webData[key] : [];
+}
+
+// Хэрэглэгчийн үүсгэсэн метрикүүд. Гэмтэлтэй мөр бүхэл бүртгэлийг унагаах
+// ёсгүй — түүнийг л алгасна.
+function userMetricDefs() {
+    const out = {};
+    readWebDataList("metrics").forEach(def => {
+        if (!def || typeof def !== "object") return;
+        const id = typeof def.id === "string" ? def.id.trim() : "";
+        // Суурь бүртгэлийг ХЭЗЭЭ Ч дарж бичихгүй: gym.volume гэдэг үг нэг л
+        // утгатай байх ёстой, эс тэгвээс хоёр газар хоёр өөр зорилт гарна.
+        if (!id || METRIC_DEFS[id]) return;
+
+        const target30 = num(def.target30);
+        out[id] = {
+            label:    typeof def.label === "string" && def.label ? def.label : id,
+            unit:     typeof def.unit  === "string" ? def.unit : "",
+            attr:     typeof def.attr  === "string" && def.attr ? def.attr : "",
+            target30: target30 > 0 ? target30 : 0,
+            // Хэрэглэгчийн метрик нь ГАДНЫ эх сурвалжаас тэжээгддэг тул
+            // selfReported БИШ — тэр нь зөвхөн "өөрөө дарсан" тоонд хамаарна.
+            selfReported: false,
+            user: true
+        };
+    });
+    return out;
+}
+
+// Бүх метрик: суурь + хэрэглэгчийнх. Дэлгэцийн бүх сонголт ЭНЭ функцээс барина.
+function metricDefs() {
+    return Object.assign({}, METRIC_DEFS, userMetricDefs());
+}
+
+// "app:type" → тайлбар. Суурь METRICS үргэлж ялна.
+function metricRuleFor(app, type) {
+    const key = `${app}:${type}`;
+    if (METRICS[key]) return METRICS[key];
+
+    const map = (typeof webData !== "undefined" && webData &&
+                 webData.metricMap && typeof webData.metricMap === "object" && !Array.isArray(webData.metricMap))
+        ? webData.metricMap : null;
+    if (!map) return null;
+
+    const row = map[key];
+    if (!row || typeof row !== "object") return null;
+
+    const metric = typeof row.metric === "string" ? row.metric.trim() : "";
+    if (!metric) return null;
+
+    const rule = USER_METRIC_RULES.indexOf(row.rule) !== -1 ? row.rule : "count";
+    const dataKey = typeof row.key === "string" ? row.key.trim() : "";
+
+    if (rule === "value") {
+        return { metric, amount: e => num(e && e.value), fromRollup: b => num(b && b.valueSum) };
+    }
+    if (rule === "data" && dataKey) {
+        return { metric, amount: e => num(e && e.data && e.data[dataKey]), fromRollup: b => fromDataSum(b, dataKey) };
+    }
+    return { metric, amount: () => 1, fromRollup: b => num(b && b.count) };
+}
+
+// Тухайн метрикийг ЯМАР эх сурвалжууд тэжээж байна вэ. Дэлгэц дээр тоо ба
+// холболтыг хооронд нь холбоход хэрэгтэй: "энэ тоо зогссон" гэдэг ихэвчлэн
+// "энэ апп чимээгүй болсон" гэсэн үг бөгөөд хоёрыг нь тусад нь харуулах нь
+// хэрэглэгчийг өөрөө таамаглуулж байгаа хэрэг.
+function metricSourceApps(metricId) {
+    const id = typeof metricId === "string" ? metricId : "";
+    if (!id) return [];
+
+    const apps = new Set();
+    const collect = (key, row) => {
+        if (!row || row.metric !== id) return;
+        const app = String(key).split(":")[0];
+        if (app) apps.add(app);
+    };
+
+    Object.keys(METRICS).forEach(key => collect(key, METRICS[key]));
+
+    const map = (typeof webData !== "undefined" && webData &&
+                 webData.metricMap && typeof webData.metricMap === "object" && !Array.isArray(webData.metricMap))
+        ? webData.metricMap : {};
+    Object.keys(map).forEach(key => collect(key, map[key]));
+
+    return Array.from(apps).sort();
+}
+
 // Гадны эх сурвалжаас тэжээгддэг метрикүүд — даалгавар, ур чадвар холбох
 // сонголтод ЗӨВХӨН эдгээр гарна. Өөрөө мэдээлдэг метрикийг тэнд оруулбал
 // "нотолгоогоор баталгаажсан" даалгаврыг өөрөө дарж биелүүлэх зам нээгдэнэ —
 // системийн гол амлалт яг тэр агшинд утгаа алдана.
 function verifiableMetricIds() {
-    return Object.keys(METRIC_DEFS).filter(id => !(METRIC_DEFS[id] && METRIC_DEFS[id].selfReported));
+    const defs = metricDefs();
+    return Object.keys(defs).filter(id => !(defs[id] && defs[id].selfReported));
 }
 
 // Метрикгүй атрибут ч гэсэн үр дүнд БАЙНА (score 0) — дэлгэц дээр нүх үлдээхгүй.
@@ -136,7 +246,7 @@ function sumDays(daily, dayKeys) {
 // ===================== ХООСОН ЯС =====================
 
 function emptyMetric(id, dayKeys) {
-    const def = METRIC_DEFS[id] || {};
+    const def = metricDefs()[id] || {};
     return {
         id,
         label:    typeof def.label === "string" ? def.label : id,
@@ -162,7 +272,7 @@ function emptyMetric(id, dayKeys) {
 function emptyStatus(generatedAt) {
     const dayKeys = pastDayKeys(SERIES_DAYS);
     const metrics = {};
-    Object.keys(METRIC_DEFS).forEach(id => { metrics[id] = emptyMetric(id, dayKeys); });
+    Object.keys(metricDefs()).forEach(id => { metrics[id] = emptyMetric(id, dayKeys); });
     return {
         generatedAt,
         metrics,
@@ -177,8 +287,9 @@ function emptyStatus(generatedAt) {
 
 function buildAttributes(metrics) {
     const names = ATTRIBUTE_ORDER.slice();
-    Object.keys(METRIC_DEFS).forEach(id => {
-        const attr = METRIC_DEFS[id] && METRIC_DEFS[id].attr;
+    const defs  = metricDefs();
+    Object.keys(defs).forEach(id => {
+        const attr = defs[id] && defs[id].attr;
         if (attr && names.indexOf(attr) === -1) names.push(attr);
     });
 
@@ -238,7 +349,7 @@ function buildStatus(generatedAt) {
 
     // Метрик бүрийн хоосон ясыг эхлээд босгоно — нотолгоо байхгүй ч бүтэн үр дүн гарна.
     const metrics = {};
-    Object.keys(METRIC_DEFS).forEach(id => { metrics[id] = emptyMetric(id, dayKeys); });
+    Object.keys(metricDefs()).forEach(id => { metrics[id] = emptyMetric(id, dayKeys); });
 
     // Дагалдах (үр дүнд ордоггүй) хуримтлуулагчид
     const eventDays   = {};   // metricId -> Set(<огноо>)  — "тэр өдөр юм болсон уу"
@@ -261,9 +372,13 @@ function buildStatus(generatedAt) {
     let totalEvents     = 0;
     let firstEvidenceAt = 0;
 
-    const bridgeSources = (typeof BRIDGE_SOURCES !== "undefined" && Array.isArray(BRIDGE_SOURCES))
-        ? BRIDGE_SOURCES
-        : [];
+    // Хэрэглэгчийн нэмсэн эх сурвалжийг ч оруулна: listBridgeSources() нь
+    // суурь ба нэмэгдсэнийг НЭГ жагсаалт болгож өгдөг цорын ганц газар.
+    // Энд BRIDGE_SOURCES-ыг шууд уншвал шинэ эх сурвалж нэрээ алдаж, самбар
+    // дээр "Gym" гэж бичээстэй, статус дотор "gym-2" гэж дугаарлагдана.
+    const bridgeSources = (typeof listBridgeSources === "function")
+        ? listBridgeSources()
+        : ((typeof BRIDGE_SOURCES !== "undefined" && Array.isArray(BRIDGE_SOURCES)) ? BRIDGE_SOURCES : []);
     const staleMs = (typeof CONNECTED_STALE_MS === "number" && CONNECTED_STALE_MS > 0)
         ? CONNECTED_STALE_MS
         : 3 * 24 * 60 * 60 * 1000;
@@ -294,8 +409,9 @@ function buildStatus(generatedAt) {
             if (last30Set.has(date)) last30Count += 1;
             overallDays.add(date);
 
-            const key = `${app}:${typeof rec.type === "string" ? rec.type : ""}`;
-            const row = METRICS[key];
+            const type = typeof rec.type === "string" ? rec.type : "";
+            const key  = `${app}:${type}`;
+            const row  = metricRuleFor(app, type);
             if (!row || !row.metric) { unmapped.add(key); return; }
 
             const metric = metricFor(row.metric);
@@ -340,7 +456,7 @@ function buildStatus(generatedAt) {
                 if (firstAt > 0 && (firstEvidenceAt === 0 || firstAt < firstEvidenceAt)) firstEvidenceAt = firstAt;
 
                 const key = `${app}:${type}`;
-                const row = METRICS[key];
+                const row = metricRuleFor(app, type);
                 if (!row || !row.metric) { unmapped.add(key); return; }
 
                 const metric = metricFor(row.metric);

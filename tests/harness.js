@@ -86,7 +86,13 @@ const EXPORTS = [
   "SELF_APP", "ATTR_HEX", "verifiableMetricIds",
   "evidenceRecordCount", "importWebData", "storageWarning", "isQuotaError",
   "addMissionTask", "deleteMissionTask",
-  "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI"
+  "getFilteredSortedQuests", "buildIntegrityRows", "renderWebUI",
+  // Холболтын давхарга: эх сурвалжийн бүртгэл, оношилгоо, төрөл → метрик.
+  "listBridgeSources", "userBridgeSources", "findBridgeSource", "probeBridgeSource",
+  "readBridgeFeed", "validateBridgeFeed", "bridgeCheckText", "getBridgeCheck",
+  "addBridgeSource", "removeBridgeSource", "syncSource", "pullSource",
+  "typeSummaryForApp", "setTypeMapping", "createUserMetric",
+  "metricDefs", "metricRuleFor", "metricSourceApps"
 ];
 
 function load(ctx, files) {

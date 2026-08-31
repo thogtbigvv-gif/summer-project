@@ -53,7 +53,14 @@ const defaultWebData = {
     //   { status, updatedAt, evidence: [], rollups: {}, prunedBefore, lastSyncedAt }
     // Контейнерийг bridge.js-ийн getIntegrationState() шаардлагатай үед үүсгэнэ,
     // тиймээс шинэ апп нэмэхэд энд юу ч нэмэх шаардлагагүй.
-    integrations: {}
+    integrations: {},
+    // ХЭРЭГЛЭГЧИЙН НЭМСЭН ЭХ СУРВАЛЖ. bridge.js-ийн BRIDGE_SOURCES бол КОДОД
+    // бичигдсэн суурь; энэ жагсаалт түүн дээр нэмэгддэг — фийд холбохын тулд
+    // repo засаж, deploy хүлээх шаардлагагүй болгож байгаа юм.
+    //   { app, kind: "local"|"fetch", key|url, label, hex, addedAt }
+    // Энэ бол ТОХИРГОО, нотолгоо биш: устгахад түүх алдагдахгүй (нотолгоо нь
+    // integrations дотор өөрийн замаар үлдэнэ).
+    sources: []
     // Тэмдэглэл: хуучин хадгалагдсан датад webData.legacy байж болно — гар аргын
     // XP-ийн ЦОРЫН ГАНЦ хуулбар. Түүнийг унших код байхгүй, БАС УСТГАХГҮЙ:
     // хадгалагдсан газраа хэвээр үлдэнэ. Шинэ дата түүнийг үүсгэхээ больсон.
@@ -189,6 +196,9 @@ async function loadWebData() {
         if (!webData.quests)      webData.quests      = cloneDefault().quests;
         if (!webData.categories)  webData.categories  = cloneDefault().categories;
         if (!webData.missionTasks) webData.missionTasks = cloneDefault().missionTasks;
+        // Гэмтэлтэй эсвэл хуучин датад sources огт байхгүй. userBridgeSources()
+        // мөр бүрийг өөрөө шалгадаг тул энд зөвхөн контейнерийг баталгаажуулна.
+        if (!Array.isArray(webData.sources)) webData.sources = [];
         // Холбогдсон аппуудын төлөвийг НЭГ ерөнхий хэлбэрт оруулна — апп тус бүрд
         // тусдаа код бичихгүй. Танигдахгүй талбарууд (ж: gym-ийн awardedByDate)
         // хэвээрээ хоцорно — синк тэдгээрийг уншихаа больсон тул хор хөнөөлгүй.
@@ -463,7 +473,10 @@ function importWebData(payload) {
     });
 
     // Тохиргоо — байвал авна, байхгүй бол одоогийнхоо хэвээр.
-    ["categories", "quests", "skills", "missionTasks"].forEach(key => {
+    // sources нь ТОХИРГОО (жагсаалт), нотолгоо биш — тиймээс бусад жагсаалттай
+    // ижил дүрмээр файлынхаар солигдоно. Нөөцөө сэргээсэн хүн холболтуудаа
+    // гараар дахин бичих ёсгүй.
+    ["categories", "quests", "skills", "missionTasks", "sources"].forEach(key => {
         if (incoming[key] && (Array.isArray(incoming[key]) || typeof incoming[key] === "object")) {
             webData[key] = incoming[key];
         }
