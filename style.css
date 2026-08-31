@@ -968,7 +968,7 @@ body::before {
 @media (max-width: 480px) {
     .logo-area h1 { font-size: 11px; }
     .web-grid { grid-template-columns: 1fr; }
-    #connected-container, #weekly-stats-container { grid-template-columns: 1fr; }
+    #connected-container { grid-template-columns: 1fr; }
     .mission-title h2 { font-size: 13px; letter-spacing: 1px; }
     .status-top-layout { gap: 16px; }
     .quest-layout { gap: 20px; }
@@ -2272,4 +2272,265 @@ body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
     .skill-card:hover,
     .delta,
     .mission-task:hover { transform: none; }
+}
+
+/* ===================== УТАС: ЭНЭ БОЛ ГОЛ ДЭЛГЭЦ =====================
+   Апп нь суулгагдах вэб апп — нүүр дэлгэцээс хаягийн мөргүй нээгддэг.
+   Өөрөөр хэлбэл олон хүний хувьд УТАС бол жижигрүүлсэн хувилбар биш,
+   ЦОРЫН ГАНЦ хувилбар. Тиймээс энэ хэсэг нь "багтаах" биш, утсанд
+   ЗОРИУЛЖ өөрөөр өрөх тухай.
+
+   Гурван зарчим:
+     1. Эрхий хуруу хүрч чадах ёстой — 44px-ээс жижиг зорилт байхгүй.
+     2. Уншигдах ёстой — 10px-ээс жижиг үсэг байхгүй.
+     3. Гол зүйл нь ойрхон байх ёстой — навигаци нь дээгүүрээ биш,
+        эрхий хурууны доор. */
+
+@media (max-width: 700px) {
+
+    /* ---- НАВИГАЦИ ДООШОО ----
+       Урьд нь 4 таб толгойд сунаж багтахгүй тул 3+1 болж мултарч, товч
+       бүр ердөө 28px өндөртэй байв — эрхий хурууны талбай 44px гэдгийн
+       гуравны хоёр нь ч биш. Дээр нь 844px дэлгэцийн 250px-ийг толгой
+       идэж, агуулгад гуравны хоёр л үлддэг байсан.
+
+       Доод самбар нь энэ хоёуланг зэрэг шийднэ: 4 таб тэнцүү дөрвөн
+       багана, эрхий хуруу байгалиасаа очдог газарт. */
+    .tab-navigation {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 900;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+        border: none;
+        border-top: 1px solid var(--glass-border);
+        border-radius: 0;
+        /* БҮРЭН БҮРХЭГ. Хагас тунгалаг байх нь дор нь гүйж буй бичвэрийг
+           шошгонуудын ард гаргаж, самбар бүхэлдээ бохирдоно. Доод самбар нь
+           агуулгын нэг хэсэг биш — тэр бол агуулгын ХИЛ. */
+        background: #060b16;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .tab-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 50px;
+        padding: 6px 2px;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0;
+        line-height: 1.2;
+        text-align: center;
+        border-radius: 10px;
+    }
+    /* Дүрс нь нэрээ уншихаас ӨМНӨ таних боломж өгнө — доод самбар дээр
+       нүд зөвхөн хэлбэр хардаг. */
+    .tab-btn::before {
+        content: attr(data-icon);
+        font-size: 17px;
+        line-height: 1;
+    }
+    /* Дүүргэсэн товч нь доод самбарт хэт хүнд. Өнгө + дээд зураас хангалттай. */
+    .tab-btn.active { background: transparent; box-shadow: none; color: var(--accent); }
+    .tab-btn:hover  { background: transparent; }
+    /* Заагч нь доошоо биш ДЭЭШЭЭ: самбар өөрөө доод ирмэг дээр байгаа тул
+       доод зураас нь дэлгэцийн ирмэгтэй нийлээд алга болно. */
+    .tab-btn::after { top: 0; bottom: auto; width: 28px; border-radius: 0 0 2px 2px; }
+
+    /* Доод самбар агуулгыг халхлахгүй. */
+    body { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+    #toast-container { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+    /* ---- ТОЛГОЙ: ЗӨВХӨН НЭР ----
+       Навигаци доошоо явсны дараа толгойд ердөө нэр л үлдэнэ. Түүнийг
+       өндөр байлгах шалтгаан алга.
+
+       backdrop-filter-ийг ЗААВАЛ авна. Тэр шинж чанар нь өөрийн дотор
+       байгаа position:fixed элементэд ШИНЭ тулгуур хайрцаг үүсгэдэг —
+       өөрөөр хэлбэл доод самбарын "bottom: 0" гэдэг нь дэлгэцийн доод
+       ирмэг биш, ТОЛГОЙН доод ирмэг гэсэн утгатай болж, самбар нь
+       дэлгэцийн ДЭЭД талд наалдана. Утсан дээр толгой нь нимгэн зурвас
+       тул бүрхэг дэвсгэр нь шилэн эффектийг бүрэн орлоно (мөн утасны
+       GPU-д хямд). */
+    .web-header {
+        /* Наалддаггүй боллоо. Наалдах толгойн ганц үүрэг нь навигацийг
+           гар дор байлгах явдал байсан — тэр нь одоо доод самбарт шилжсэн.
+           Зөвхөн аппын нэрийг гүйлгэх туршид дэлгэцэнд наах нь 60px-ийг
+           дэмий эзэлж, дээрээс нь агуулгыг халхална. */
+        position: static;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        padding-bottom: 10px;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(3, 7, 18, 0.94);
+    }
+    .logo-area h1 { font-size: 12px; }
+
+    /* ---- ӨДРИЙН ДААЛГАВАР: НЭР БА НОТОЛГОО НЭГ МӨРӨНД БАГТАХГҮЙ ----
+       Урьд нь нэр нь гурван мөр болж эвхэгдэж, "Volume lifted 3,200 kg"
+       гэсэн нотолгоо нь баруун ирмэгээр ТАСАРДАГ байв — өөрөөр хэлбэл
+       "юу нотолсон" гэдэг нь утсан дээр огт уншигдахгүй. Grid болгож,
+       нотолгоог нэрийнх нь ДООР бүтнээр нь тавина. */
+    .mission-task {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "box name del" "box proof del";
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 4px;
+        padding: 12px 14px;
+        min-height: 56px;
+    }
+    .mission-task .task-box   { grid-area: box; }
+    .mission-task .task-name  { grid-area: name; }
+    .mission-task .task-proof { grid-area: proof; text-align: left; white-space: normal; }
+    .mission-task .delete-btn { grid-area: del; }
+    /* Нотолгоогүй даалгавар нэг мөр болж хураагдана. */
+    .mission-task:not(:has(.task-proof)) { grid-template-areas: "box name del"; }
+
+    /* ---- ЖАГСААЛТ ЭХЭНДЭЭ, ФОРМ АРД НЬ ----
+       Ширээн дээр "шинэ нэмэх" форм зүүн баганад зэрэгцээ сууна — хоёулаа
+       нэг зэрэг харагдана. Утсан дээр багана гэж байхгүй тул форм нь
+       агуулгын ӨМНӨ бүтэн дэлгэц эзэлж, жагсаалт руугаа хүрэхийн тулд
+       нэмэхгүй байгаа форм даган гүйлгэх шаардлагатай болдог байв.
+
+       Хүн энэ табыг гол төлөв БАЙГАА зүйлээ харах гэж нээдэг, шинэ зүйл
+       нэмэх гэж биш. Тиймээс жагсаалт эхэндээ. */
+    /* Ур чадварын таб ч ижил бүтэц ашигладаг тул хоёулаа энэ дүрмээр явна. */
+    .quest-layout { display: flex; flex-direction: column; }
+    .quest-sidebar { order: 2; }
+    .quest-main { order: 1; }
+
+    /* ---- ДААЛГАВРЫН КАРТ ----
+       Нэр, ангилал, товч гурвуулаа НЭГ мөрөнд багтахаа больж, "E-Rank"
+       гэсэн шошго картын ирмэгээр тасардаг байв. */
+    .quest-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: "rank info" "act act";
+        gap: 12px;
+        align-items: start;
+        padding: 14px 16px;
+    }
+    .quest-rank-badge   { grid-area: rank; }
+    .quest-info         { grid-area: info; min-width: 0; }
+    .quest-info small   { display: block; line-height: 1.6; }
+    .quest-card-actions {
+        grid-area: act;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding-top: 4px;
+        border-top: 1px solid var(--glass-border);
+    }
+    .quest-card-actions .complete-btn,
+    .quest-card-actions .done-badge { width: 100%; text-align: center; min-height: 42px; }
+
+    /* ---- ТОЛГОЙН 4 ТОО: 2×2 ----
+       Нэг баганаар өрөхөд карт бүр ~230px өндөр болж, ганц тоонд бүтэн
+       дэлгэцийн дөрөвний нэг зарцуулагдана. Дөрвүүлээ нэг харцанд багтах
+       нь тэдний ГОЛ УТГА — харьцуулагдах ёстой. */
+    #weekly-stats-container { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card-pro { padding: 14px 16px; gap: 4px; }
+    .stat-card-pro strong { font-size: 21px; }
+
+    /* ---- ХҮРЭХ ЗОРИЛТ 44px ----
+       Хулганы үзүүр 1px, эрхий хурууны талбай ~44px. Ижил товч хоёр
+       төхөөрөмж дээр ижил хэмжээтэй байх ёсгүй. */
+    .delete-btn { width: 34px; height: 34px; }
+    .close-modal {
+        width: 44px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0; top: 10px; right: 10px;
+    }
+    .qfilter-btn, .complete-btn, .reset-quest-btn, .data-link, .toggle-link { min-height: 40px; }
+    .conn-map-controls .submit-btn { min-height: 42px; }
+
+    /* ---- ХАМГИЙН ЖИЖИГ ҮСГҮҮД ----
+       9px нь дэлгэцийн зурагт эвтэйхэн харагддаг ч гарт барьсан утсан
+       дээр уншигдахаа болино. Толгойн шошго, нэгж, тайлбар — эдгээр нь
+       чимэглэл биш, ТООНЫ УТГЫГ хэлдэг тул уншигдах ёстой. */
+    .conn-pill { font-size: 10.5px; padding: 5px 9px; }
+    .conn-locator { font-size: 11px; }
+    .integrity-count small, .integrity-30 small { font-size: 10px; }
+    .qs-stat small { font-size: 10px; }
+    /* <small> нь хэмжээгүй үлдвэл хөтөч эцгийнхээ 5/6 (0.833×) болгодог —
+       11px-ийн доор 9.2px гарч ирнэ. Нэгжийн нэр нь "65,770" гэдэг тоог
+       УТГАТАЙ болгодог хэсэг тул уншигдахгүй болж болохгүй. */
+    .spark-value small, .heatmap-legend small,
+    .stat-box span small, .skill-headline span { font-size: 10.5px; }
+    .stat-card-pro span { font-size: 10px; }
+
+    /* Эрэмбэлэх сонголт нь бусад товчидтой ижил өндөртэй байх ёстой. */
+    .analytics-sort-select, .quest-sort-select { min-height: 42px; }
+
+    /* ---- ХОЛБОГДСОН КАРТЫН ЛОГ ----
+       GitHub-ийн карт 10 гаруй мөр лог асгаж, утсан дээр бүхэл дэлгэц
+       эзэлдэг байв. Лог бол ЛАВЛАГАА — түүнийг гүйлгэдэг хайрцагт хийвэл
+       карт өөрөө богино хэвээр үлдэнэ. */
+    .connected-log, .connected-status { max-height: 176px; overflow-y: auto; }
+
+    /* ---- ДООД ҮЙЛДЛҮҮД ----
+       Экспорт / сэргээх / цэвэрлэх нь баруун ирмэгт шахагдсан жижиг
+       холбоос байв. Утсан дээр эдгээр нь бүтэн өргөнтэй мөр байх ёстой —
+       ялангуяа устгах нь БУЦААГДАХГҮЙ. */
+    .data-row { flex-direction: column; align-items: stretch; gap: 20px; }
+    .data-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .data-actions .data-link { justify-content: center; text-align: center; }
+    .reset-actions { flex-direction: column; align-items: stretch; gap: 4px; }
+    .reset-link { padding: 12px 8px; text-align: center; }
+
+    /* ---- ЦОНХ: ДООШООС ГАРАХ ХУУДАС ----
+       Голд хөвж буй жижиг цонх нь утсан дээр хаах товч нь дээд буланд
+       үлдэж, эрхий хуруу хүрэхгүй. Доороос гарах хуудас нь дэлгэцийн
+       өргөнийг бүтнээр ашиглана. */
+    .modal-overlay { align-items: flex-end; }
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        max-height: 88vh;
+        border-radius: var(--radius) var(--radius) 0 0;
+        border-bottom: none;
+        padding: 24px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    /* Доошоос гарах хуудас нь 88vh-ээр хязгаарлагдсан тул урт агуулга нь
+       ЗААВАЛ гүйлгэгддэг байх ёстой — эс тэгвээс "нотолгоо // энэ тоо
+       хаанаас гарав" гэсэн жагсаалт доод ирмэгээр таслагдаж, цонхны гол
+       агуулга нь харагдахгүй болно. */
+    .modal-content { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal-overlay:not(.active) .modal-content { transform: translateY(40px) scale(1); }
+    .modal-header { gap: 14px; margin-bottom: 18px; padding-bottom: 18px; }
+
+    /* Эх сурвалжийн мөр: нэр ба тайлбар нь нэг мөрөнд эсрэг ирмэг рүү
+       тавигдвал тайлбар нь гурван мөр болж хугарна. Дараалуулна. */
+    .sd-source { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .sd-source span:last-child { text-align: left; }
+
+    /* Мөшгөлтийн мөр гурван баганаараа утсанд БАГТАНА (74 + нэр + дүн).
+       Дүнг тусдаа мөрөнд гаргах нь жагсаалтыг хоёр дахин уртасгана. */
+    .provenance-row { grid-template-columns: 74px minmax(0, 1fr) auto; gap: 8px; font-size: 10.5px; }
+    .provenance-amount { grid-column: auto; text-align: right; }
+    .modal-icon { width: 52px; height: 52px; font-size: 28px; }
+    .modal-title h2 { font-size: 17px; }
+
+    /* ---- РАДАР ----
+       Тэнхлэгийн шошго дэлгэцийн ирмэг рүү гарч тасардаг байв. */
+    .radar-svg { max-width: 280px; }
+    .radar-label { font-size: 11px; }
+    .radar-value { font-size: 12px; }
+}
+
+/* Маш нарийн дэлгэц (iPhone SE ба түүнээс доош) */
+@media (max-width: 380px) {
+    /* "STATUS DASHBOARD" нь чимэглэл — нэр өөрөө хангалттай. */
+    .logo-area h1 span { display: none; }
+    .tab-btn { font-size: 10px; letter-spacing: -0.2px; }
+    .tab-btn::before { font-size: 16px; }
+    .data-actions { grid-template-columns: 1fr; }
 }

@@ -32,11 +32,14 @@
     <div class="logo-area">
         <h1>COMMAND CENTER // <span>STATUS DASHBOARD</span></h1>
     </div>
+    <!-- data-icon нь ЗӨВХӨН утсанд: доод самбар дээр таб бүр дүрстэйгээ
+         гарна (CSS ::before). Ширээн дээр огт харагдахгүй тул энд текст нь
+         хэвээр удирдана. -->
     <nav class="tab-navigation" role="tablist">
-        <button class="tab-btn active" data-tab="status-tab" type="button" role="tab" aria-selected="true">Миний Статус</button>
-        <button class="tab-btn" data-tab="quests-tab" type="button" role="tab" aria-selected="false">Даалгавар</button>
-        <button class="tab-btn" data-tab="skills-tab" type="button" role="tab" aria-selected="false">Ур чадвар</button>
-        <button class="tab-btn" data-tab="analytics-tab" type="button" role="tab" aria-selected="false">Аналитик</button>
+        <button class="tab-btn active" data-tab="status-tab" data-icon="◈" type="button" role="tab" aria-selected="true">Миний Статус</button>
+        <button class="tab-btn" data-tab="quests-tab" data-icon="▣" type="button" role="tab" aria-selected="false">Даалгавар</button>
+        <button class="tab-btn" data-tab="skills-tab" data-icon="★" type="button" role="tab" aria-selected="false">Ур чадвар</button>
+        <button class="tab-btn" data-tab="analytics-tab" data-icon="▤" type="button" role="tab" aria-selected="false">Аналитик</button>
     </nav>
     <!-- Хөтөч суулгах боломжтой гэж хэлэх хүртэл нуугдмал. pwa.js нээнэ. -->
     <button type="button" id="install-btn" class="install-btn" hidden>⤓ Утсанд суулгах</button>

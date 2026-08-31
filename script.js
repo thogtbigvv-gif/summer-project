@@ -69,7 +69,18 @@ function activateTab(targetId, remember) {
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function () {
-        activateTab(this.dataset.tab, true);
+        const changed = this.dataset.tab !== document.querySelector(".tab-content.active")?.id;
+        if (!activateTab(this.dataset.tab, true)) return;
+
+        // Утсан дээр таб бүр урт гүйлгэлттэй бөгөөд навигаци нь доод ирмэгт
+        // байдаг. Гүйлгэлтийн байрлалыг хэвээр үлдээвэл "Аналитик" дарсан
+        // хүн уг табын ДУНДААС нээгддэг — өөрөө гараар дээшээ гүйлгэх
+        // шаардлагатай болно. Таб солих гэдэг нь "өөр зүйл рүү шилжих"
+        // гэсэн үг тул эхнээс нь эхэлнэ.
+        //
+        // Зөвхөн ҮНЭХЭЭР солигдсон үед: аль хэдийн нээлттэй табаа дахин
+        // дарахад байрлал үсрэх нь алдаа мэт мэдрэгдэнэ.
+        if (changed) window.scrollTo({ top: 0, behavior: "smooth" });
     });
 });
 
