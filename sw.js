@@ -11,7 +11,7 @@
 // ХУВИЛБАРЫГ ГАРААР АХИУЛНА. Кэшийн нэр өөрчлөгдөх бүрд хуучин кэш бүхэлдээ
 // устаж, шинээр татагдана. Файлын нэр өөрчлөгдөхгүй (hash-гүй) тул энэ бол
 // хуучин бүрхүүлээс салах цорын ганц найдвартай товчлуур.
-const VERSION      = "v3";
+const VERSION      = "v4";
 const SHELL_CACHE  = `sp-shell-${VERSION}`;
 const RUNTIME_CACHE = `sp-runtime-${VERSION}`;
 const DATA_CACHE   = `sp-data-${VERSION}`;

@@ -23,7 +23,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <!-- Профайлын Ω-тэй ижил тэмдэг. Гадаад файл биш — өөр нэг сүлжээний дуудлага,
      өөр нэг 404-ийн эх үүсвэр байх шаардлагагүй. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23030712'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='20' font-weight='700' fill='%2310b981' text-anchor='middle'%3E%CE%A9%3C/text%3E%3C/svg%3E">
+<!-- Табын дүрс нь мөн ИЖИЛ зам. Урьд нь энэ нь monospace фонтоор
+     зурагдсан "Ω" ҮСЭГ байсан — icons/icon.svg-ийн тайлбар яг тэр
+     эрсдэлээс сэргийлэхийн тулд замаар бичигдсэн атлаа, favicon нь
+     үсэг хэвээр үлдсэн байв. Цохилтыг нь бага зэрэг зузаалав: 16px
+     дээр 48.4 нимгэн зураас болж алга болдог. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23030712'/%3E%3Cpath fill='none' stroke='%2310b981' stroke-width='58' stroke-linecap='round' stroke-linejoin='round' d='M119.6 374.83 H170.2 C 187.8 374.83 192.2 366.03 191.1 350.63 A 116.6 116.6 0 1 1 320.9 350.63 C 319.8 366.03 324.2 374.83 341.8 374.83 H392.4'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -97,7 +102,17 @@
         <div class="status-top-layout">
             <div class="profile-card">
                 <div class="profile-header">
-                    <div class="avatar-frame">Ω</div>
+                    <!-- Нүүр дэлгэцийн дүрстэй ЯГ ИЖИЛ тэмдэг. Урьд нь энэ нь
+                         "Ω" гэсэн ҮСЭГ байсан: дэлгэцийн фонтоор зурагддаг тул
+                         icons/icon.svg-ийн замтай өөр хэлбэртэй гарч, фонт
+                         ачаалагдаагүй үед хоосон дөрвөлжин болдог эрсдэлтэй байв. -->
+                    <div class="avatar-frame">
+                        <svg viewBox="0 0 512 512" aria-hidden="true">
+                            <path fill="none" stroke="currentColor" stroke-width="48.4"
+                                  stroke-linecap="round" stroke-linejoin="round"
+                                  d="M119.6 374.83 H170.2 C 187.8 374.83 192.2 366.03 191.1 350.63 A 116.6 116.6 0 1 1 320.9 350.63 C 319.8 366.03 324.2 374.83 341.8 374.83 H392.4"/>
+                        </svg>
+                    </div>
                     <div class="player-info">
                         <h2>ХЭРЭГЛЭГЧИЙН ПРОФАЙЛ</h2>
                         <p>Сүүлийн 30 хоногийн бодит зорилтод хүрсэн хувь</p>
