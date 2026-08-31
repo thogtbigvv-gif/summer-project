@@ -1162,6 +1162,10 @@ html { scroll-behavior: smooth; }
 .integrity-row[data-state="live"]   { border-left-color: var(--accent); }
 .integrity-row[data-state="stale"]  { border-left-color: var(--danger); }
 .integrity-row[data-state="silent"] { border-left-color: var(--text-muted); opacity: 0.55; }
+/* Гар бүртгэл нь эвдэрсэн ч биш, холбогдоогүй ч биш — ГУРАВ ДАХЬ зүйл.
+   Тусдаа өнгө нь "энэ мөрийг аппын нотолгоотой битгий адилтга" гэж хэлнэ. */
+.integrity-row[data-state="self"]   { border-left-color: var(--tier-s); }
+.integrity-row[data-state="self"] .integrity-state { color: var(--tier-s); }
 
 .integrity-name {
     font-family: var(--font-display);
@@ -1208,6 +1212,37 @@ html { scroll-behavior: smooth; }
     line-height: 1.7;
     color: var(--text-muted);
 }
+
+/* УРЬДЧИЛСАН сануулга. Улаан нь "аль хэдийн эвдэрсэн" гэсэн утгатай тул
+   хараахан эвдрээгүй, гэхдээ эвдрэх гэж буй зүйлийг шар өнгөөр ялгана. */
+.integrity-warning-soft {
+    background: rgba(234, 179, 8, 0.06);
+    border-left-color: var(--tier-s);
+}
+
+/* Танигдаагүй төрлүүд — нэр, хэмжээ, сүүлд ирсэн хугацаа НЭГ мөрөнд.
+   Хэмжээгүй нэр нь "яаралтай юу" гэдгийг хэлж чаддаггүй. */
+.integrity-unmapped {
+    list-style: none;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.integrity-unmapped li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.integrity-unmapped code { color: var(--text-main); }
+.integrity-unmapped span { color: var(--tier-s); white-space: nowrap; }
+.integrity-unmapped small { font-size: 10px; opacity: 0.7; white-space: nowrap; }
 
 /* Холбогдсон картын нотолгооны хэмжээ — нэгтгэгдсэн түүх ч тоологдоно. */
 .connected-volume {
@@ -1259,6 +1294,33 @@ html { scroll-behavior: smooth; }
     font-family: var(--font-display);
     font-size: 13px;
     color: var(--text-main);
+}
+
+/* Өөрөө мэдээлсэн мөр нь батлагдсан мөрүүдтэй ижил харагдах ЁСГҮЙ — тэдгээрийг
+   нүдээр ялгахгүй бол салгасан утга нь дэлгэц дээр дахин хольцолдоно. */
+.profile-evidence-self {
+    color: var(--tier-s);
+    border-top: 1px dashed var(--glass-border);
+    padding-top: 8px;
+}
+
+.profile-evidence-self strong { color: var(--tier-s); }
+
+.profile-evidence-self strong small {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    opacity: 0.75;
+    margin-left: 8px;
+}
+
+/* Батлагдсан нотолгоо ТЭГ. Тоог бүдгэрүүлэхгүй — эсрэгээрээ ил гаргана. */
+.profile-evidence-none strong { color: var(--danger); }
+
+.profile-evidence-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--text-muted);
 }
 
 /* Халуун зураглалын хэмжээс */

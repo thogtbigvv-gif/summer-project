@@ -260,8 +260,15 @@ function renderCategories() {
 // ===================== ПРОФАЙЛ: НОТОЛГООНЫ ҮНДЭС =====================
 // Профайлын оноо бүр нотолгооноос гардаг. Тэгвэл ХЭДЭН нотолгоо, ХЭЗЭЭНЭЭС
 // хойш гэдэг нь тэр онооны жин — түүнгүйгээр "100%" гэдэг нь нэг өдрийн
-// нэг бичлэгээс ч гарч болно. status.overall эдгээрийг аль эрт тооцдог
-// байсан ч дэлгэц дээр хаана ч гардаггүй байв.
+// нэг бичлэгээс ч гарч болно.
+//
+// Тэр жин нь БАТЛАГДСАН байх ёстой. Урьд нь энэ гурван мөр өөрөө дарсан
+// check-in-ыг аппын нотолгоотой нэг саванд хийж тоолдог байв: ганц ч апп
+// холбоогүй хүн өдөр бүр нүд даран "ИДЭВХТЭЙ ӨДӨР 30/30" гэсэн тоог
+// хардаг байсан. Өөрөө өөрийгөө баталсан жин бол жин биш.
+//
+// Одоо толгойн гурван мөр гадны аппаас л гарна, өөрөө мэдээлсэн нь доор
+// ӨӨРИЙНХӨӨ нэрээр гарна — нуугдахгүй, хольцгүй.
 
 function renderProfileEvidence() {
     const el = document.getElementById("profile-evidence");
@@ -269,9 +276,34 @@ function renderProfileEvidence() {
 
     const status  = (typeof Status !== "undefined" && Status) ? Status.get() : null;
     const overall = (status && status.overall) ? status.overall : null;
+    const self    = (overall && overall.self) ? overall.self : { totalEvents: 0, activeDays30: 0 };
 
-    if (!overall || !(Number(overall.totalEvents) > 0)) {
+    const verified   = Number(overall && overall.totalEvents) || 0;
+    const selfEvents = Number(self.totalEvents) || 0;
+
+    if (!overall || !(verified > 0) && !(selfEvents > 0)) {
         el.innerHTML = `<div class="connected-empty">нотолгоо хараахан ирээгүй</div>`;
+        return;
+    }
+
+    // Өөрөө мэдээлсэн нь ХЭЗЭЭ Ч толгойн тоог нөхөхгүй. Аппын нотолгоо байхгүй
+    // бол тэр гурван мөр ТЭГ гэж хэлнэ — check-in хэдэн ч байсан хамаагүй.
+    const selfRow = selfEvents > 0
+        ? `<div class="profile-evidence-row profile-evidence-self">
+               <span>ӨӨРӨӨ МЭДЭЭЛСЭН</span>
+               <strong>${selfEvents.toLocaleString()} бичлэг<small>${Number(self.activeDays30) || 0}/30 хоног</small></strong>
+           </div>`
+        : "";
+
+    if (!(verified > 0)) {
+        el.innerHTML = `
+            <div class="profile-evidence-row profile-evidence-none">
+                <span>БАТЛАГДСАН НОТОЛГОО</span><strong>0</strong>
+            </div>
+            ${selfRow}
+            <div class="profile-evidence-note">
+                Дээрх оноог ямар ч апп батлаагүй байна — эх сурвалж холбоно уу.
+            </div>`;
         return;
     }
 
@@ -280,14 +312,15 @@ function renderProfileEvidence() {
 
     el.innerHTML = `
         <div class="profile-evidence-row">
-            <span>НИЙТ НОТОЛГОО</span><strong>${Number(overall.totalEvents).toLocaleString()}</strong>
+            <span>БАТЛАГДСАН НОТОЛГОО</span><strong>${verified.toLocaleString()}</strong>
         </div>
         <div class="profile-evidence-row">
             <span>БҮРТГЭЛ ЭХЭЛСЭН</span><strong>${escapeHTML(since || "—")}</strong>
         </div>
         <div class="profile-evidence-row">
             <span>ИДЭВХТЭЙ ӨДӨР</span><strong>${Number(overall.activeDays30) || 0} / 30</strong>
-        </div>`;
+        </div>
+        ${selfRow}`;
 }
 
 // ===================== ПРОФАЙЛ: АТРИБУТЫН ОНОО =====================

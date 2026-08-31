@@ -114,8 +114,16 @@ const AnalyticsEngine = {
         return Object.keys(status.metrics).map(id => status.metrics[id]).filter(Boolean);
     },
 
+    // "Дэлгэц харуулах юмтай юу" гэдэг АСУУЛТ. `overall.totalEvents` нь одоо
+    // ЗӨВХӨН батлагдсаныг тоолдог тул түүгээр шийдвэл өдөр бүр check-in хийдэг
+    // хүнд дашбоард "нотолгоо алга" гэж хэлнэ. Тиймээс энд `anyEvents` —
+    // хоёулаа нийлдэг ганц талбар, бөгөөд тэр нь хэмжилт биш зөвхөн туг.
     hasEvidence(status) {
-        return !!(status && status.overall && Number(status.overall.totalEvents) > 0);
+        const overall = (status && status.overall) ? status.overall : null;
+        if (!overall) return false;
+        const any = Number(overall.anyEvents);
+        if (isFinite(any) && any > 0) return true;
+        return Number(overall.totalEvents) > 0;
     },
 
     renderDashboard() {
@@ -208,7 +216,16 @@ const AnalyticsEngine = {
         // Хадгалалт дүүрсэн бол БУСДААС нь өмнө хэлнэ: тэр үед шинэ нотолгоо
         // огт хадгалагдахгүй байгаа бөгөөд дэлгэц дээр зүгээр л "тоо буурсан"
         // мэт харагдана. Энэ бол системийн хамгийн чимээгүй эвдрэл.
-        if (typeof storageWarning === "function" && storageWarning()) {
+        //
+        // ГЭХДЭЭ "дүүрэв" гэж хэлэх агшин нь аль хэдийн ХОЖИМДСОН байдаг: тэр
+        // үед унасан бичлэг аль хэдийн алдагдсан, үйлдвэрлэгч апп ердөө 50
+        // event-ийн буфертэй тул эргэж ирэхгүй. Тиймээс дарамтыг УРЬДЧИЛАН
+        // хэлнэ — хүн өөрөө экспортлох цаг гарган авах ёстой.
+        const pressure = (typeof storagePressure === "function")
+            ? storagePressure()
+            : { level: (typeof storageWarning === "function" && storageWarning()) ? "full" : "ok", pct: 0 };
+
+        if (pressure.level === "full") {
             blocks.push(`
                 <div class="integrity-warning">
                     <strong>Хадгалалт дүүрэв</strong>
@@ -217,14 +234,40 @@ const AnalyticsEngine = {
                        "НОТОЛГОО ХАМТ УСТГАХ" хийж сан чөлөөлнө үү — дараа нь
                        файлаа сэргээх боломжтой.</p>
                 </div>`);
+        } else if (pressure.level === "high") {
+            blocks.push(`
+                <div class="integrity-warning integrity-warning-soft">
+                    <strong>Хадгалалт ${Number(pressure.pct) || 0}% дүүрсэн</strong>
+                    <p>Сан дүүрэх агшинд ШИНЭ НОТОЛГОО чимээгүй алдагдана — үйлдвэрлэгч
+                       аппууд сүүлийн 50 event-ээ л хадгалдаг тул тэр бичлэгүүд
+                       ЭРГЭЖ ИРЭХГҮЙ. Одоо "НОТОЛГОО ЭКСПОРТЛОХ" дарж файл болгон
+                       аваарай — дүүрсний дараа хийвэл оройтсон байна.</p>
+                </div>`);
         }
 
         if (unmapped.length > 0) {
+            // Нэр нь дангаараа хэмжээг нуудаг: `gym:sauna.session` гэдэг 3 бичлэг
+            // ч байж болно, 3000 ч байж болно. Хэдэн бичлэг статуст ОРООГҮЙ,
+            // хэзээ сүүлд ирснийг нь хамт хэлнэ — тэр хоёр л "яаралтай юу"
+            // гэдгийг шийднэ.
+            const rows = Array.isArray(overall.unmapped) ? overall.unmapped : [];
+            const lost = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+            const detail = rows.length > 0
+                ? rows.map(row => `
+                    <li>
+                        <code>${escapeHTML(row.key || "")}</code>
+                        <span>${(Number(row.count) || 0).toLocaleString()} бичлэг</span>
+                        <small>${escapeHTML(
+                            (typeof relativeTime === "function" ? relativeTime(row.lastAt) : null) || "—")}</small>
+                    </li>`).join("")
+                : unmapped.map(key => `<li><code>${escapeHTML(key)}</code></li>`).join("");
+
             blocks.push(`
                 <div class="integrity-warning">
-                    <strong>Танигдаагүй event төрөл</strong>
-                    <p>Эдгээрийг ямар метрик болгохыг status.js-ийн METRICS бүртгэл мэдэхгүй тул
-                       статуст ОГТ ороогүй: ${escapeHTML(unmapped.join(", "))}</p>
+                    <strong>Танигдаагүй event төрөл${lost > 0 ? ` — ${lost.toLocaleString()} бичлэг статуст ороогүй` : ""}</strong>
+                    <p>Эдгээрийг ямар метрик болгохыг status.js-ийн METRICS бүртгэл мэдэхгүй.
+                       Нотолгоо нь ХАДГАЛАГДСАН — метрикт холбомогц бүх түүх нь буцаж тоологдоно.</p>
+                    <ul class="integrity-unmapped">${detail}</ul>
                 </div>`);
         }
         if (gaps.length > 0) {
@@ -247,28 +290,55 @@ const AnalyticsEngine = {
     },
 
     // ---- 1. Дээд мөрийн 4 карт ----
+    // ACTIVE DAYS ба CONSISTENCY нь ЗӨВХӨН гадны аппын нотолгооноос гарна.
+    // Урьд нь өөрөө дарсан check-in ч энд тоологддог байсан: ганц ч апп
+    // холбоогүй хүн CONSISTENCY 100% харах боломжтой байв — өөрөө өөртөө
+    // өгсөн үнэлгээ. Одоо check-in нь тусдаа мөрөнд, өөрийн нэрээр гарна.
     renderWeeklyStats(status) {
         const container = document.getElementById('weekly-stats-container');
         if (!container) return;
 
         const overall = (status && status.overall) ? status.overall : { activeDays30: 0 };
+        const self    = (overall && overall.self) ? overall.self : { activeDays30: 0, totalEvents: 0 };
         const metrics = this.metricList(status);
+
+        // ДӨРВҮҮЛЭЭ нэг утгатай байх ёстой. Хоёр карт нь батлагдсанаас, хоёр
+        // нь хольсноос гардаг бол мөр бүхэлдээ уншигдахаа болино: хажуу хажууд
+        // байгаа тоонууд ижил хэмжүүртэй гэж хүн үзнэ. Тиймээс дөрвүүлээ
+        // гадны аппын нотолгооноос л гарна, өөрөө мэдээлсэн нь доор тайлбар
+        // болж явна.
+        const verified = metrics.filter(m => !m.selfReported);
 
         const activeDays  = Number(overall.activeDays30) || 0;
         const consistency = Math.round((activeDays / 30) * 100);
-        const tracked     = metrics.filter(m => Number(m.last30) > 0).length;
+        const tracked     = verified.filter(m => Number(m.last30) > 0).length;
+        const selfDays    = Number(self.activeDays30) || 0;
 
-        let bestStreak = 0, bestStreakLabel = "—";
-        metrics.forEach(m => {
-            const streak = Number(m.streakDays) || 0;
-            if (streak > bestStreak) { bestStreak = streak; bestStreakLabel = m.label; }
-        });
+        const bestOf = list => list.reduce((best, m) =>
+            (Number(m.streakDays) || 0) > (Number(best && best.streakDays) || 0) ? m : best, null);
+
+        const bestVerified = bestOf(verified);
+        const bestSelf     = bestOf(metrics.filter(m => m.selfReported));
+        const bestStreak   = Number(bestVerified && bestVerified.streakDays) || 0;
+
+        // Батлагдсан нь тэг атлаа check-in байгаа бол картыг "0%" гээд орхивол
+        // хэрэглэгч өөрийгөө буруутгана. Тоо тэг байгаа ШАЛТГААНЫГ хэлнэ.
+        const consistencyNote = activeDays === 0 && selfDays > 0
+            ? `<span>апп батлаагүй · ${selfDays}/30 өөрөө</span>`
+            : (selfDays > 0 ? `<span>+ ${selfDays}/30 өөрөө</span>` : "");
+
+        const selfStreak = Number(bestSelf && bestSelf.streakDays) || 0;
+        const streakNote = bestStreak > 0
+            ? `<span>${escapeHTML(bestVerified.label)}</span>`
+            : (selfStreak > 0
+                ? `<span>апп батлаагүй · ${selfStreak} хоног өөрөө</span>`
+                : `<span>—</span>`);
 
         container.innerHTML = `
-            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong></div>
-            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong></div>
-            <div class="stat-card-pro"><span>TRACKED METRICS</span><strong>${tracked}</strong><span>${metrics.length} метрикээс</span></div>
-            <div class="stat-card-pro"><span>LONGEST STREAK</span><strong>${bestStreak} өдөр</strong><span>${escapeHTML(bestStreakLabel)}</span></div>
+            <div class="stat-card-pro"><span>ACTIVE DAYS</span><strong>${activeDays} / 30</strong><span>батлагдсан</span></div>
+            <div class="stat-card-pro"><span>CONSISTENCY</span><strong style="color: ${consistency >= 80 ? 'var(--accent)' : '#fff'}">${consistency}%</strong>${consistencyNote}</div>
+            <div class="stat-card-pro"><span>TRACKED METRICS</span><strong>${tracked}</strong><span>${verified.length} батлагдах метрикээс</span></div>
+            <div class="stat-card-pro"><span>LONGEST STREAK</span><strong>${bestStreak} өдөр</strong>${streakNote}</div>
         `;
     },
 
@@ -395,6 +465,29 @@ const AnalyticsEngine = {
         if (!status) return insights;
 
         const metrics = this.metricList(status);
+        const overall = (status.overall && typeof status.overall === "object") ? status.overall : {};
+        const self    = (overall.self && typeof overall.self === "object") ? overall.self : {};
+
+        // Бүх дүгнэлтээс ӨМНӨ нэг асуулт: доорх тоонуудыг ХЭН батлав?
+        // Зөвхөн өөрөө дарсан check-in дээр зогсож байгаа бол дэлгэц дээрх
+        // "тууштай байдал" нь хэмжилт биш, өөрийн үнэлгээ. Түүнийг хэлэхгүй
+        // өнгөрөх нь системийн гол амлалтыг чимээгүй хоосон болгоно.
+        if (!(Number(overall.totalEvents) > 0) && Number(self.totalEvents) > 0) {
+            insights.push({
+                type: "warning",
+                text: `Ямар ч апп нотолгоо илгээгээгүй — доорх тоо бүхэлдээ ${Number(self.totalEvents).toLocaleString()} өөрийн бүртгэлээс гарч байна.`
+            });
+        }
+
+        // Хадгалалт дүүрэхэд шинэ нотолгоо АЛДАГДАНА. Дүүрсний дараа хэлэх нь
+        // оройтсон тул дүгнэлт дотор ч урьдчилан гарна.
+        const pressure = (typeof storagePressure === "function") ? storagePressure() : null;
+        if (pressure && pressure.level === "high") {
+            insights.push({
+                type: "warning",
+                text: `Хадгалалт ${pressure.pct}% дүүрсэн — дүүрэхээс өмнө нотолгоогоо экспортлоорой.`
+            });
+        }
 
         // Буурсан метрик — 30 хоногийн өөрчлөлт -25%-иас доош
         metrics.forEach(m => {
@@ -437,19 +530,24 @@ const AnalyticsEngine = {
         });
 
         // Танигдаагүй event төрөл — үйлдвэрлэгч гэрээгээ өөрчилсний дохио
-        const unmapped = (status.overall && Array.isArray(status.overall.unmappedTypes))
-            ? status.overall.unmappedTypes
-            : [];
+        const unmapped = Array.isArray(overall.unmappedTypes) ? overall.unmappedTypes : [];
         if (unmapped.length > 0) {
-            insights.push({ type: "warning", text: `Танигдаагүй event төрөл: ${unmapped.join(", ")}` });
+            // Хэдэн бичлэг статуст ороогүйг хэлэхгүй бол "нэг төрөл танигдсангүй"
+            // гэдэг нь мартагдана — тэр төрөл цаана нь мянган бичлэг байж болно.
+            const rows = Array.isArray(overall.unmapped) ? overall.unmapped : [];
+            const lost = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+            insights.push({
+                type: "warning",
+                text: lost > 0
+                    ? `Танигдаагүй event төрөл (${unmapped.join(", ")}) — ${lost.toLocaleString()} бичлэг статуст ороогүй.`
+                    : `Танигдаагүй event төрөл: ${unmapped.join(", ")}`
+            });
         }
 
         // Нэгжээ сэргээж чадаагүй нэгтгэл. status.js эдгээрийг ЗОРИУД бүртгэдэг
         // ("чимээгүй алга болохгүй" гэж) — гэтэл өмнө нь тэр жагсаалтыг хаана ч
         // харуулдаггүй байсан тул амлалт нь биелдэггүй байв.
-        const gaps = (status.overall && Array.isArray(status.overall.rollupGaps))
-            ? status.overall.rollupGaps
-            : [];
+        const gaps = Array.isArray(overall.rollupGaps) ? overall.rollupGaps : [];
         if (gaps.length > 0) {
             const events  = gaps.reduce((sum, gap) => sum + (Number(gap.count) || 0), 0);
             const metrics = Array.from(new Set(gaps.map(gap => gap.metric))).join(", ");
