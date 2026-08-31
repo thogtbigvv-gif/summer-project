@@ -1170,7 +1170,7 @@ function connActionsHtml(source) {
     const app = escapeHTML(source.app);
     const buttons = [];
     if (source.kind !== "self") {
-        buttons.push(`<button type="button" class="data-link conn-resync" data-app="${app}">↻ Дахин унших</button>`);
+        buttons.push(`<button type="button" class="data-link conn-resync" data-app="${app}"><i class="spin-glyph">↻</i> Дахин унших</button>`);
     }
     if (source.user) {
         buttons.push(`<button type="button" class="reset-link conn-remove" data-app="${app}">✕ Салгах</button>`);

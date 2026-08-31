@@ -395,17 +395,22 @@ function metricSourceHtml(metricId, status) {
         const label = (stats && stats.label) || app;
         const when  = (stats && typeof relativeTime === "function") ? relativeTime(stats.updatedAt) : null;
 
-        let note = "", bad = false;
-        if (check && check.code !== "ok" && check.code !== "self") {
-            note = typeof bridgeCheckText === "function" ? bridgeCheckText(check.code, check.detail) : "уншигдахгүй байна";
-            bad  = true;
+        // Холбогдсон картын нэгэн адил: "хараахан бичээгүй байна" бол эвдрэл
+        // БИШ. Улаанаар бичвэл хэрэглэгч засах юмгүй зүйлийг засах гэж хайна.
+        const code    = check && check.code;
+        const waiting = code === "missing" || code === "no-storage";
+
+        let note = "", tone = "";
+        if (check && code !== "ok" && code !== "self") {
+            note = typeof bridgeCheckText === "function" ? bridgeCheckText(code, check.detail) : "уншигдахгүй байна";
+            tone = waiting ? " sd-source-wait" : " sd-source-bad";
         } else if (stats && stats.stale) {
             note = "чимээгүй байна";
-            bad  = true;
+            tone = " sd-source-bad";
         }
 
         return `
-            <div class="sd-source${bad ? " sd-source-bad" : ""}">
+            <div class="sd-source${tone}">
                 <span>${escapeHTML(label)}</span>
                 <span>${escapeHTML(note || when || "—")}</span>
             </div>`;

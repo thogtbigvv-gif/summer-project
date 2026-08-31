@@ -110,8 +110,8 @@ function metricSparklineSvg(series, hex) {
                           fill="${hex}" fill-opacity="0.14"/>`;
         }
         const h = Math.max((v / max) * usable, 1.2);
-        return `<rect x="${x}" y="${(baseY - h).toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}"
-                      fill="${hex}" fill-opacity="0.8"/>`;
+        return `<rect class="spark-bar" style="--i:${i}" x="${x}" y="${(baseY - h).toFixed(2)}"
+                      width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${hex}" fill-opacity="0.8"/>`;
     }).join("");
 
     return `<svg class="spark-svg" viewBox="0 0 ${SPARK_W} ${SPARK_H}" preserveAspectRatio="none"
@@ -404,7 +404,7 @@ const AnalyticsEngine = {
         }
 
         const metrics = this.metricList(status);
-        container.innerHTML = this.getPastDays(HEATMAP_DAYS).map(date => {
+        container.innerHTML = this.getPastDays(HEATMAP_DAYS).map((date, i) => {
             // daily-д түлхүүр байгаа = тэр өдөр event бүртгэгдсэн (утга нь 0 ч байж болно).
             const active = metrics.filter(m => m.daily && Object.prototype.hasOwnProperty.call(m.daily, date));
             const level  = Math.min(4, active.length);
@@ -415,7 +415,9 @@ const AnalyticsEngine = {
                 .join(" · ");
             const title = detail ? `${date} · ${detail}` : date;
 
-            return `<div class="heat-box ${cls}" title="${escapeHTML(title)}"></div>`;
+            // --i нь зөвхөн ХАРАГДАЦЫН дараалал: нүднүүд зүүнээс баруун тийш
+            // ээлжлэн гарч ирнэ. Ямар ч тоонд нөлөөлөхгүй.
+            return `<div class="heat-box ${cls}" style="--i:${i}" title="${escapeHTML(title)}"></div>`;
         }).join("");
     },
 

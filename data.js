@@ -123,17 +123,19 @@ function escapeHTML(str) {
 // Хувийн өөрчлөлтийн тэмдэглэгээ. status.js null буцаана гэдэг нь ӨМНӨХ цонх
 // ХООСОН байсан гэсэн үг — тэгвэл одоо утга байвал "шинэ", үгүй бол "—".
 // 100% гэж ХЭЗЭЭ Ч зохиохгүй (analytics.js-ийн хуучин алдаа).
+// `delta` класс нь ЗӨВХӨН харагдацынх: тоо дахин тооцогдох бүрд намуухан
+// гулсан гарч ирнэ. Утга нь өөрчлөгдөхгүй.
 function formatDelta(changePct, curr, prev) {
     if (changePct === null || changePct === undefined) {
         return Number(curr) > 0 && !(Number(prev) > 0)
-            ? `<span style="color:var(--accent);">шинэ</span>`
-            : `<span style="color:var(--text-muted);">—</span>`;
+            ? `<span class="delta" style="color:var(--accent);">шинэ</span>`
+            : `<span class="delta" style="color:var(--text-muted);">—</span>`;
     }
     const n = Number(changePct);
-    if (!isFinite(n)) return `<span style="color:var(--text-muted);">—</span>`;
+    if (!isFinite(n)) return `<span class="delta" style="color:var(--text-muted);">—</span>`;
     const color = n > 0 ? "#10b981" : n < 0 ? "#ef4444" : "var(--text-muted)";
     const arrow = n > 0 ? "↑" : n < 0 ? "↓" : "→";
-    return `<span style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
+    return `<span class="delta" style="color:${color};">${arrow} ${n > 0 ? "+" : ""}${n}%</span>`;
 }
 
 // ===================== НОТОЛГООНЫ МӨШГӨЛТ =====================
