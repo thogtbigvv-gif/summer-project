@@ -1088,9 +1088,17 @@ function connCheckHtml(source, check) {
     if (check) {
         const when = relativeTime(check.at) || "just now";
         const text = bridgeCheckText(check.code, check.detail);
-        const bad  = check.code !== "ok" && check.code !== "self";
         const tail = check.code === "ok" && check.events > 0 ? ` · ${check.events} шинэ бичлэг` : "";
-        lines.push(`<div class="conn-check${bad ? " conn-check-bad" : ""}">${escapeHTML(text)}${escapeHTML(tail)} · ${escapeHTML(when)}</div>`);
+
+        // Урьд нь "ok" биш БҮХ төлөв улаанаар бичигддэг байв — тэр дотор
+        // "тэр апп энэ хөтөч дээр хараахан бичээгүй байна" гэсэн ХҮЛЭЭГДЭЖ
+        // БАЙГАА төлөв ч орно. Тэр нь эвдрэл биш, зүгээр л хараахан эхлээгүй.
+        // Шошго нь хоёрыг ялгаж байхад тайлбар нь ялгахгүй бол карт өөртэйгээ
+        // маргана. Улаан нь ЗӨВХӨН үнэхээр эвдэрсэнд.
+        const waiting = check.code === "missing" || check.code === "no-storage";
+        const broken  = check.code !== "ok" && check.code !== "self" && !waiting;
+        const cls = broken ? " conn-check-bad" : (waiting ? " conn-check-wait" : "");
+        lines.push(`<div class="conn-check${cls}">${escapeHTML(text)}${escapeHTML(tail)} · ${escapeHTML(when)}</div>`);
     } else if (source && source.kind !== "self") {
         lines.push(`<div class="conn-check">хараахан уншаагүй</div>`);
     }

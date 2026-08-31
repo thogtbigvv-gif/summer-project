@@ -72,11 +72,15 @@ const TIER_HEX    = { E: "#6b7280", D: "#0ea5e9", C: "#10b981", B: "#8b5cf6", A:
 // Атрибутын өнгө — профайлын багана, радар, спарклайн гурав ижил өнгө хэрэглэнэ.
 // DISCIPLINE нь өөрөө мэдээлсэн тэнхлэг — алтан өнгө нь "батлагдаагүй" гэдгийг
 // нүдээр ялгуулна (бусад гурав бол аппын хэмжсэн бодит тоо).
-const ATTR_HEX = { BODY: "#ef4444", MIND: "#8b5cf6", CREATION: "#10b981", DISCIPLINE: "#eab308" };
+// Атрибутын ТАНИХ өнгө — style.css-ийн --attr-* токенуудтай тохирно. SVG-д
+// (радар, спарклайн) шууд hex хэрэгтэй тул энд давхардаж бичигдэнэ.
+// BODY нь #ef4444 БИШ: тэр бол --danger, "эвдэрсэн" гэсэн утгатай цорын ганц
+// улаан. Хамгийн сайн явж буй атрибут эвдэрсэн зүйлтэй ижил өнгөөр асах ёсгүй.
+const ATTR_HEX = { BODY: "#fb7185", MIND: "#8b5cf6", CREATION: "#10b981", DISCIPLINE: "#eab308" };
 
 const SKILL_CAT = {
     language:   { color: "var(--skill-lang)", hex: "#0ea5e9", label: "Хэлний мэдлэг" },
-    physical:   { color: "var(--skill-phys)", hex: "#ef4444", label: "Бие бялдар"    },
+    physical:   { color: "var(--skill-phys)", hex: "#fb7185", label: "Бие бялдар"    },
     mental:     { color: "var(--skill-ment)", hex: "#8b5cf6", label: "Оюуны чадвар" },
     technology: { color: "var(--skill-tech)", hex: "#10b981", label: "Технологи"     }
 };

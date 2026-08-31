@@ -36,10 +36,14 @@ function renderAttributesRadar() {
         const endY = center + radius * Math.sin(a);
         svg += `<line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="radar-axis"/>`;
 
-        const lx = center + (radius + 28) * Math.cos(a);
-        const ly = center + (radius + 28) * Math.sin(a);
+        // Тэнхлэгийн нэр, доор нь ТООГООР. Урьд нь энэ карт ганц ч тоо
+        // агуулдаггүй байсан тул хэлбэрээс нь "хэр их вэ" гэдгийг таамаглах
+        // л үлддэг байв — хажуугийн профайл дээр яг тэр тоо бичээстэй байхад.
+        const lx = center + (radius + 30) * Math.cos(a);
+        const ly = center + (radius + 30) * Math.sin(a);
         const hi = stat.value >= 70 ? "highlight" : "";
-        svg += `<text x="${lx}" y="${ly}" class="radar-label ${hi}">${stat.name}</text>`;
+        svg += `<text x="${lx}" y="${ly - 7}" class="radar-label ${hi}">${stat.name}</text>`;
+        svg += `<text x="${lx}" y="${ly + 9}" class="radar-value" fill="${stat.hex}">${stat.value}%</text>`;
 
         const safeV   = Math.max(0, Math.min(100, stat.value));
         const vr      = radius * (safeV / 100);
@@ -57,8 +61,18 @@ function renderAttributesRadar() {
 // ===================== СПАРКЛАЙН =====================
 // Радартай ижил арга: SVG-г гараар барина, номын сан байхгүй.
 
-const SPARK_W = 240, SPARK_H = 40, SPARK_PAD = 3;
+const SPARK_W = 240, SPARK_H = 46, SPARK_PAD = 3;
 
+// ХЭЛБЭР НЬ ӨГӨГДЛӨӨ ДАГАНА.
+//
+// Энэ цуврал бол ӨДӨР ТУТМЫН салангид хэмжилт: тэр өдөр 4,200 kg өргөв, эсвэл
+// огт өргөөгүй. Түүнийг тасралтгүй ШУГАМААР зурах нь хоёр өдрийн хооронд
+// байхгүй шилжилтийг зурж байгаа хэрэг — дасгал хийгээгүй өдөр "хагас" утга
+// байгаа мэт харагдана. Өдөр алгасдаг хуваарь дээр тэр нь бүтэн 90 хоногийг
+// хурц шүдтэй хөрөө болгож, нүд түүнийг өгөгдөл биш ЧИМЭЭ гэж уншина.
+//
+// Багана нь тэр хуурмагийг арилгана: өдөр бүр өөрийн гэсэн өндөртэй, хоосон
+// өдөр хоосон. Ижил өгөгдөл, зохиомол шилжилтгүй.
 function metricSparklineSvg(series, hex) {
     const points = (Array.isArray(series) ? series : []).map(p => Number(p && p.value) || 0);
     const n = points.length;
@@ -68,17 +82,43 @@ function metricSparklineSvg(series, hex) {
     const usable = SPARK_H - SPARK_PAD * 2;
     const baseY  = SPARK_H - SPARK_PAD;
 
-    // Бүх утга 0 бол max нь 0 — тэгвэл ХАВТГАЙ шугам зурна (эвдэрсэн зам биш).
-    const xAt = i => (n === 1 ? SPARK_W / 2 : (i / (n - 1)) * SPARK_W);
-    const yAt = v => (max > 0 ? baseY - (v / max) * usable : baseY);
+    // ХООСОН ЦУВРАЛ. Урьд нь бүх утга 0 байхад ч бүрэн тод шулуун зурагддаг
+    // байсан — тэр нь "тогтвортой явж байна" гэж уншигдана. Бодит байдал нь
+    // "юу ч болоогүй". Хэлбэр нь өөрөө "энд өгөгдөл алга" гэж хэлэх ёстой.
+    if (max <= 0) {
+        return `<svg class="spark-svg is-empty" viewBox="0 0 ${SPARK_W} ${SPARK_H}" preserveAspectRatio="none"
+                     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}"
+                  stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3 5"
+                  vector-effect="non-scaling-stroke"/>
+        </svg>`;
+    }
 
-    const path = points.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+    // Багана бүрийн үүр. Зай нь үүрний 22% — өдрүүд салангид гэдэг нь
+    // харагдах хэмжээний зай, гэхдээ 90 багана шигүү зурагдах хэмжээний.
+    const slot = SPARK_W / n;
+    const gap  = Math.min(slot * 0.22, 0.9);
+    const barW = Math.max(slot - gap, 0.35);
+
+    const bars = points.map((v, i) => {
+        const x = (i * slot + gap / 2).toFixed(2);
+        if (v <= 0) {
+            // Хоосон өдрийг ЧИМЭЭГҮЙ алгасахгүй: суурь дээр нь маш бүдэг
+            // толбо үлдээнэ. Тэгснээр "энд өдөр байсан, юу ч болоогүй" ба
+            // "энд өгөгдөл байхгүй" хоёр ялгагдана.
+            return `<rect x="${x}" y="${(baseY - 0.6).toFixed(2)}" width="${barW.toFixed(2)}" height="0.6"
+                          fill="${hex}" fill-opacity="0.14"/>`;
+        }
+        const h = Math.max((v / max) * usable, 1.2);
+        return `<rect x="${x}" y="${(baseY - h).toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}"
+                      fill="${hex}" fill-opacity="0.8"/>`;
+    }).join("");
 
     return `<svg class="spark-svg" viewBox="0 0 ${SPARK_W} ${SPARK_H}" preserveAspectRatio="none"
                  xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}" stroke-opacity="0.18" stroke-width="1"/>
-        <polyline points="${path}" fill="none" stroke="${hex}" stroke-width="1.6"
-                  stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <line x1="0" y1="${baseY}" x2="${SPARK_W}" y2="${baseY}" stroke="${hex}" stroke-opacity="0.22" stroke-width="1"
+              vector-effect="non-scaling-stroke"/>
+        ${bars}
     </svg>`;
 }
 
