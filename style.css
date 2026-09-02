@@ -633,6 +633,12 @@ body::before {
 .radar-axis { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; stroke-dasharray: 4 4; }
 .radar-label { font-family: var(--font-mono); font-size: 12px; fill: var(--text-muted); font-weight: 700; text-anchor: middle; dominant-baseline: middle; letter-spacing: 1px; }
 .radar-label.highlight { fill: #fff; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+
+/* ӨЛССӨН ТЭНХЛЭГ. Хэлбэр нь "энд юу ч болоогүй" гэж хэлж байхад үнэн нь
+   "уншиж чадахгүй байна" бол радар худал ярьж байна. Тэнхлэгийн нэрийг
+   улаанаар, тоог нь орлуулсан анхааруулгаар зурж, тэр худлыг таслана. */
+.radar-label.starved { fill: var(--danger); filter: none; }
+.radar-value.is-starved { fill: var(--danger); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.3px; }
 .radar-value {
     font-family: var(--font-display);
     font-size: 13px;
@@ -1809,6 +1815,39 @@ html { scroll-behavior: smooth; }
 .is-openable:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .attr-score-row.is-openable { border-radius: 8px; padding: 4px; margin: -4px; transition: background 0.2s ease; }
 .attr-score-row.is-openable:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* ТООГ ӨЛСГӨЖ БУЙ ЭХ СУРВАЛЖ. Мөр нь "0%" гэж бичээд дуусвал хэрэглэгч
+   түүнийг өөрийнхөө буруу гэж уншина. Уншилт зогссоныг ТООНЫ ХАЖУУД
+   хэлэх нь тэр таамгийг таслах цорын ганц зам.
+
+   ХЭНИЙ ТУХАЙ ГЭДЭГ НЬ ЭРГЭЛЗЭЭГҮЙ БАЙХ ЁСТОЙ. Мөрүүд нь .progress-bg-ийн
+   16px доод зайгаар тусгаарлагддаг тул сануулгыг зүгээр нэмэхэд тэр нь
+   ӨӨРИЙН мөрөөсөө хол, ДАРААГИЙН мөрийн гарчигт наалдаж, огт өөр атрибутыг
+   эвдэрсэн мэт харуулна. Тиймээс өлссөн мөр өөрийн суурьтай болж, шошго,
+   баганаа, сануулгаа НЭГ БҮЛЭГ болгон агуулна. */
+.attr-score-row.is-starved {
+    background: rgba(239, 68, 68, 0.05);
+    border-left: 2px solid var(--danger);
+    padding: 10px 10px 10px 12px;
+    margin: 0 -4px 16px;
+}
+.attr-score-row.is-starved.is-wait-only {
+    background: rgba(255, 255, 255, 0.02);
+    border-left-color: var(--text-dim);
+}
+/* Сануулга нь ӨӨРИЙН баганы ЯГ доор — хоёрын хооронд зай багасна. */
+.attr-score-row.is-starved .progress-bg { margin-bottom: 8px; opacity: 0.45; }
+
+.attr-starved {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--danger);
+    opacity: 0.92;
+}
+/* "Хараахан бичээгүй" бол ЭВДРЭЛ БИШ — засах юмгүй зүйлийг улаанаар
+   бичих нь байхгүй ажил зохиож байгаа хэрэг. */
+.attr-starved.is-wait { color: var(--text-dim); }
 
 .sd-section-label {
     font-family: var(--font-mono);

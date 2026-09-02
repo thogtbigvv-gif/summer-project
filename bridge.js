@@ -231,6 +231,24 @@ function bridgeCheckText(code, detail) {
     return detail ? `${base} (${detail})` : base;
 }
 
+// ===================== ШАЛТГААНЫ ХҮНДРЭЛ =====================
+// "Хүлээгдэж байгаа" ба "эвдэрсэн" хоёрын ЯЛГАА нь энэ систем дэх хамгийн
+// чухал ялгаануудын нэг: эхнийх нь засах юмгүй (тэр апп хараахан бичээгүй),
+// хоёр дахь нь хэн нэгэн засах ёстой. Гурван газар (карт, оношилгооны мөр,
+// метрикийн эх сурвалж) энэ ялгааг ТУС ТУСДАА бичиж байсан — нэг код нэмэхэд
+// гурвын хоёрт нь орхигдвол дэлгэц өөртэйгөө маргана. Одоо нэг л газар.
+//
+//   "ok"   — уншигдаж байна
+//   "self" — гар бүртгэл: уншиж авах фийд БАЙХГҮЙ, тэр нь хэвийн
+//   "wait" — хараахан эхлээгүй. ЗАСАХ ЮМГҮЙ, тиймээс улаан БИШ
+//   "bad"  — уншилт зогссон. Хэн нэгэн засах ёстой
+function bridgeCheckSeverity(code) {
+    if (code === "ok") return "ok";
+    if (code === "self") return "self";
+    if (code === "missing" || code === "no-storage") return "wait";
+    return "bad";
+}
+
 function checkFail(code, detail) { return { ok: false, code, detail: detail || "" }; }
 function checkPass(feed)         { return { ok: true,  code: "ok", detail: "", feed }; }
 
@@ -338,6 +356,54 @@ function recordBridgeCheck(app, result, events) {
 
 function getBridgeCheck(app) {
     return (app && bridgeChecks[app]) ? bridgeChecks[app] : null;
+}
+
+// ===================== ТООГ ӨЛСГӨЖ БУЙ ЭХ СУРВАЛЖ =====================
+// Метрик 0 дээр зогсох ХОЁР шалтгаан бий бөгөөд тэдгээр нь ТЭС ӨӨР утгатай:
+//
+//   1. Хийгээгүй. Тоо үнэн — хийвэл өснө.
+//   2. Уншилт зогссон. Тоо ХУДАЛ — хичнээн хийсэн ч өсөхгүй.
+//
+// Холбогдсон таб хоёрыг ялгаж чаддаг байсан. Гэтэл хохирол нь ӨӨР ДЭЛГЭЦ
+// дээр гардаг: профайлын мөр, радарын тэнхлэг. Bigu-гийн гэрээ зөрөхөд яг
+// ийм зүйл болсон — MIND 0%-д зогссон ч, тэр 0-ийн ард "хичээлээгүй" биш
+// "уншиж чадахгүй байна" гэж бичээтэй байсныг зөвхөн өөр таб руу орсон хүн
+// л олно. Тоо өөрөө өлссөнөө хэлэх ёстой.
+//
+// Санамсаргүй чимээ гаргахгүй: "wait" (тэр апп хараахан бичээгүй) нь эвдрэл
+// БИШ тул тусад нь буцаана — дуудагч түүнийг улаанаар бичих ёсгүй.
+//
+// bridgeChecks нь САНАХ ОЙД суудаг тул синк болоогүй эх сурвалж энд огт
+// гарч ирэхгүй — "мэдэхгүй" гэдгийг "эвдэрсэн" гэж хэлэхгүй.
+function starvedSources(metricIds) {
+    const ids = Array.isArray(metricIds) ? metricIds : [];
+    const bad = [], waiting = [];
+    const seen = new Set();
+
+    ids.forEach(id => {
+        const apps = (typeof metricSourceApps === "function") ? metricSourceApps(id) : [];
+        apps.forEach(app => {
+            if (seen.has(app)) return;
+            seen.add(app);
+
+            const check = getBridgeCheck(app);
+            if (!check) return;                       // хараахан уншаагүй — дүгнэхгүй
+
+            const severity = bridgeCheckSeverity(check.code);
+            if (severity === "ok" || severity === "self") return;
+
+            const source = findBridgeSource(app);
+            const row = {
+                app,
+                label: (source && source.label) || app,
+                code:  check.code,
+                detail: check.detail || ""
+            };
+            (severity === "bad" ? bad : waiting).push(row);
+        });
+    });
+
+    return { bad, waiting };
 }
 
 // ===================== ТӨЛӨВ =====================
@@ -1098,8 +1164,15 @@ function connPillHtml(source, entry, check) {
     if (!source) return `<span class="conn-pill conn-off">УНШИХАА БОЛЬСОН</span>`;
 
     const code = check && check.code;
-    if (code === "missing" || code === "no-storage") return `<span class="conn-pill conn-wait">ХҮЛЭЭГДЭЖ БАЙНА</span>`;
-    if (code === "bad-json" || code === "bad-shape" || code === "bad-version") {
+    if (bridgeCheckSeverity(code) === "wait") return `<span class="conn-pill conn-wait">ХҮЛЭЭГДЭЖ БАЙНА</span>`;
+
+    // `bad-version` нь "ГЭМТСЭН"-ээс ТУСДАА шошготой. Яг энэ ялгааг нэг
+    // шошгонд нийлүүлсэн нь Bigu v2 рүү шилжихэд хэрэглэгчийг буруу зүг рүү
+    // хөтөлсөн: JSON нь бүтэн, хэлбэр нь зөв, үйлдвэрлэгч талд ЗАСАХ ЮМ
+    // БАЙХГҮЙ байсан — уншигч нь хоцорсон. "Фийд гэмтсэн" гэдэг нь тэр
+    // хүнийг байхгүй эвдрэл хайлгана.
+    if (code === "bad-version") return `<span class="conn-pill conn-bad">ГЭРЭЭ ЗӨРЖ БАЙНА</span>`;
+    if (code === "bad-json" || code === "bad-shape") {
         return `<span class="conn-pill conn-bad">ФИЙД ГЭМТСЭН</span>`;
     }
     if (code === "http" || code === "network" || code === "no-fetch") {
@@ -1132,9 +1205,8 @@ function connCheckHtml(source, check) {
         // БАЙГАА төлөв ч орно. Тэр нь эвдрэл биш, зүгээр л хараахан эхлээгүй.
         // Шошго нь хоёрыг ялгаж байхад тайлбар нь ялгахгүй бол карт өөртэйгээ
         // маргана. Улаан нь ЗӨВХӨН үнэхээр эвдэрсэнд.
-        const waiting = check.code === "missing" || check.code === "no-storage";
-        const broken  = check.code !== "ok" && check.code !== "self" && !waiting;
-        const cls = broken ? " conn-check-bad" : (waiting ? " conn-check-wait" : "");
+        const severity = bridgeCheckSeverity(check.code);
+        const cls = severity === "bad" ? " conn-check-bad" : (severity === "wait" ? " conn-check-wait" : "");
         lines.push(`<div class="conn-check${cls}">${escapeHTML(text)}${escapeHTML(tail)} · ${escapeHTML(when)}</div>`);
     } else if (source && source.kind !== "self") {
         lines.push(`<div class="conn-check">хараахан уншаагүй</div>`);
@@ -1300,8 +1372,9 @@ function renderConnectSummary(status) {
     sources.forEach(s => {
         const check = getBridgeCheck(s.app);
         if (!check) return;
-        if (check.code === "ok") live += 1;
-        else if (check.code === "missing" || check.code === "no-storage") waiting += 1;
+        const severity = bridgeCheckSeverity(check.code);
+        if (severity === "ok") live += 1;
+        else if (severity === "wait") waiting += 1;
         else bad += 1;
     });
 

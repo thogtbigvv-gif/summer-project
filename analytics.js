@@ -8,11 +8,20 @@ function renderAttributesRadar() {
 
     const status     = (typeof Status !== "undefined" && Status) ? Status.get() : null;
     const attributes = (status && status.attributes) ? status.attributes : {};
-    const stats = Object.keys(attributes).map(name => ({
-        name,
-        value: Math.max(0, Math.min(100, Number(attributes[name].score) || 0)),
-        hex:   ATTR_HEX[name] || "#eab308"
-    }));
+    // Радар нь ХЭЛБЭРЭЭР ярьдаг: төв рүү суусан тэнхлэг "энд юу ч болоогүй"
+    // гэж уншигдана. Тэр тэнхлэгийг тэжээх эх сурвалж уншигдахгүй байвал
+    // хэлбэр нь ХУДЛАА болно — тэглэсэн нь хэрэглэгч биш, тасарсан холбоо.
+    // Тиймээс өлссөн тэнхлэгийг тэмдэглэж, тоог нь эргэлзээтэй гэж зурна.
+    const stats = Object.keys(attributes).map(name => {
+        const ids = Array.isArray(attributes[name].metrics) ? attributes[name].metrics : [];
+        const starved = (typeof starvedSources === "function") ? starvedSources(ids) : null;
+        return {
+            name,
+            value: Math.max(0, Math.min(100, Number(attributes[name].score) || 0)),
+            hex:   ATTR_HEX[name] || "#eab308",
+            starved: !!(starved && starved.bad.length > 0)
+        };
+    });
     if (stats.length < 3) { container.innerHTML = ""; return; }
 
     const axes = stats.length;
@@ -42,8 +51,17 @@ function renderAttributesRadar() {
         const lx = center + (radius + 30) * Math.cos(a);
         const ly = center + (radius + 30) * Math.sin(a);
         const hi = stat.value >= 70 ? "highlight" : "";
-        svg += `<text x="${lx}" y="${ly - 7}" class="radar-label ${hi}">${stat.name}</text>`;
-        svg += `<text x="${lx}" y="${ly + 9}" class="radar-value" fill="${stat.hex}">${stat.value}%</text>`;
+        const flag = stat.starved ? " starved" : "";
+        svg += `<text x="${lx}" y="${ly - 7}" class="radar-label ${hi}${flag}">${stat.name}</text>`;
+        // Өлссөн тэнхлэгийн тоо нь өөрийнхөө өнгөөр гарвал бусадтай адил
+        // "хэмжигдсэн" мэт харагдана. Тиймээс тоог нь ОРЛУУЛНА — радарын
+        // үүрэг бол хэлбэр, шалтгааныг профайлын мөр ба дэлгэрэнгүй цонх
+        // хэлнэ. Мөр нь тэнхлэгийн ХАЖУУД сууж, орлуулж буй "23%"-тай
+        // ойролцоо өргөнтэй байх ёстой: хажуугийн тэнхлэгийн бичээс
+        // viewBox-оос халин гарч картын хүрээтэй мөргөлддөг.
+        svg += stat.starved
+            ? `<text x="${lx}" y="${ly + 9}" class="radar-value is-starved">⚠ зогссон</text>`
+            : `<text x="${lx}" y="${ly + 9}" class="radar-value" fill="${stat.hex}">${stat.value}%</text>`;
 
         const safeV   = Math.max(0, Math.min(100, stat.value));
         const vr      = radius * (safeV / 100);
