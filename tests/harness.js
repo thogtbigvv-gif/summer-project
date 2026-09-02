@@ -97,6 +97,7 @@ const EXPORTS = [
   // Холболтын давхарга: эх сурвалжийн бүртгэл, оношилгоо, төрөл → метрик.
   "listBridgeSources", "userBridgeSources", "findBridgeSource", "probeBridgeSource",
   "readBridgeFeed", "validateBridgeFeed", "bridgeCheckText", "getBridgeCheck",
+  "bridgeCheckSeverity", "starvedSources", "BRIDGE_FEED_VERSIONS",
   "addBridgeSource", "removeBridgeSource", "syncSource", "pullSource",
   "typeSummaryForApp", "setTypeMapping", "createUserMetric",
   "metricDefs", "metricRuleFor", "metricSourceApps"

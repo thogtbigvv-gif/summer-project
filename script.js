@@ -365,8 +365,18 @@ function renderAttributeScores() {
             prev30 += Number(m.prev30) || 0;
         });
 
+        // Тоог тэжээх ёстой эх сурвалж уншигдахгүй байвал ЭНД хэлнэ. Урьд нь
+        // энэ мөр "0%" гэж бичээд дуусдаг байсан бөгөөд түүнийг "чи хийгээгүй"
+        // гэж уншихаас өөр аргагүй байв — үнэндээ "би уншиж чадахгүй байна"
+        // байсан ч. Хоёр огт өөр зүйлийг нэг тоо төлөөлж чадахгүй.
+        const starved = (typeof starvedSources === "function") ? starvedSources(ids) : null;
+        const warn = starvedRowHtml(starved);
+        // Хүлээлт нь эвдрэл БИШ тул мөрийг улаан суурьтай болгохгүй.
+        const waitOnly = !!(warn && starved && starved.bad.length === 0);
+        const flag = warn ? ` is-starved${waitOnly ? " is-wait-only" : ""}` : "";
+
         return `
-            <div class="attr-score-row is-openable" data-attribute="${escapeHTML(name)}" role="button" tabindex="0">
+            <div class="attr-score-row is-openable${flag}" data-attribute="${escapeHTML(name)}" role="button" tabindex="0">
                 <div class="xp-row">
                     <span>${escapeHTML(name)}</span>
                     <span><strong style="color:${hex};">${score}%</strong> ${formatDelta(attr.change30Pct, last30, prev30)}</span>
@@ -374,8 +384,26 @@ function renderAttributeScores() {
                 <div class="progress-bg">
                     <div class="progress-bar" style="width:${score}%;background:${hex};box-shadow:0 0 8px ${hex};"></div>
                 </div>
+                ${warn}
             </div>`;
     }).join("");
+}
+
+// Өлссөн мөрийн сануулга. ЗӨВХӨН үнэхээр эвдэрсэн үед улаан гарна: "тэр апп
+// хараахан бичээгүй" гэдэг нь засах юмгүй хэвийн төлөв тул чимээгүй өнгөөр
+// бичигдэж, тоог нь худал гэж ХЭЛЭХГҮЙ — ердөө хараахан ирээгүй.
+function starvedRowHtml(starved) {
+    if (!starved) return "";
+
+    if (starved.bad.length > 0) {
+        const names = starved.bad.map(s => escapeHTML(s.label)).join(", ");
+        return `<div class="attr-starved">⚠ ${names} уншигдахгүй — энэ тоо ажиллахаа больсон</div>`;
+    }
+    if (starved.waiting.length > 0) {
+        const names = starved.waiting.map(s => escapeHTML(s.label)).join(", ");
+        return `<div class="attr-starved is-wait">${names} хараахан бичээгүй байна</div>`;
+    }
+    return "";
 }
 
 // ===================== СТАТУСЫН ДЭЛГЭРЭНГҮЙ =====================
@@ -408,13 +436,15 @@ function metricSourceHtml(metricId, status) {
 
         // Холбогдсон картын нэгэн адил: "хараахан бичээгүй байна" бол эвдрэл
         // БИШ. Улаанаар бичвэл хэрэглэгч засах юмгүй зүйлийг засах гэж хайна.
-        const code    = check && check.code;
-        const waiting = code === "missing" || code === "no-storage";
+        // Ялгааг bridgeCheckSeverity НЭГ УДАА шийднэ — энэ мөр, карт, профайл
+        // гурав өөр өөрөөр шийдвэл дэлгэц өөртэйгөө маргана.
+        const code     = check && check.code;
+        const severity = (typeof bridgeCheckSeverity === "function") ? bridgeCheckSeverity(code) : "bad";
 
         let note = "", tone = "";
-        if (check && code !== "ok" && code !== "self") {
+        if (check && severity !== "ok" && severity !== "self") {
             note = typeof bridgeCheckText === "function" ? bridgeCheckText(code, check.detail) : "уншигдахгүй байна";
-            tone = waiting ? " sd-source-wait" : " sd-source-bad";
+            tone = severity === "wait" ? " sd-source-wait" : " sd-source-bad";
         } else if (stats && stats.stale) {
             note = "чимээгүй байна";
             tone = " sd-source-bad";

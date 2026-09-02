@@ -7,15 +7,27 @@
 // хадгална — ямар ч тооцоо хийхгүй. Аль ч гүүрийн түлхүүр рүү ХЭЗЭЭ Ч бичихгүй.
 //
 // Нийтлэг гэрээ (JSON) — апп бүр адилхан:
-//   { v: 1, updatedAt: <ms>,
+//   { v: <хувилбар>, updatedAt: <ms>,
 //     status: { ... апп юу ч хүсвэл — бид бүтнээр нь хадгална, тайлбарлахгүй },
 //     events: [ { id, at, type, value, detail, data? } ... ] }
 //
 // data нь заавал биш дамжуулах объект (ж: { volumeKg }, { correct, total }) —
 // үйлдвэрлэгч бодит нэгжээ энд нийтэлнэ. Бид түүнийг тайлбарлахгүй, хадгална.
 //
-// Түлхүүр байхгүй, гэмтсэн, эсвэл v !== 1 бол тэр эх сурвалжийг чимээгүй алгасна —
-// апп өнөөдрийнхтэй яг адилхан ажиллана.
+// `v` НЬ ҮЙЛДВЭРЛЭГЧ ТУС БҮРИЙН ГЭРЭЭНИЙ ХУВИЛБАР — бүх аппыг нэг цагт
+// шинэчилдэг дугаар БИШ. Апп бүр өөрийн хурдаар хувилбараа ахиулна: Gym ба
+// GitHub v1 бичиж байхад Bigu аль хэдийн v2 бичиж байна. Тиймээс энд ГАНЦ
+// тоо байж болохгүй — уншигч нь ТАНИХ ХУВИЛБАРУУДЫН БҮРТГЭЛ барина
+// (BRIDGE_FEED_VERSIONS). Эдгээр хувилбарууд ижил дугтуйны хэлбэртэй тул
+// доорх код тэднийг ялгадаггүй; ялгаа гарах өдөр л энд шинэ мөр нэмэгдэнэ.
+//
+// Ганц тоо барьсны үнэ нь бодитоор гарсан: Bigu v2 рүү шилжихэд энэ уншигч
+// түүнийг "фийд гэмтсэн" гээд татгалзаж, MIND тэнхлэг тэглэгдэн зогссон.
+// Хамаагүй апп биш — уншигчийн зүгээс ХУУЧИРСАН гэрээ байсан хэрэг.
+//
+// Түлхүүр байхгүй, гэмтсэн, эсвэл `v` нь ТАНИХГҮЙ хувилбар бол тэр эх
+// сурвалжийг алгасна — апп өнөөдрийнхтэй яг адилхан ажиллана. Чимээгүй биш
+// ч: шалтгаан нь холболтын карт дээр нэрээ хэлнэ.
 //
 // ХОЁР ТӨРЛИЙН ЭХ СУРВАЛЖ (kind):
 //   "local" — ижил origin дээрх апп localStorage-д бичдэг (анхдагч).
@@ -106,6 +118,29 @@ function findBridgeSource(app) {
     return listBridgeSources().find(s => s && s.app === app) || null;
 }
 
+// ===================== ТАНИХ ГЭРЭЭНИЙ ХУВИЛБАРУУД =====================
+// Уншигч ямар `v`-г таньдаг вэ. Энэ бол ЖАГСААЛТ, ганц тоо биш: үйлдвэрлэгч
+// апп бүр өөрийн хурдаар хувилбараа ахиулдаг тул нэг мөчид хоёр өөр хувилбар
+// зэрэг ирж байх нь ХЭВИЙН байдал болохоос эвдрэл биш.
+//
+//   v1 — Gym ба GitHub (data/github.json) одоогоор үүгээр бичнэ.
+//   v2 — Bigu-гийн одоогийн гэрээ (docs/BRIDGE.md түүнийх).
+//
+// ЭНЭ УНШИГЧИЙН хувьд хоёул ЯГ ИЖИЛ дугтуй: { v, updatedAt, status, events }
+// бөгөөд event бүр { id, at, type, value, detail, data? }. Bigu нэмж бичдэг
+// `app` талбар, event бүрийн `date` талбар хоёрыг бид уншдаггүй — өдрийг
+// `at`-аас гаргадаг. Танихгүй талбар уншилтыг зогсоох ЁСГҮЙ, тиймээс хоёр
+// хувилбарыг салгаж боловсруулах шалтгаан алга.
+//
+// ШИНЭ ХУВИЛБАР НЭМЭХ: доорх талбарууд утгаа хадгалсан хэвээр бол ЭНД нэг тоо
+// нэмнэ. Утга нь өөрчлөгдсөн бол энд нэмэхийн ӨМНӨ хөрвүүлэлт бичих ёстой —
+// танихгүй дугтуйг татгалзах нь доторх утгыг буруу тайлбарлахаас ХАМГААЛНА.
+const BRIDGE_FEED_VERSIONS = [1, 2];
+
+function isSupportedFeedVersion(v) {
+    return BRIDGE_FEED_VERSIONS.indexOf(v) !== -1;
+}
+
 // Commit хийгдсэн файл нь үйлдвэрлэгчийн 50 event-ийн буфертэй холбоогүй бөгөөд
 // эхний ажиллагаа нь бүх түүхийг нөхөж авчирна — тиймээс хязгаар нь өндөр.
 const BRIDGE_MAX_EVENTS = 2000;  // нэг эх сурвалжаас нэг удаад боловсруулах дээд хязгаар
@@ -184,7 +219,7 @@ const BRIDGE_CHECK_TEXT = {
     missing:       "түлхүүр олдсонгүй — тэр апп энэ хөтөч дээр хараахан бичээгүй байна",
     "bad-json":    "агуулга JSON биш — фийд гэмтсэн",
     "bad-shape":   "фийдийн хэлбэр таарахгүй (объект байх ёстой)",
-    "bad-version": "фийдийн хувилбар v1 биш — уншихаас татгалзав",
+    "bad-version": `фийдийн хувилбарыг танихгүй байна (уншдаг нь v${BRIDGE_FEED_VERSIONS.join(", v")}) — уншихаас татгалзав`,
     http:          "файл татагдсангүй",
     network:       "сүлжээнд хүрсэнгүй",
     "no-fetch":    "энэ орчинд fetch байхгүй",
@@ -196,6 +231,24 @@ function bridgeCheckText(code, detail) {
     return detail ? `${base} (${detail})` : base;
 }
 
+// ===================== ШАЛТГААНЫ ХҮНДРЭЛ =====================
+// "Хүлээгдэж байгаа" ба "эвдэрсэн" хоёрын ЯЛГАА нь энэ систем дэх хамгийн
+// чухал ялгаануудын нэг: эхнийх нь засах юмгүй (тэр апп хараахан бичээгүй),
+// хоёр дахь нь хэн нэгэн засах ёстой. Гурван газар (карт, оношилгооны мөр,
+// метрикийн эх сурвалж) энэ ялгааг ТУС ТУСДАА бичиж байсан — нэг код нэмэхэд
+// гурвын хоёрт нь орхигдвол дэлгэц өөртэйгөө маргана. Одоо нэг л газар.
+//
+//   "ok"   — уншигдаж байна
+//   "self" — гар бүртгэл: уншиж авах фийд БАЙХГҮЙ, тэр нь хэвийн
+//   "wait" — хараахан эхлээгүй. ЗАСАХ ЮМГҮЙ, тиймээс улаан БИШ
+//   "bad"  — уншилт зогссон. Хэн нэгэн засах ёстой
+function bridgeCheckSeverity(code) {
+    if (code === "ok") return "ok";
+    if (code === "self") return "self";
+    if (code === "missing" || code === "no-storage") return "wait";
+    return "bad";
+}
+
 function checkFail(code, detail) { return { ok: false, code, detail: detail || "" }; }
 function checkPass(feed)         { return { ok: true,  code: "ok", detail: "", feed }; }
 
@@ -204,7 +257,9 @@ function checkPass(feed)         { return { ok: true,  code: "ok", detail: "", f
 // дамжина — хүргэх зам нь өөр ч гэрээ нь нэг.
 function validateBridgeFeed(parsed) {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return checkFail("bad-shape");
-    if (parsed.v !== 1) return checkFail("bad-version", `v=${JSON.stringify(parsed.v)}`);
+    if (!isSupportedFeedVersion(parsed.v)) {
+        return checkFail("bad-version", `v=${JSON.stringify(parsed.v)}`);
+    }
 
     // Хуучнаас нь шинэ рүү эрэмбэлнэ — ингэснээр BRIDGE_MAX_EVENTS-ийн таслалт
     // ХАМГИЙН СҮҮЛИЙН event-үүдийг үлдээнэ.
@@ -301,6 +356,54 @@ function recordBridgeCheck(app, result, events) {
 
 function getBridgeCheck(app) {
     return (app && bridgeChecks[app]) ? bridgeChecks[app] : null;
+}
+
+// ===================== ТООГ ӨЛСГӨЖ БУЙ ЭХ СУРВАЛЖ =====================
+// Метрик 0 дээр зогсох ХОЁР шалтгаан бий бөгөөд тэдгээр нь ТЭС ӨӨР утгатай:
+//
+//   1. Хийгээгүй. Тоо үнэн — хийвэл өснө.
+//   2. Уншилт зогссон. Тоо ХУДАЛ — хичнээн хийсэн ч өсөхгүй.
+//
+// Холбогдсон таб хоёрыг ялгаж чаддаг байсан. Гэтэл хохирол нь ӨӨР ДЭЛГЭЦ
+// дээр гардаг: профайлын мөр, радарын тэнхлэг. Bigu-гийн гэрээ зөрөхөд яг
+// ийм зүйл болсон — MIND 0%-д зогссон ч, тэр 0-ийн ард "хичээлээгүй" биш
+// "уншиж чадахгүй байна" гэж бичээтэй байсныг зөвхөн өөр таб руу орсон хүн
+// л олно. Тоо өөрөө өлссөнөө хэлэх ёстой.
+//
+// Санамсаргүй чимээ гаргахгүй: "wait" (тэр апп хараахан бичээгүй) нь эвдрэл
+// БИШ тул тусад нь буцаана — дуудагч түүнийг улаанаар бичих ёсгүй.
+//
+// bridgeChecks нь САНАХ ОЙД суудаг тул синк болоогүй эх сурвалж энд огт
+// гарч ирэхгүй — "мэдэхгүй" гэдгийг "эвдэрсэн" гэж хэлэхгүй.
+function starvedSources(metricIds) {
+    const ids = Array.isArray(metricIds) ? metricIds : [];
+    const bad = [], waiting = [];
+    const seen = new Set();
+
+    ids.forEach(id => {
+        const apps = (typeof metricSourceApps === "function") ? metricSourceApps(id) : [];
+        apps.forEach(app => {
+            if (seen.has(app)) return;
+            seen.add(app);
+
+            const check = getBridgeCheck(app);
+            if (!check) return;                       // хараахан уншаагүй — дүгнэхгүй
+
+            const severity = bridgeCheckSeverity(check.code);
+            if (severity === "ok" || severity === "self") return;
+
+            const source = findBridgeSource(app);
+            const row = {
+                app,
+                label: (source && source.label) || app,
+                code:  check.code,
+                detail: check.detail || ""
+            };
+            (severity === "bad" ? bad : waiting).push(row);
+        });
+    });
+
+    return { bad, waiting };
 }
 
 // ===================== ТӨЛӨВ =====================
@@ -1061,8 +1164,15 @@ function connPillHtml(source, entry, check) {
     if (!source) return `<span class="conn-pill conn-off">УНШИХАА БОЛЬСОН</span>`;
 
     const code = check && check.code;
-    if (code === "missing" || code === "no-storage") return `<span class="conn-pill conn-wait">ХҮЛЭЭГДЭЖ БАЙНА</span>`;
-    if (code === "bad-json" || code === "bad-shape" || code === "bad-version") {
+    if (bridgeCheckSeverity(code) === "wait") return `<span class="conn-pill conn-wait">ХҮЛЭЭГДЭЖ БАЙНА</span>`;
+
+    // `bad-version` нь "ГЭМТСЭН"-ээс ТУСДАА шошготой. Яг энэ ялгааг нэг
+    // шошгонд нийлүүлсэн нь Bigu v2 рүү шилжихэд хэрэглэгчийг буруу зүг рүү
+    // хөтөлсөн: JSON нь бүтэн, хэлбэр нь зөв, үйлдвэрлэгч талд ЗАСАХ ЮМ
+    // БАЙХГҮЙ байсан — уншигч нь хоцорсон. "Фийд гэмтсэн" гэдэг нь тэр
+    // хүнийг байхгүй эвдрэл хайлгана.
+    if (code === "bad-version") return `<span class="conn-pill conn-bad">ГЭРЭЭ ЗӨРЖ БАЙНА</span>`;
+    if (code === "bad-json" || code === "bad-shape") {
         return `<span class="conn-pill conn-bad">ФИЙД ГЭМТСЭН</span>`;
     }
     if (code === "http" || code === "network" || code === "no-fetch") {
@@ -1095,9 +1205,8 @@ function connCheckHtml(source, check) {
         // БАЙГАА төлөв ч орно. Тэр нь эвдрэл биш, зүгээр л хараахан эхлээгүй.
         // Шошго нь хоёрыг ялгаж байхад тайлбар нь ялгахгүй бол карт өөртэйгээ
         // маргана. Улаан нь ЗӨВХӨН үнэхээр эвдэрсэнд.
-        const waiting = check.code === "missing" || check.code === "no-storage";
-        const broken  = check.code !== "ok" && check.code !== "self" && !waiting;
-        const cls = broken ? " conn-check-bad" : (waiting ? " conn-check-wait" : "");
+        const severity = bridgeCheckSeverity(check.code);
+        const cls = severity === "bad" ? " conn-check-bad" : (severity === "wait" ? " conn-check-wait" : "");
         lines.push(`<div class="conn-check${cls}">${escapeHTML(text)}${escapeHTML(tail)} · ${escapeHTML(when)}</div>`);
     } else if (source && source.kind !== "self") {
         lines.push(`<div class="conn-check">хараахан уншаагүй</div>`);
@@ -1263,8 +1372,9 @@ function renderConnectSummary(status) {
     sources.forEach(s => {
         const check = getBridgeCheck(s.app);
         if (!check) return;
-        if (check.code === "ok") live += 1;
-        else if (check.code === "missing" || check.code === "no-storage") waiting += 1;
+        const severity = bridgeCheckSeverity(check.code);
+        if (severity === "ok") live += 1;
+        else if (severity === "wait") waiting += 1;
         else bad += 1;
     });
 

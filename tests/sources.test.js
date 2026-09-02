@@ -86,12 +86,55 @@ await t("JSON биш агуулга — 'bad-json'", async () => {
     assert.strictEqual(a.readBridgeFeed("broken:bridge").code, "bad-json");
 });
 
-await t("v≠1 фийд — 'bad-version' (хэлбэрийн алдаанаас ЯЛГААТАЙ)", async () => {
+await t("танихгүй хувилбар — 'bad-version' (хэлбэрийн алдаанаас ЯЛГААТАЙ)", async () => {
     const { ctx, a } = boot();
-    ctx.localStorage.setItem("old:bridge", JSON.stringify({ v: 2, events: [] }));
+    ctx.localStorage.setItem("old:bridge", JSON.stringify({ v: 99, events: [] }));
     const res = a.readBridgeFeed("old:bridge");
     assert.strictEqual(res.code, "bad-version");
     assert.notStrictEqual(res.code, "bad-shape");
+    // Татгалзлын мөр нь ЮУГ уншдагийг хэлэх ёстой: "v1 биш" гэж хатуу бичсэн
+    // мөр нь уншигч v2-ыг ч уншдаг болсны дараа ХУДАЛ болно.
+    assert.ok(/v1, v2/.test(a.bridgeCheckText(res.code, res.detail)), a.bridgeCheckText(res.code, res.detail));
+});
+
+// Bigu гэрээгээ v2 рүү ахиулахад энэ уншигч ганц тоо (`v !== 1`) барьж байсан
+// тул түүнийг "фийд гэмтсэн" гээд татгалзаж, MIND тэнхлэг тэглэгдэн зогссон.
+// Хувилбар бол ҮЙЛДВЭРЛЭГЧ ТУС БҮРИЙНХ: нэг мөчид v1, v2 зэрэг ирнэ.
+await t("танигдсан ХУВИЛБАР БҮР уншигдана (v1 ба v2 зэрэг)", async () => {
+    const { ctx, a } = boot();
+    ctx.localStorage.setItem("gym:bridge", JSON.stringify({
+        v: 1, updatedAt: Date.now(), status: { note: "ok" },
+        events: [{ id: "g1", at: ago(1), type: "workout.completed", value: 1, data: { volumeKg: 4200 } }]
+    }));
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({
+        v: 2, app: "Bigu", updatedAt: Date.now(),
+        status: { dueCount: 12, learnedCount: 240, streak: 5 },
+        events: [{ id: "r1", at: ago(1), date: "2026-09-01", type: "review.session", value: 30, detail: "40 items · 30 correct" }]
+    }));
+
+    assert.strictEqual(a.readBridgeFeed("gym:bridge").code, "ok");
+    assert.strictEqual(a.readBridgeFeed("bigu:bridge").code, "ok");
+});
+
+await t("v2 дугтуйны event-үүд НОТОЛГОО болж, MIND тэнхлэгийг хөдөлгөнө", async () => {
+    const { ctx, a } = boot();
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({
+        v: 2, app: "Bigu", updatedAt: Date.now(),
+        status: { dueCount: 12 },
+        events: [
+            // v2 нь event бүрд `date` нэмсэн. Бид `at`-аар тоолдог тул
+            // танихгүй талбар нь уншилтыг зогсоох ёсгүй.
+            { id: "r1", at: ago(1), date: "2026-09-01", type: "review.session", value: 30, detail: "40 items · 30 correct" },
+            { id: "r2", at: ago(2), date: "2026-08-31", type: "lesson.quiz",    value: 8,  detail: "10 items · 8 correct" }
+        ]
+    }));
+
+    await a.syncSource("bigu");
+    const s = a.Status.get();
+
+    assert.strictEqual(s.metrics["bigu.reviews"].last30, 30, "review.session-ийн value тоологдоогүй");
+    assert.strictEqual(s.metrics["bigu.lessons"].last30, 1,  "lesson.quiz тоологдоогүй");
+    assert.ok(s.attributes.MIND.score > 0, "MIND тэглэгдсэн хэвээр — v2 фийд тоо гаргаагүй");
 });
 
 await t("зөв фийд — уншигдаж, event-үүд нь ирнэ", async () => {
@@ -336,6 +379,87 @@ await t("аппын төрлүүдийг нотолгооноос нь тоол�
     assert.strictEqual(completed.count, 2);
     assert.ok(completed.dataKeys.includes("volumeKg"), "data талбар олдсонгүй");
     assert.strictEqual(completed.mapped, true, "кодод тайлбарлагдсан төрөл mapped биш гэж гарав");
+});
+
+// ===================== 0 ГЭДЭГ ХОЁР ӨӨР ЮМ =====================
+// Метрик 0 дээр зогсох нь "хийгээгүй" эсвэл "уншиж чадахгүй" гэсэн ХОЁР
+// тэс өөр утгатай. Хоёрыг ялгаж чадахгүй бол дэлгэц дээрх тоо нь нэгийг нь
+// нөгөөгөөр нь халхална — Bigu-гийн гэрээ зөрөхөд яг тэр болсон.
+
+section("0 гэдэг хоёр өөр юм: өлссөн эх сурвалж");
+
+await t("шалтгааны хүндрэл нэг л газраас шийдэгдэнэ", async () => {
+    const { a } = boot();
+    assert.strictEqual(a.bridgeCheckSeverity("ok"), "ok");
+    assert.strictEqual(a.bridgeCheckSeverity("self"), "self");
+    // Засах юмгүй хүлээлт — улаан БОЛОХ ЁСГҮЙ.
+    assert.strictEqual(a.bridgeCheckSeverity("missing"), "wait");
+    assert.strictEqual(a.bridgeCheckSeverity("no-storage"), "wait");
+    // Уншилт зогссон бүхэн — хэн нэгэн засах ёстой.
+    ["bad-json", "bad-shape", "bad-version", "http", "network", "no-fetch", "unknown"]
+        .forEach(code => assert.strictEqual(a.bridgeCheckSeverity(code), "bad", code));
+});
+
+await t("эвдэрсэн эх сурвалж түүний тэжээдэг метрикээр дамжиж олдоно", async () => {
+    const { ctx, a } = boot();
+    // Bigu-гийн гэрээ зөрсөн; Gym хэвийн.
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({ v: 99, events: [] }));
+    ctx.localStorage.setItem("gym:bridge", feed([
+        { id: "g1", at: ago(1), type: "workout.completed", value: 1, data: { volumeKg: 4200 } }
+    ]));
+    await a.syncAll();
+
+    const mind = a.starvedSources(["bigu.reviews", "bigu.lessons"]);
+    assert.strictEqual(mind.bad.length, 1, "MIND-ийн тасарсан эх сурвалж олдсонгүй");
+    assert.strictEqual(mind.bad[0].app, "bigu");
+    assert.strictEqual(mind.bad[0].code, "bad-version");
+    assert.strictEqual(mind.bad[0].label, "Bigu", "хэрэглэгчид харагдах нэр биш id буцаав");
+
+    // Хэвийн эх сурвалж сануулга ҮҮСГЭХГҮЙ — эс тэгвээс анхааруулга утгаа алдана.
+    const body = a.starvedSources(["gym.volume"]);
+    assert.strictEqual(body.bad.length, 0, "ажиллаж буй эх сурвалжийг эвдэрсэн гэв");
+    assert.strictEqual(body.waiting.length, 0);
+});
+
+await t("'хараахан бичээгүй' нь эвдрэлээс ТУСДАА ангилагдана", async () => {
+    const { ctx, a } = boot();
+    // Түлхүүр огт байхгүй: тэр апп энэ хөтөч дээр хараахан ажиллаагүй.
+    ctx.localStorage.removeItem("bigu:bridge");
+    await a.syncAll();
+
+    const mind = a.starvedSources(["bigu.reviews"]);
+    assert.strictEqual(mind.bad.length, 0, "хүлээлтийг эвдрэл гэж бүртгэв");
+    assert.strictEqual(mind.waiting.length, 1);
+    assert.strictEqual(mind.waiting[0].code, "missing");
+});
+
+await t("уншаагүй эх сурвалжийг 'эвдэрсэн' гэж ХЭЛЭХГҮЙ", async () => {
+    const { a } = boot();
+    // syncAll огт дуудагдаагүй — bridgeChecks хоосон. "Мэдэхгүй" гэдгийг
+    // "эвдэрсэн" гэж мэдээлбэл апп нээх бүрд худал улаан анхааруулга гарна.
+    const mind = a.starvedSources(["bigu.reviews"]);
+    assert.strictEqual(mind.bad.length, 0);
+    assert.strictEqual(mind.waiting.length, 0);
+});
+
+await t("нэг эх сурвалж хэдэн метрик тэжээж байсан ч НЭГ УДАА л мэдээлнэ", async () => {
+    const { ctx, a } = boot();
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({ v: 99, events: [] }));
+    await a.syncAll();
+
+    // bigu.reviews ба bigu.lessons хоёулаа "bigu"-гаас ирнэ. Давхардвал
+    // хэрэглэгч "Bigu, Bigu уншигдахгүй" гэсэн мөр уншина.
+    const mind = a.starvedSources(["bigu.reviews", "bigu.lessons"]);
+    assert.strictEqual(mind.bad.length, 1);
+});
+
+await t("метрикгүй атрибут сануулга үүсгэхгүй", async () => {
+    const { a } = boot();
+    [[], null, undefined, "bigu.reviews"].forEach(input => {
+        const res = a.starvedSources(input);
+        assert.strictEqual(res.bad.length, 0, String(input));
+        assert.strictEqual(res.waiting.length, 0, String(input));
+    });
 });
 
 };
