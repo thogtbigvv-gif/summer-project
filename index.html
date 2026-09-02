@@ -149,7 +149,9 @@
         </div>
 
         <!-- Шинэ эх сурвалж. Гэрээ нь кодод бичигдсэнтэй ЯГ ИЖИЛ:
-             { v:1, updatedAt, status, events:[{id,at,type,value,detail,data}] } -->
+             { v, updatedAt, status, events:[{id,at,type,value,detail,data}] }
+             `v` нь тухайн АППЫН гэрээний хувилбар. Уншигчийн танихаар нь
+             bridge.js-ийн BRIDGE_FEED_VERSIONS шийднэ (одоогоор v1, v2). -->
         <div id="source-form" class="source-form" style="display:none;">
             <div class="source-form-grid">
                 <div>

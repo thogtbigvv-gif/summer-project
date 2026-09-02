@@ -86,12 +86,55 @@ await t("JSON биш агуулга — 'bad-json'", async () => {
     assert.strictEqual(a.readBridgeFeed("broken:bridge").code, "bad-json");
 });
 
-await t("v≠1 фийд — 'bad-version' (хэлбэрийн алдаанаас ЯЛГААТАЙ)", async () => {
+await t("танихгүй хувилбар — 'bad-version' (хэлбэрийн алдаанаас ЯЛГААТАЙ)", async () => {
     const { ctx, a } = boot();
-    ctx.localStorage.setItem("old:bridge", JSON.stringify({ v: 2, events: [] }));
+    ctx.localStorage.setItem("old:bridge", JSON.stringify({ v: 99, events: [] }));
     const res = a.readBridgeFeed("old:bridge");
     assert.strictEqual(res.code, "bad-version");
     assert.notStrictEqual(res.code, "bad-shape");
+    // Татгалзлын мөр нь ЮУГ уншдагийг хэлэх ёстой: "v1 биш" гэж хатуу бичсэн
+    // мөр нь уншигч v2-ыг ч уншдаг болсны дараа ХУДАЛ болно.
+    assert.ok(/v1, v2/.test(a.bridgeCheckText(res.code, res.detail)), a.bridgeCheckText(res.code, res.detail));
+});
+
+// Bigu гэрээгээ v2 рүү ахиулахад энэ уншигч ганц тоо (`v !== 1`) барьж байсан
+// тул түүнийг "фийд гэмтсэн" гээд татгалзаж, MIND тэнхлэг тэглэгдэн зогссон.
+// Хувилбар бол ҮЙЛДВЭРЛЭГЧ ТУС БҮРИЙНХ: нэг мөчид v1, v2 зэрэг ирнэ.
+await t("танигдсан ХУВИЛБАР БҮР уншигдана (v1 ба v2 зэрэг)", async () => {
+    const { ctx, a } = boot();
+    ctx.localStorage.setItem("gym:bridge", JSON.stringify({
+        v: 1, updatedAt: Date.now(), status: { note: "ok" },
+        events: [{ id: "g1", at: ago(1), type: "workout.completed", value: 1, data: { volumeKg: 4200 } }]
+    }));
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({
+        v: 2, app: "Bigu", updatedAt: Date.now(),
+        status: { dueCount: 12, learnedCount: 240, streak: 5 },
+        events: [{ id: "r1", at: ago(1), date: "2026-09-01", type: "review.session", value: 30, detail: "40 items · 30 correct" }]
+    }));
+
+    assert.strictEqual(a.readBridgeFeed("gym:bridge").code, "ok");
+    assert.strictEqual(a.readBridgeFeed("bigu:bridge").code, "ok");
+});
+
+await t("v2 дугтуйны event-үүд НОТОЛГОО болж, MIND тэнхлэгийг хөдөлгөнө", async () => {
+    const { ctx, a } = boot();
+    ctx.localStorage.setItem("bigu:bridge", JSON.stringify({
+        v: 2, app: "Bigu", updatedAt: Date.now(),
+        status: { dueCount: 12 },
+        events: [
+            // v2 нь event бүрд `date` нэмсэн. Бид `at`-аар тоолдог тул
+            // танихгүй талбар нь уншилтыг зогсоох ёсгүй.
+            { id: "r1", at: ago(1), date: "2026-09-01", type: "review.session", value: 30, detail: "40 items · 30 correct" },
+            { id: "r2", at: ago(2), date: "2026-08-31", type: "lesson.quiz",    value: 8,  detail: "10 items · 8 correct" }
+        ]
+    }));
+
+    await a.syncSource("bigu");
+    const s = a.Status.get();
+
+    assert.strictEqual(s.metrics["bigu.reviews"].last30, 30, "review.session-ийн value тоологдоогүй");
+    assert.strictEqual(s.metrics["bigu.lessons"].last30, 1,  "lesson.quiz тоологдоогүй");
+    assert.ok(s.attributes.MIND.score > 0, "MIND тэглэгдсэн хэвээр — v2 фийд тоо гаргаагүй");
 });
 
 await t("зөв фийд — уншигдаж, event-үүд нь ирнэ", async () => {
