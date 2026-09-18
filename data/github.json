@@ -2,10 +2,10 @@
   "v": 1,
   "app": "github",
   "label": "GitHub",
-  "updatedAt": 1789030693242,
+  "updatedAt": 1789722103902,
   "status": {
     "repos": 1,
-    "commitsLast30": 14,
+    "commitsLast30": 12,
     "lastCommitAt": "2026-09-02T07:18:59.000Z"
   },
   "events": [
